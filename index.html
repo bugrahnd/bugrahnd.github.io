@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buğrahan Deveci — Game & App Developer</title>
+    <meta name="description" content="Unity Game Developer, Flutter App Developer. Hayalleri kodlayan geliştiricinin portfolyosu.">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&family=Varela+Round&display=swap" rel="stylesheet">
+    
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar" id="navbar">
+        <div class="nav-container">
+            <a href="#hero" class="logo">
+                <span class="logo-text">BD</span>
+            </a>
+
+            <ul class="nav-links" id="navLinks">
+                <li><a href="#hero" class="nav-link"> ana sayfa</a></li>
+                <li><a href="#about" class="nav-link"> hakkımda</a></li>
+                <li><a href="#skills" class="nav-link"> yetenekler</a></li>
+                <li><a href="#experience" class="nav-link"> deneyim</a></li>
+                <li><a href="#projects" class="nav-link"> projeler</a></li>
+                <li><a href="#contact" class="nav-link"> iletişim</a></li>
+            </ul>
+
+            <!-- Nav Right: Toggle + Hamburger -->
+            <div class="nav-right">
+                <button class="theme-toggle" id="themeToggle" aria-label="Temayı değiştir" title="Dark / Light">
+                    <span class="toggle-thumb"></span>
+                </button>
+                <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Menü">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="hero" class="hero-section">
+        <div class="hero-bg-gradient"></div>
+        <canvas id="canvas3d"></canvas>
+
+        <div class="hero-content">
+            <h1 class="hero-title">
+                <span class="title-line gradient-text" data-delay="0">Buğrahan Deveci</span>
+            </h1>
+            <p class="hero-subtitle-small" data-delay="100">
+                Game Developer · Front-End/App Developer
+            </p>
+            <p class="hero-subtitle" data-delay="200">
+                Hayalleri kodlayan, oyunlarla hikayeler anlatan ve dijital dünyalarda deneyimler yaratan geliştiriciyim.
+            </p>
+            <div class="hero-buttons" data-delay="300">
+                <a href="#projects" class="btn btn-primary">
+                    <span>Projelerimi Gör</span>
+                    <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+                        <path d="M7.5 15L12.5 10L7.5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </a>
+                <a href="#contact" class="btn btn-secondary">
+                    <span>İletişime Geç</span>
+                </a>
+            </div>
+
+            <div class="scroll-indicator">
+                <div class="scroll-line"></div>
+                <span>scroll</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section id="about" class="about-section">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-label">01 — Hakkımda</span>
+                <h2 class="section-title">Ben Kimim?</h2>
+            </div>
+
+            <div class="about-content">
+                <div class="about-text animate-on-scroll">
+                    <p class="about-intro">Selam! Ben Buğrahan.</p>
+                    <p>
+                        Fikirleri oynanabilir deneyimlere dönüştürmeyi seven bir geliştiriciyim. Asıl tutkum Unity ile oyun geliştirmek olsa da, Flutter kullanarak pratik mobil çözümler üretmekten de keyif alıyorum.
+                    </p>
+                    <p>
+                        Bir yanda oyun mekanikleri ve atmosfer, diğer yanda temiz kod ve mimari. Bu iki dünya arasında köprü kurarak projeler geliştiriyorum.
+                    </p>
+
+                    <div class="about-stats">
+                        <div class="stat-item animate-on-scroll">
+                            <span class="stat-number" data-target="6">0</span>
+                            <span class="stat-label">Tamamlanan Proje</span>
+                        </div>
+                        <div class="stat-item animate-on-scroll">
+                            <span class="stat-number" data-target="1">0</span>
+                            <span class="stat-label">+ Yıl Unity Deneyimi</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="about-image animate-on-scroll">
+                    <div class="image-frame">
+                        <div class="frame-corner tl"></div>
+                        <div class="frame-corner tr"></div>
+                        <div class="frame-corner bl"></div>
+                        <div class="frame-corner br"></div>
+                        <div class="image-placeholder">
+                            <img src="assets/images/pp.jpeg" alt="Profil Resmi">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Skills Section -->
+    <section id="skills" class="expertise-section">
+        <div class="code-bg-overlay"><pre>
+using UnityEngine;
+
+public class PlayerController : MonoBehaviour {
+    private Rigidbody rb;
+    public float speed = 12f;
+    public float jumpForce = 500f;
+
+    void Start() {
+        rb = GetComponent&lt;Rigidbody&gt;();
+    }
+
+    void FixedUpdate() {
+        float moveH = Input.GetAxis("Horizontal");
+        float moveV = Input.GetAxis("Vertical");
+        Vector3 movement = new Vector3(moveH, 0f, moveV);
+        rb.AddForce(movement * speed);
+    }
+}
+        </pre></div>
+
+        <div class="container">
+            <div class="section-header center-header">
+                <span class="section-label">02 — Yetenekler</span>
+                <h2 class="section-title">Uzmanlık<br/>Alanlarım</h2>
+            </div>
+
+            <div class="expertise-grid">
+
+                <!-- Unity Card -->
+                <div class="expertise-card animate-on-scroll">
+                    <div class="vscode-bg">
+                        <div class="window-header">
+                            <span class="dot red"></span>
+                            <span class="dot yellow"></span>
+                            <span class="dot green"></span>
+                        </div>
+                        <pre><span class="kwd">using</span> <span class="type">UnityEngine</span>;
+
+<span class="kwd">public class</span> <span class="class">GameManager</span> : <span class="type">MonoBehaviour</span> {
+  <span class="kwd">void</span> <span class="func">Start</span>() {
+    <span class="comment">// Oyun başladı!</span>
+  }
+}</pre>
+                    </div>
+                    <div class="card-foreground">
+                        <div class="card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                                <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"/>
+                                <circle cx="15.5" cy="15.5" r="1.5" fill="currentColor"/>
+                                <path d="M8.5 15.5h7M12 8.5v7" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+                        <h3 class="card-title">
+                            <span class="highlight-underline orange">Unity Dev</span>
+                            <br>3D & 2D Oyunlar
+                        </h3>
+                        <div class="card-description">
+                            <span class="tag">&lt;skills&gt;</span>
+                            <p><strong>Atmosferik Görsel Tasarım:</strong> Post-Processing, Custom Shaders ve Volumetric Lighting kullanarak derinlikli ve sürükleyici 3D dünyalar inşa etme.</p>
+                            <p> -------------   </p>
+                            <p><strong>Yenilikçi Mekanikler & Donanım Entegrasyonu:</strong> OpenCV, mikrofon ve web kamerası gibi harici kütüphane/donanımları kullanarak fiziksel etkileşime dayalı oyun mekanikleri geliştirme.</p>
+                            <p> -------------   </p>
+                            <p><strong>Gelişmiş Sistem Tasarımı:</strong> FMOD ile dinamik ses yönetimi, çok oyunculu (Multiplayer) ağ yapıları ve Timeline/Dialogue sistemleriyle hikaye odaklı oyun akışları tasarlama.</p>
+                            <span class="tag">&lt;/skills&gt;</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Flutter Card -->
+                <div class="expertise-card animate-on-scroll">
+                    <div class="vscode-bg">
+                        <div class="window-header">
+                            <span class="dot red"></span>
+                            <span class="dot yellow"></span>
+                            <span class="dot green"></span>
+                        </div>
+                        <pre><span class="kwd">class</span> <span class="class">MyApp</span> <span class="kwd">extends</span> <span class="type">StatelessWidget</span> {
+  <span class="meta">@override</span>
+  <span class="type">Widget</span> <span class="func">build</span>(<span class="type">BuildContext</span> ctx) {
+    <span class="kwd">return</span> <span class="func">MaterialApp</span>(
+      home: <span class="func">HomeScreen</span>(),
+    );
+  }
+}</pre>
+                    </div>
+                    <div class="card-foreground">
+                        <div class="card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M14 2L5 13L10 13L9 22L19 10L14 10L14 2Z" stroke-linejoin="round"/>
+                            </svg>
+                        </div>
+                        <h3 class="card-title">
+                            <span class="highlight-underline pink">Flutter Dev</span>
+                            <br>Android & iOS
+                        </h3>
+                        <div class="card-description">
+                            <span class="tag">&lt;skills&gt;</span>
+                            <p><strong>Çapraz Platform (Cross-Platform) Geliştirme:</strong> Dart diliyle tek bir kod tabanından hem iOS hem de Android için yüksek performanslı, akıcı ve modern arayüzlü (UI/UX) uygulamalar çıkarma.</p>
+                            <p> -------------   </p>
+                            <p><strong>Yapay Zeka (AI) ve API Entegrasyonları:</strong> Uygulamalara akıllı sohbet botları, çeviri motorları ve algoritmik mantıklar (aralıklı tekrar vb.) entegre etme.</p>
+                            <p> -------------   </p>
+                        
+                            <p><strong>Güvenlik ve Yerel Veri Yönetimi:</strong> SQLite ile cihaz içi veri tabanı yönetimi, SharedPreferences kullanımı ve AES-256 standartlarında uçtan uca şifreleme mimarileri geliştirme.</p>
+
+                            <span class="tag">&lt;/skills&gt;</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- Experience Section -->
+    <section id="experience" class="experience-section">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-label">03 — Deneyim</span>
+                <h2 class="section-title">Yolculuğum</h2>
+            </div>
+
+            <div class="timeline">
+
+                <!-- M5 Studio -->
+                <div class="timeline-item animate-on-scroll">
+                    <div class="timeline-dot"></div>
+                    <div class="timeline-date">2026 — Şu An</div>
+                    <div class="timeline-card">
+                        <div class="timeline-card-header">
+                            <span class="timeline-badge badge-active">Aktif</span>
+                            <h3>Indie Game Developer</h3>
+                            <span class="timeline-company">M5's Studio · Tam Zamanlı</span>
+                        </div>
+                        <p>Bağımsız oyun stüdyosu olarak Unity ile masaüstü oyunlar geliştiriyoruz. The Visagerer ve Cross The Line bu süreçte ortaya çıktı.</p>
+                        <div class="timeline-tags">
+                            <span>Unity</span><span>C#</span><span>Game Design</span><span>Indie</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sca Social -->
+                <div class="timeline-item animate-on-scroll">
+                    <div class="timeline-dot"></div>
+                    <div class="timeline-date">Ağu 2025 — Eyl 2025 · 1 ay</div>
+                    <div class="timeline-card">
+                        <div class="timeline-card-header">
+                            <span class="timeline-badge badge-work">Staj</span>
+                            <h3>Project Management Intern</h3>
+                            <span class="timeline-company">Sca Social · Uzaktan, İstanbul</span>
+                        </div>
+                        <p>Proje yönetimi süreçlerinde aktif rol alarak veri bilimi uygulamalarını iş süreçlerine entegre ettim. LinkedIn aracılığıyla kazandığım bu staj, profesyonel iş geliştirme deneyimi sağladı.</p>
+                        <div class="timeline-tags">
+                            <span>Proje Yönetimi</span><span>Veri Bilimi</span><span>Bilişim Hukuku</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Yapay Zeka ve Teknoloji Akademisi -->
+                <div class="timeline-item animate-on-scroll">
+                    <div class="timeline-dot"></div>
+                    <div class="timeline-date">Oca 2025 — Ağu 2025 · 8 ay</div>
+                    <div class="timeline-card">
+                        <div class="timeline-card-header">
+                            <span class="timeline-badge badge-edu">Program</span>
+                            <h3>Game Development with AI</h3>
+                            <span class="timeline-company">Google Yapay Zeka ve Teknoloji Akademisi · Uzaktan, İstanbul</span>
+                        </div>
+                        <p>Yapay zeka destekli oyun geliştirme üzerine yoğun bir program. Oyun tasarımı prensipleri, AI entegrasyonu ve modern geliştirme araçlarını kapsamlı biçimde öğrendim.</p>
+                        <div class="timeline-tags">
+                            <span>Oyun Tasarımı</span><span>Oyun Geliştirme</span><span>Yapay Zeka</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Insider -->
+                <div class="timeline-item animate-on-scroll">
+                    <div class="timeline-dot"></div>
+                    <div class="timeline-date">Kas 2018 — Nis 2019 · 6 ay</div>
+                    <div class="timeline-card">
+                        <div class="timeline-card-header">
+                            <span class="timeline-badge badge-work">Staj</span>
+                            <h3>Web Development Intern</h3>
+                            <span class="timeline-company">Insider One · Ofisten, İstanbul</span>
+                        </div>
+                        <p>Teknoloji sektöründeki ilk profesyonel deneyimim. Web geliştirme süreçlerinde yer alarak grafik tasarım ve HTML alanlarında temel becerilerimi geliştirdim.</p>
+                        <div class="timeline-tags">
+                            <span>HTML</span><span>Grafik Tasarımı</span><span>Web Development</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- Projects Section -->
+    <section id="projects" class="projects-section">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-label">04 — Projeler</span>
+                <h2 class="section-title">Projelerim<br/></h2>
+            </div>
+
+            <div class="filter-container">
+                <span class="filter-label">Filtrele</span>
+                <div class="filter-nav">
+                    <button class="filter-text active" data-filter="all">
+                        Tümü<sup class="count">0</sup>
+                    </button>
+                    <span class="separator">/</span>
+                    <button class="filter-text" data-filter="3d">
+                        3D Oyunlar<sup class="count">0</sup>
+                    </button>
+                    <span class="separator">/</span>
+                    <button class="filter-text" data-filter="app">
+                        Mobil<sup class="count">0</sup>
+                    </button>
+                </div>
+            </div>
+
+            <div class="masonry-grid" id="projectsGrid"></div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section id="contact" class="contact-section">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-label">05 — İletişim</span>
+                <h2 class="section-title">Benimle<br/>İletişime Geç</h2>
+            </div>
+
+            <div class="contact-content">
+                <div class="contact-info animate-on-scroll">
+                    <p class="contact-intro">
+                        Yeni bir projeniz mi var? Birlikte çalışmak için sabırsızlanıyorum!
+                    </p>
+
+                    <div class="contact-methods">
+    <a href="mailto:bghrndvc@gmail.com" class="contact-method">
+        <div class="method-icon">
+            <svg viewBox="0 0 24 24" fill="none">
+                <path d="M3 8L10.89 13.26C11.5 13.67 12.5 13.67 13.11 13.26L21 8M5 19H19C20.1 19 21 18.1 21 17V7C21 5.9 20.1 5 19 5H5C3.9 5 3 5.9 3 7V17C3 18.1 3.9 19 5 19Z" stroke="currentColor" stroke-width="2"/>
+            </svg>
+        </div>
+        <div class="method-text">
+            <span class="method-label">Email</span>
+            <span class="method-value">bghrndvc@gmail.com</span>
+        </div>
+    </a>
+
+    <a href="https://github.com/bugrahnd" class="contact-method" target="_blank" rel="noopener">
+        <div class="method-icon">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.17 6.839 9.49.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.167 22 16.418 22 12c0-5.523-4.477-10-10-10z"/>
+            </svg>
+        </div>
+        <div class="method-text">
+            <span class="method-label">GitHub</span>
+            <span class="method-value">@bugrahnd</span>
+        </div>
+    </a>
+
+    <a href="https://www.linkedin.com/in/bghrndvc/" class="contact-method" target="_blank" rel="noopener">
+        <div class="method-icon">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.32 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.79M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z"/>
+            </svg>
+        </div>
+        <div class="method-text">
+            <span class="method-label">LinkedIn</span>
+            <span class="method-value">@bghrndvc</span>
+        </div>
+    </a>
+</div>
+                </div>
+
+                <div class="contact-form-wrapper animate-on-scroll">
+                    <form class="contact-form" id="contactForm">
+                        <div class="form-group">
+                            <label for="name">İsim</label>
+                            <input type="text" id="name" name="name" placeholder="Adınız" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="email">Email</label>
+                            <input type="email" id="email" name="email" placeholder="email@örnek.com" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="message">Mesaj</label>
+                            <textarea id="message" name="message" rows="5" placeholder="Projenizden bahsedin..." required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <span>Gönder</span>
+                            <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+                                <path d="M18 2L9 11M18 2L12 18L9 11M18 2L2 8L9 11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <p>&copy; 2026 Buğrahan Deveci. Tüm hakları saklıdır.</p>
+                <a href="#hero" class="back-to-top">
+                    <span>Yukarı Çık</span>
+                    <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+                        <path d="M10 15V5M10 5L5 10M10 5L15 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </a>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/projects-data.js"></script>
+    <script src="js/3d-scene.js"></script>
+    <script src="js/animations.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

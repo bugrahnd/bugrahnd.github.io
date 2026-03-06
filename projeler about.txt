@@ -1,0 +1,195 @@
+visagerer:
+"Faces lie, but masks reveal the truth. In this game, you play as a Mask Maker who must read between the lines. Customers will come to your shop with specific requests, but their words don't always match their feelings. Your job is to analyze their dialogue, deduce their true emotions (or the disguise they need), and craft the perfect mask for them."
+
+How to Play:
+
+Listen: Read the customer's request carefully. Pay attention to the hidden meaning behind their words.
+
+Deduce: Decide what kind of mask they actually need (e.g., if they are sad but want to hide it, or a killer trying to look innocent).
+
+Craft: Select the correct Eyes, Mouth, and Nose to build the mask.
+
+Serve: Submit the mask and see if you satisfied the customer!
+
+
+Features:
+
+Psychological deduction mechanics.
+
+Different difficulty levels (Easy, Medium, Hard).
+
+Unique characters with hidden agendas.
+
+
+
+Controls: Mouse only
+
+cross the line:
+Türkçe Açıklama
+Açıklama:
+
+"Savaş mermilerle yapılır ama bilgiyle kazanılır."
+Beton bir sığınağın derinliklerinde, Kuzey Cephesi'nin son iletişim hattı sensin. Dışarıda dünya yanıyor. İçeride ise sadece gaz lambasının uğultusu ve telgrafın ritmik tıkırtısı var.
+Emirlerin basit: Gelen şifreli Mors sinyallerini dinle, kod kitabını kullanarak deşifre et ve doğru cevabı ilet. Ancak dikkatli ol; Yüksek Komuta hatayı affetmez.
+Hattı açık tutabilecek misin, yoksa susturulacak mısın?
+Özellikler:
+
+Gerçekçi Arayüz (Diegetic UI): Can barı yok, menü yok. Sadece sen, masan ve ekipmanların var. Kitapları çevir, fişleri doldur ve telgrafı kullan.
+Otantik Mors Mekaniği: Askeri zamanlama standartlarına dayalı gerçekçi bir telgraf simülasyonu.
+Gerilim Dolu Atmosfer: Sığınak duvarlarının arkasından gelen boğuk savaş sesleri ve prosedürel ses tasarımı.
+Acımasız Oynanış: Sadece 3 hata hakkın var. Başarısızlığın bedeli... ağır olur.
+Kontroller:
+
+Mouse: Etrafa bak / Nesnelerle etkileşime geç
+Sağ Tık / ESC: Odaktan çık / Sandalyeye dön
+Klavye: Çözülen kodu fişe yaz
+Space (Boşluk): Telgraf anahtarını kullan
+
+buzzed busted:
+Oyun Açıklaması
+Vahşi Batı temalı, 5 oyunculu, sürükleyici bir kart oyunudur. Bu oyunda cesur kovboylar ve kurnaz bir barmen arasında akıl oyunları döner. Barmenin tek amacı, tüm kovboyları sarhoş ederek onları saf dışı bırakmaktır. Kovboyların görevi ise ayık kalmak, barmenin hilelerini çözmek ve onu alt etmektir. Strateji, risk ve biraz da şansın birleştiği bu oyunda, her kart ve her tahmin kaderinizi belirleyebilir.
+
+Oyun Özellikleri
+3D
+Multiplayer
+Part-Game
+
+
+dilek kaseti:
+hediye olarak kız arkadaşıma yapmıştım bu oyunda ise hem kendime yeni teknolojiler  katmak hem de ortaya yapılmamış enteresan bir hediye ortaya çıkarmaktı. Oyun 3 ana bölümden oluşuyor ilk bölümde soğuktan donan karakterimiz için 9 tane odun toplayıp ateşi yakmamız gerekiyor. odunları topladıktan sonra ateşe atıyoruz ve yakmak için ellerimizin sürtülmesi isteniyor bu kısımnda ise opencv kütüphanesi kullanarak elleri sürtme algılaması ile slider bar doldurarak ateş yakıyoruz ikinci chaptere geçmek için ise oyunla bağlantılı şekilde ısınmak için gözlerimizi kapatmamız gerekiyor göz kapatmakta ki amaç ısınmayı yaşatmak ve hayal dünyasına dalmış gibi hissettirmek bu kısımad da opencv kullandım. ikinci chapterda ise bir kasabada tvler var bunları çalıştırmak için kasetler bulmzmız gerekiyor fakat yolumuzu bulmamız için başta bulunan dilek fenerini uçurmamız gerekiyor bunun içinde mikrofona güçlü bir şekilde üflemek gerekiyor bunu yaptıktan sonra havalanıp aydınlanıypr ve bizim yolumuzu açıyor ışık ile hepsini çalıştırdıktan sonra diğer chaptere geçiyoruz burada karakter bir noktaya gidip oturur ve denizden dilek fenerleri yükselmeye başlar ve müzik girer bunlar olduktan sonra bir polaroid bir kamera belirlr ve webcamden fotoğraf çeker ve kameradan bir polaroid fotoğraf ekrana gelir istediğimiz kadar fotoğarf çekeriz ve bu çekilen fotoğraflar oyunda belirlediğimiz maile belirlediğimiz başlık ve ana yazıyla o maile gider burada da mailkit kütüphanesi kullandım. 
+
+wordle game:
+klasil bildiğimiz wordle oyunu matris dersim için proje yaptım ve sundum burada farklılık olarak kelime doğruluğunu, skor hesaplaması, kelime havuzu için matrisleri kullanmış olmam. kelime doğruluğu için kelime yazıldıktan sonra o satırdaki sütünları teke teker kontrol ederek o harf var mı yok mu bize gösteriyor. skor hesaplama için her satır geçtikçe alacağımız skor sayısı düşüyor ve her doğru harfve sarı harf için belirlenen sayı ile o sütün satır çarpımı ile sko haznemize skorumuz yazılıyor.
+
+son karar: google yzta de gamejam de yaptığımız bir oyun bu oyunda önümüze bir sanık geliyor ve sanık dosyası açılıyor sanığın olay anında ki yazı karşımıza çıkıyor ve önümüzde belirlenen kartlar ile olayı simüle etmeye çalışıyoruz yanı okuduğumuzu anlama ile kartları doğru yerleştirmemiz gerekiyor eğer doğru yazarsak sanığın masum veya suçlu olduğunu doğru bulabiliriz fakat örneğin sanık suçlu ve yanlış olay örgüsü yapyığımız için sanık suçlu iken masum çıkabilir böyle bir yapı kurmuştuk.
+
+lupiego:
+Yapay Zeka Destekli Dil Öğrenme Uygulaması;
+Kullanıcı Dostu Ana Ekran
+Lupiego’nun sezgisel ana ekranı sayesinde dil öğrenmeye başlamak artık çok daha kolay. Sade ve modern tasarımıyla ihtiyacın olan her şeye anında ulaşabilirsin. Günlük hedeflerini takip et, seviyeni gözlemle ve öğrenme yolculuğunu kendine göre şekillendir. Karmaşadan uzak, tek dokunuşla istediğin özelliğe ulaşabileceğin bir deneyim seni bekliyor.
+
+Ana Ekran Görünümü
+Giriş EkranıKayıt Ekranı
+Kolay Giriş & Kayıt
+Lupiego ailesine katılmak sadece birkaç adım uzaklıkta! İster e-posta ile klasik yöntemi seç, ister sosyal medya hesaplarınla hızlıca giriş yap—tercih tamamen senin. Kişisel verilerin bizde güvende, öğrenme deneyimin ise tamamen sana özel. Kayıt olduktan sonra tüm özelliklere sınırsızca erişebilir, dil öğrenme yolculuğuna hemen başlayabilirsin!
+
+Profil EkranıBildirimler Ekranı
+Kişisel Profil & Akıllı Bildirimler
+Lupiego ile gelişimini adım adım takip et! Profil sayfanda öğrenme istatistiklerini, kazandığın başarıları ve rozet koleksiyonunu kolayca görebilirsin. Akıllı bildirim sistemi sayesinde günlük hedeflerini unutmaz, öğrenme alışkanlığını sürdürebilirsin. Üstelik kişiye özel hatırlatmalarla motivasyonun hep yüksek kalır. Her detay, öğrenme sürecini verimli ve keyifli kılmak için tasarlandı.
+
+Eğlenceli Oyun Merkezi
+Dil öğrenmeyi oyunla eğlenceli hale getir! Lupiego’daki Wordle tarzı kelime oyunu ile hem kelime dağarcığını geliştir hem de öğrenirken keyif al. Her oyun, farklı becerilerini pekiştirmen için tasarlandı ve başarıların puanlarla ödüllendirilir. Günlük oyun hedeflerini tamamla, ilerlemeni takip et ve motivasyonunu hep yüksek tut!
+
+Oyun Merkezi Ekranı
+AI Destekli Sohbet Partneri
+Yapay zekâ destekli sohbet botumuzla seviyene uygun gerçek zamanlı pratik yap! SQLite tabanlı kullanıcı verileri sayesinde İngilizce seviyen otomatik olarak algılanır ve sohbet deneyimin buna göre şekillenir. Başlangıçtan ileri düzeye kadar her seviyeye özel içeriklerle kelime bilgin gelişir, cümle kurma becerin güçlenir. 7/24 erişilebilir bu kişisel sohbet asistanı, öğrenme sürecini hem etkili hem keyifli hale getirir.
+
+AI Sohbet Ekranı
+Akıllı Kelime Kartları
+Bilimsel olarak kanıtlanmış aralıklı tekrar sistemi ile kelime ezberlemek hiç bu kadar etkili olmamıştı! Kişiselleştirilmiş flashcard'lar, görsel destekli öğrenme ve adaptive algoritma ile zorlandığın kelimeler daha sık, bildiğin kelimeler daha az sıklıkta karşına çıkar. Binlerce kelimeyi kalıcı olarak öğren!
+
+Kelime Kartları Ekranı
+Anında Akıllı Çeviri
+Lupiego’nun güçlü çeviri motoru ile kelimeleri, cümleleri ve metinleri anında çevir! Sadece düz çeviri değil, aynı zamanda bağlam içinde kullanım örnekleri, eş anlamlılar ve telaffuz rehberi de sunar. Yapılan çeviriler çeviri geçmişinde saklanır, favorilere eklenerek tekrar çalışmak kolaylaşır. Öğrenme sürecine entegre edilmiş bu akıllı özellik sayesinde çeviriler artık sadece anlam değil, gelişim de kazandırır.
+
+Çeviri Ekranı
+
+meshly:
+Meshly
+Afet Durumlarında Dayanıklı İletişim Ağı
+
+Afetler sırasında iletişim altyapıları çoğunlukla çöker ve insanlar haberleşemez. Meshly, cebindeki telefonu kullanarak, sunucusuz ve tamamen çevrimdışı çalışan bir P2P iletişim ağı sunar.
+
+🌐 P2P Mesh Network
+📡 Bluetooth & Wi-Fi Direct
+🔐 Uçtan Uca Şifreleme
+📍 Gerçek Zamanlı Konum
+🎮 Simülasyonu Dene
+Mevcut Çözümlerin Analizi
+Neden Yeni Bir Çözüme İhtiyaç Var?
+
+Altyapı Bağımlılığı (Yüksek ↑)Yaygınlık / Erişilebilirlik (Yüksek →)
+WA
+WhatsApp/Telegram
+SMS
+SMS/Arama
+🛰️
+Uydu Telefonu
+M
+MESHLY
+📊 Stratejik Boşluk Tespit Edildi
+Mevcut iletişim alternatiflerini, bir afet anında en çok ihtiyaç duyulan iki temel kritere göre analiz ettik: Altyapı Bağımsızlığı ve Yaygınlık/Erişilebilirlik.
+
+Diyagramda da görüldüğü gibi, mevcut çözümler arasında hem altyapıdan bağımsız çalışabilen hem de herkes tarafından erişilebilir olan bir seçenek bulunmamaktadır. İşte bu stratejik boşluk, projemizin temelini oluşturmaktadır.
+
+İdeal Çözümün Gereklilikleri
+🎯
+Altyapıdan Tam Bağımsızlık
+Çalışmak için GSM operatörlerine, baz istasyonlarına veya internete ihtiyaç duymamalıdır. Merkezi bir sunucu yoktur, bu yüzden çökebilecek bir merkez de yoktur.
+
+📱
+Maksimum Erişilebilirlik
+Özel ve pahalı donanımlar (uydu telefonu vb.) gerektirmeden, herkesin cebindeki standart bir akıllı telefonda çalışabilmelidir.
+
+Meshly: Bu İhtiyacı Karşılayan Mimari
+🕸️ Merkeziyetsiz Mesh Ağı
+Her telefonu ağın bir parçası yaparak altyapı bağımlılığını tamamen ortadan kaldırır.
+
+📡 Standart Donanım Kullanımı
+Her akıllı telefonda zaten var olan Bluetooth ve Wi-Fi Direct teknolojilerini kullanarak maksimum erişilebilirlik sağlar.
+
+Temel Teknolojiler: Nasıl Çalışacak?
+1
+Menzili Sınırsız Genişletme: Mesh Ağı
+Her telefon bir aktarma istasyonu (röle) görevi görür. Mesajınız, hedefine ulaşana kadar aradaki diğer kullanıcıların telefonları üzerinden "zıplayarak" ilerler.
+
+Teknik Detaylar
+Her cihaz hem istemci hem sunucu görevi görür
+Mesajlar, en kısa yolu otomatik olarak bulur (Path Finding Algoritması)
+Menzil, kullanıcı sayısı arttıkça teorik olarak sınırsıza yakın bir hale gelir
+Dinamik ağ topolojisi: Cihazlar hareket ettikçe yollar güncellenir
+2
+Kopuk Ağlarda Bile İletişim: Sakla ve İlet
+Ağ sürekli bağlı olmasa bile mesajlar kaybolmaz. Aradaki bir telefon, mesajı geçici olarak hafızasında saklar ve hedefteki kişi menzile girdiğinde veya mesajı iletebilecek başka bir kullanıcıyla karşılaştığında teslimatı yapar.
+
+Store-and-Forward Mekanizması
+Mesajlar cihaz hafızasında güvenli şekilde saklanır
+Her cihaz, iletmek için uygun fırsatı bekler
+Mesaj teslim edilene kadar birden fazla röleden geçebilir
+Zaman damgası ile önceliklendirme yapılır
+İnteraktif Mesh Ağ Simülasyonu
+Cihazları sürükleyerek mesh ağın nasıl çalıştığını görselleştirin
+
+📤 Mesaj Gönder
+➕ Cihaz Ekle
+🔄 Sıfırla
+💡 Nasıl Kullanılır?
+• Cihazları sürükleyerek konumlarını değiştirin
+• Turuncu cihaz siz, yeşil cihaz hedef kişidir
+• Gri cihazlar aradaki kişiler (A Kişisi, B Kişisi...)
+• Mesaj göndermek için cihazlar arasında bağlantı olmalıdır
+• Yeni kişi ekleyerek ağı genişletin (C, D, E...)
+
+Güvenlik ve Konum Takibi
+🔐
+Uçtan Uca Şifreleme
+AES-256 Advanced Encryption Standard
+
+Bu bir afet ağı olsa da, iletişimin gizli kalması şart. Gönderilen her mesaj, ağa yayınlanmadan önce AES (Advanced Encryption Standard) ile şifrelenir.
+
+// crypto_helper.dart CryptoHelper.encryptToBase64(message)
+Ağı dinleyen yabancı bir cihaz mesajı yakalasa bile içeriğini asla okuyamaz. Sadece gönderen ve alıcı mesajı çözebilir.
+
+📍
+Gerçek Zamanlı Konum Takibi
+Harita Üzerinde Canlı Lokasyon
+
+Afet anında mesajlaşmak kadar önemli olan bir diğer şey de 'insanları bulmaktır'. Bu yüzden harita sekmesi geliştirildi.
+
+// Geolocator paketi ile konum alma _broadcastLocation() // Her 10 saniyede bir MeshMapView // Apple'ın 'Find My' gibi
+Arka planda, geolocator paketi konumunuzu alıyor ve her 10 saniyede bir bunu ağa yayınlıyor. Ağdaki diğer telefonlar da bu konumu dinleyecek ve harita üzerinde herkesin yerini gösterecek.
+
+meshly
+Afet Durumlarında Dayanıklı İletişim Ağı
+BUĞRAHAN DEVECİ - 425817
+TÜBİTAK 2209-A İçin geliştirilmeye devam ediliyor.
