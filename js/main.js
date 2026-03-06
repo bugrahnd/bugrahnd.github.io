@@ -208,10 +208,4 @@
 
 })();
 
-function init() {
-        initThemeToggle();
-        initMobileMenu();
-        initProjects();
-        initDocLightbox();
-    }
 
