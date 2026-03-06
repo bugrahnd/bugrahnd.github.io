@@ -280,7 +280,7 @@
         // Tüm YouTube formatlarını embed'e çevir
         const ytMatch = url.match(/(?:embed\/|watch\?v=|youtu\.be\/)([A-Za-z0-9_-]{11})/);
         const src = ytMatch
-            ? `https://www.youtube-nocookie.com.com/embed/${ytMatch[1]}?rel=0`
+            ? `https://www.youtube.com.com/embed/${ytMatch[1]}?rel=0`
             : url;
         embedDiv.innerHTML = `<iframe src="${src}" allow="encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
         mainWrapper.appendChild(embedDiv);
