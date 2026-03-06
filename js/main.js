@@ -143,6 +143,61 @@
         initThemeToggle();
         initMobileMenu();
         initProjects();
+        initDocLightbox();
+    }
+
+    // ── Doc Chip Lightbox ──
+    function initDocLightbox() {
+        // Overlay oluştur
+        const overlay = document.createElement('div');
+        overlay.className = 'doc-lightbox-overlay';
+        overlay.id = 'docLightbox';
+        overlay.innerHTML = `
+            <button class="doc-lightbox-close" id="docLightboxClose">✕</button>
+            <div class="doc-lightbox-inner" id="docLightboxInner">
+                <div class="doc-lightbox-title" id="docLightboxTitle"></div>
+            </div>`;
+        document.body.appendChild(overlay);
+
+        document.getElementById('docLightboxClose').addEventListener('click', closeDocLB);
+        overlay.addEventListener('click', e => { if (e.target === overlay) closeDocLB(); });
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape' && overlay.classList.contains('active')) closeDocLB();
+        });
+
+        // Chip tıklama delegasyonu
+        document.addEventListener('click', e => {
+            const chip = e.target.closest('.doc-chip[data-src]');
+            if (!chip) return;
+            openDocLB(chip.dataset.src, chip.dataset.label, chip.dataset.type);
+        });
+
+        function openDocLB(src, label, type) {
+            const inner = document.getElementById('docLightboxInner');
+            const title = document.getElementById('docLightboxTitle');
+            // Önceki içeriği temizle
+            inner.querySelectorAll('img, iframe').forEach(el => el.remove());
+            title.textContent = label || '';
+
+            if (type === 'pdf') {
+                const iframe = document.createElement('iframe');
+                iframe.src = src;
+                inner.insertBefore(iframe, title);
+            } else {
+                const img = document.createElement('img');
+                img.src = src;
+                img.alt = label || 'Belge';
+                inner.insertBefore(img, title);
+            }
+
+            overlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeDocLB() {
+            overlay.classList.remove('active');
+            document.body.style.overflow = '';
+        }
     }
 
     if (document.readyState === 'loading') {
