@@ -1,119 +1,117 @@
 import * as THREE from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { RenderPass }     from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 
 const canvas = document.getElementById('canvas3d');
-if (!canvas) console.error("Canvas bulunamadı!");
+if (!canvas) { console.warn('canvas3d bulunamadı'); }
 
-// 1. Sahne, Kamera ve Renderer Kurulumu
-const scene = new THREE.Scene();
-// Arka planı transparan yapıyoruz ki senin CSS gradient'in görünsün
+const scene  = new THREE.Scene();
 scene.background = null;
 
-const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
-camera.position.z = 25;
+const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 120);
+camera.position.z = 28;
 
-const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(window.devicePixelRatio);
-renderer.toneMapping = THREE.ReinhardToneMapping; // Bloom için en iyi tonlama
-
-// 2. Post-Processing (Bloom) Kurulumu
-const renderScene = new RenderPass(scene, camera);
-// Bloom parametreleri: resolution, strength, radius, threshold
-const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.2, 0.5, 0.1);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.toneMapping = THREE.ReinhardToneMapping;
 
 const composer = new EffectComposer(renderer);
-composer.addPass(renderScene);
-composer.addPass(bloomPass);
+composer.addPass(new RenderPass(scene, camera));
+composer.addPass(new UnrealBloomPass(
+    new THREE.Vector2(window.innerWidth, window.innerHeight),
+    0.55, 0.4, 0.2
+));
 
-// 3. Objelere Karar Verme (Temana uygun renkler)
-const colors = [0x4F8EF7, 0x7C5CFC, 0x38BDF8]; // Mavi, Mor, Camgöbeği
-const objects = [];
-
-// Low-poly geometrik şekiller (Game dev hissiyatı için)
-const geometries = [
-    new THREE.IcosahedronGeometry(1, 0), 
-    new THREE.BoxGeometry(1.2, 1.2, 1.2),
-    new THREE.TetrahedronGeometry(1.2, 0)
+const PALETTE  = [0x4F8EF7, 0x7C5CFC, 0x38BDF8];
+const GEO_POOL = [
+    new THREE.IcosahedronGeometry(1,   0),
+    new THREE.IcosahedronGeometry(0.7, 0),
+    new THREE.BoxGeometry(1.1, 1.1, 1.1),
+    new THREE.TetrahedronGeometry(1,   0),
+    new THREE.OctahedronGeometry(0.9,  0),
 ];
 
-// Ekrana 40 adet parlayan obje dağıtıyoruz
-for (let i = 0; i < 40; i++) {
-    const geometry = geometries[Math.floor(Math.random() * geometries.length)];
-    const color = colors[Math.floor(Math.random() * colors.length)];
-    
-    // Objenin içi koyu, kenarları/yüzeyi renkli ve parlıyor
-    const material = new THREE.MeshStandardMaterial({
-        color: 0x080C18,
-        emissive: color,
-        emissiveIntensity: Math.random() * 1.5 + 0.5,
-        wireframe: Math.random() > 0.4 // %60'ı sadece çizgilerden oluşsun
+const objects = [];
+const COUNT   = 22;
+
+for (let i = 0; i < COUNT; i++) {
+    const geo   = GEO_POOL[Math.floor(Math.random() * GEO_POOL.length)];
+    const color = PALETTE[Math.floor(Math.random() * PALETTE.length)];
+    const isWire = Math.random() > 0.35;
+
+    const mat = new THREE.MeshStandardMaterial({
+        color:             isWire ? color : 0x080C18,
+        emissive:          color,
+        emissiveIntensity: isWire ? Math.random() * 0.6 + 0.2 : Math.random() * 1.0 + 0.4,
+        wireframe:         isWire,
+        transparent:       !isWire,
+        opacity:           isWire ? 1 : 0.55,
     });
 
-    const mesh = new THREE.Mesh(geometry, material);
-    
-    // Rastgele konumlara dağıt
-    mesh.position.x = (Math.random() - 0.5) * 50;
-    mesh.position.y = (Math.random() - 0.5) * 50;
-    mesh.position.z = (Math.random() - 0.5) * 30 - 10;
-    
-    // Dönüş ve süzülme ayarları
+    const scale = Math.random() * 0.7 + 0.5;
+    const mesh  = new THREE.Mesh(geo, mat);
+    mesh.scale.setScalar(scale);
+
+    const angle  = (i / COUNT) * Math.PI * 2;
+    const radius = 14 + Math.random() * 12;
+    mesh.position.set(
+        Math.cos(angle) * radius + (Math.random() - 0.5) * 8,
+        (Math.random() - 0.5) * 30,
+        (Math.random() - 0.5) * 18 - 8
+    );
+
     mesh.userData = {
-        rotationSpeed: {
-            x: (Math.random() - 0.5) * 0.015,
-            y: (Math.random() - 0.5) * 0.015,
-            z: (Math.random() - 0.5) * 0.015
-        },
-        floatSpeed: Math.random() * 0.01 + 0.005,
-        floatOffset: Math.random() * Math.PI * 2
+        rx: (Math.random() - 0.5) * 0.008,
+        ry: (Math.random() - 0.5) * 0.010,
+        rz: (Math.random() - 0.5) * 0.006,
+        floatAmp:    Math.random() * 0.018 + 0.006,
+        floatSpeed:  Math.random() * 0.4   + 0.25,
+        floatOffset: Math.random() * Math.PI * 2,
+        baseY:       mesh.position.y,
     };
 
     scene.add(mesh);
     objects.push(mesh);
 }
 
-// 4. Animasyon Döngüsü
+scene.add(new THREE.AmbientLight(0xffffff, 0.3));
+
 const clock = new THREE.Clock();
-let mouseX = 0;
-let mouseY = 0;
+let mouseX = 0, mouseY = 0, targetX = 0, targetY = 0;
 
 function animate() {
     requestAnimationFrame(animate);
-    const elapsedTime = clock.getElapsedTime();
+    const t = clock.getElapsedTime();
 
-    // Objeleri kendi ekseninde döndür ve dalgalandır
     objects.forEach(obj => {
-        obj.rotation.x += obj.userData.rotationSpeed.x;
-        obj.rotation.y += obj.userData.rotationSpeed.y;
-        obj.rotation.z += obj.userData.rotationSpeed.z;
-        
-        // Y ekseninde yavaşça süzülme
-        obj.position.y += Math.sin(elapsedTime * 2 + obj.userData.floatOffset) * obj.userData.floatSpeed;
+        const d = obj.userData;
+        obj.rotation.x += d.rx;
+        obj.rotation.y += d.ry;
+        obj.rotation.z += d.rz;
+        obj.position.y = d.baseY + Math.sin(t * d.floatSpeed + d.floatOffset) * d.floatAmp * 30;
     });
 
-    // Kamera farenin hareketine göre çok hafif oynasın (Parallax etkisi)
-    camera.position.x += (mouseX * 5 - camera.position.x) * 0.05;
-    camera.position.y += (-mouseY * 5 - camera.position.y) * 0.05;
+    targetX += (mouseX * 3 - targetX) * 0.04;
+    targetY += (-mouseY * 3 - targetY) * 0.04;
+    camera.position.x = targetX;
+    camera.position.y = targetY;
     camera.lookAt(scene.position);
 
     composer.render();
 }
 
-// 5. Olay Dinleyicileri (Event Listeners)
-window.addEventListener('mousemove', (event) => {
-    // Fare koordinatlarını merkeze göre -1 ile 1 arasına normalize et
-    mouseX = (event.clientX / window.innerWidth) * 2 - 1;
-    mouseY = (event.clientY / window.innerHeight) * 2 - 1;
-});
+window.addEventListener('mousemove', e => {
+    mouseX = (e.clientX / window.innerWidth)  * 2 - 1;
+    mouseY = (e.clientY / window.innerHeight) * 2 - 1;
+}, { passive: true });
 
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
     composer.setSize(window.innerWidth, window.innerHeight);
-});
+}, { passive: true });
 
-// Başlat
 animate();
