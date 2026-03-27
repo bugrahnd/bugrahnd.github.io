@@ -1,277 +1,119 @@
-// Game Developer Themed Hero Background - Lightweight & Performant
-(function() {
-    const canvas = document.getElementById('canvas3d');
-    if (!canvas) return;
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+const canvas = document.getElementById('canvas3d');
+if (!canvas) console.error("Canvas bulunamadı!");
+
+// 1. Sahne, Kamera ve Renderer Kurulumu
+const scene = new THREE.Scene();
+// Arka planı transparan yapıyoruz ki senin CSS gradient'in görünsün
+scene.background = null;
+
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+camera.position.z = 25;
+
+const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.toneMapping = THREE.ReinhardToneMapping; // Bloom için en iyi tonlama
+
+// 2. Post-Processing (Bloom) Kurulumu
+const renderScene = new RenderPass(scene, camera);
+// Bloom parametreleri: resolution, strength, radius, threshold
+const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.2, 0.5, 0.1);
+
+const composer = new EffectComposer(renderer);
+composer.addPass(renderScene);
+composer.addPass(bloomPass);
+
+// 3. Objelere Karar Verme (Temana uygun renkler)
+const colors = [0x4F8EF7, 0x7C5CFC, 0x38BDF8]; // Mavi, Mor, Camgöbeği
+const objects = [];
+
+// Low-poly geometrik şekiller (Game dev hissiyatı için)
+const geometries = [
+    new THREE.IcosahedronGeometry(1, 0), 
+    new THREE.BoxGeometry(1.2, 1.2, 1.2),
+    new THREE.TetrahedronGeometry(1.2, 0)
+];
+
+// Ekrana 40 adet parlayan obje dağıtıyoruz
+for (let i = 0; i < 40; i++) {
+    const geometry = geometries[Math.floor(Math.random() * geometries.length)];
+    const color = colors[Math.floor(Math.random() * colors.length)];
     
-    const ctx = canvas.getContext('2d');
-    let width, height;
-    let particles = [];
-    let gameElements = [];
-    
-    // Resize canvas
-    function resize() {
-        width = canvas.width = window.innerWidth;
-        height = canvas.height = window.innerHeight;
-    }
-    
-    // Pixel Particle class
-    class Particle {
-        constructor() {
-            this.reset();
-            this.y = Math.random() * height;
-            this.opacity = Math.random();
-        }
-        
-        reset() {
-            this.x = Math.random() * width;
-            this.y = -10;
-            this.size = Math.random() * 3 + 1;
-            this.speedY = Math.random() * 0.5 + 0.2;
-            this.speedX = Math.random() * 0.3 - 0.15;
-            this.opacity = Math.random() * 0.5 + 0.3;
-            
-            // Game themed colors
-            const colors = [
-                '#FF6B35', // Orange
-                '#FF8585', // Pink
-                '#FFD93D', // Yellow
-                '#9B59B6', // Purple
-                '#4ECDC4'  // Cyan
-            ];
-            this.color = colors[Math.floor(Math.random() * colors.length)];
-        }
-        
-        update() {
-            this.y += this.speedY;
-            this.x += this.speedX;
-            
-            if (this.y > height + 10) {
-                this.reset();
-            }
-            
-            if (this.x < -10 || this.x > width + 10) {
-                this.x = Math.random() * width;
-            }
-        }
-        
-        draw() {
-            ctx.fillStyle = this.color;
-            ctx.globalAlpha = this.opacity;
-            
-            // Draw pixel
-            ctx.fillRect(
-                Math.floor(this.x), 
-                Math.floor(this.y), 
-                this.size, 
-                this.size
-            );
-        }
-    }
-    
-    // Game Element class (controllers, hearts, stars, etc.)
-    class GameElement {
-        constructor() {
-            this.x = Math.random() * width;
-            this.y = Math.random() * height;
-            this.size = Math.random() * 40 + 30;
-            this.speedY = Math.random() * 0.3 + 0.1;
-            this.rotation = Math.random() * Math.PI * 2;
-            this.rotationSpeed = (Math.random() - 0.5) * 0.02;
-            this.opacity = Math.random() * 0.15 + 0.05;
-            
-            // Different game icons
-            this.type = Math.floor(Math.random() * 5);
-        }
-        
-        update() {
-            this.y += this.speedY;
-            this.rotation += this.rotationSpeed;
-            
-            if (this.y > height + this.size) {
-                this.y = -this.size;
-                this.x = Math.random() * width;
-            }
-        }
-        
-        draw() {
-            ctx.save();
-            ctx.translate(this.x, this.y);
-            ctx.rotate(this.rotation);
-            ctx.globalAlpha = this.opacity;
-            ctx.strokeStyle = '#FF6B35';
-            ctx.lineWidth = 2;
-            
-            switch(this.type) {
-                case 0: // Game Controller
-                    this.drawController();
-                    break;
-                case 1: // Heart (Health)
-                    this.drawHeart();
-                    break;
-                case 2: // Star (Points)
-                    this.drawStar();
-                    break;
-                case 3: // Trophy
-                    this.drawTrophy();
-                    break;
-                case 4: // Pixel Sword
-                    this.drawSword();
-                    break;
-            }
-            
-            ctx.restore();
-        }
-        
-        drawController() {
-            const s = this.size / 2;
-            ctx.beginPath();
-            ctx.roundRect(-s, -s/2, s*2, s, s/4);
-            ctx.stroke();
-            
-            // D-pad
-            ctx.fillStyle = '#FF6B35';
-            ctx.fillRect(-s*0.6, -s*0.15, s*0.3, s*0.3);
-            
-            // Buttons
-            ctx.beginPath();
-            ctx.arc(s*0.4, -s*0.1, s*0.15, 0, Math.PI * 2);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.arc(s*0.6, s*0.1, s*0.15, 0, Math.PI * 2);
-            ctx.stroke();
-        }
-        
-        drawHeart() {
-            const s = this.size / 2;
-            ctx.beginPath();
-            ctx.moveTo(0, s*0.3);
-            ctx.bezierCurveTo(-s, -s*0.3, -s*0.5, -s, 0, -s*0.3);
-            ctx.bezierCurveTo(s*0.5, -s, s, -s*0.3, 0, s*0.3);
-            ctx.stroke();
-        }
-        
-        drawStar() {
-            const s = this.size / 2;
-            ctx.beginPath();
-            for (let i = 0; i < 5; i++) {
-                const angle = (i * 4 * Math.PI) / 5 - Math.PI / 2;
-                const x = Math.cos(angle) * s;
-                const y = Math.sin(angle) * s;
-                if (i === 0) ctx.moveTo(x, y);
-                else ctx.lineTo(x, y);
-            }
-            ctx.closePath();
-            ctx.stroke();
-        }
-        
-        drawTrophy() {
-            const s = this.size / 2;
-            ctx.beginPath();
-            ctx.moveTo(-s*0.4, -s*0.6);
-            ctx.lineTo(-s*0.4, s*0.2);
-            ctx.lineTo(-s*0.7, s*0.4);
-            ctx.lineTo(s*0.7, s*0.4);
-            ctx.lineTo(s*0.4, s*0.2);
-            ctx.lineTo(s*0.4, -s*0.6);
-            ctx.closePath();
-            ctx.stroke();
-            
-            // Cup handles
-            ctx.beginPath();
-            ctx.arc(-s*0.4, -s*0.2, s*0.2, Math.PI/2, -Math.PI/2, true);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.arc(s*0.4, -s*0.2, s*0.2, Math.PI/2, -Math.PI/2);
-            ctx.stroke();
-        }
-        
-        drawSword() {
-            const s = this.size / 2;
-            // Blade
-            ctx.beginPath();
-            ctx.moveTo(0, -s);
-            ctx.lineTo(s*0.1, s*0.3);
-            ctx.lineTo(-s*0.1, s*0.3);
-            ctx.closePath();
-            ctx.stroke();
-            
-            // Handle
-            ctx.strokeRect(-s*0.3, s*0.3, s*0.6, s*0.3);
-            
-            // Guard
-            ctx.beginPath();
-            ctx.moveTo(-s*0.4, s*0.3);
-            ctx.lineTo(s*0.4, s*0.3);
-            ctx.stroke();
-        }
-    }
-    
-    // Initialize
-    function init() {
-        resize();
-        
-        // Create pixel particles
-        for (let i = 0; i < 100; i++) {
-            particles.push(new Particle());
-        }
-        
-        // Create game elements
-        for (let i = 0; i < 8; i++) {
-            gameElements.push(new GameElement());
-        }
-        
-        animate();
-    }
-    
-    // Animation loop
-    function animate() {
-        ctx.clearRect(0, 0, width, height);
-        
-        // Update and draw particles
-        particles.forEach(particle => {
-            particle.update();
-            particle.draw();
-        });
-        
-        // Update and draw game elements
-        gameElements.forEach(element => {
-            element.update();
-            element.draw();
-        });
-        
-        ctx.globalAlpha = 1;
-        requestAnimationFrame(animate);
-    }
-    
-    // Event listeners
-    window.addEventListener('resize', resize);
-    
-    // Mouse interaction
-    let mouseX = 0, mouseY = 0;
-    canvas.addEventListener('mousemove', (e) => {
-        mouseX = e.clientX;
-        mouseY = e.clientY;
-        
-        // Add particles on mouse move
-        if (Math.random() > 0.8) {
-            const p = new Particle();
-            p.x = mouseX;
-            p.y = mouseY;
-            p.speedY = (Math.random() - 0.5) * 2;
-            p.speedX = (Math.random() - 0.5) * 2;
-            particles.push(p);
-            
-            // Remove old particles to maintain performance
-            if (particles.length > 150) {
-                particles.shift();
-            }
-        }
+    // Objenin içi koyu, kenarları/yüzeyi renkli ve parlıyor
+    const material = new THREE.MeshStandardMaterial({
+        color: 0x080C18,
+        emissive: color,
+        emissiveIntensity: Math.random() * 1.5 + 0.5,
+        wireframe: Math.random() > 0.4 // %60'ı sadece çizgilerden oluşsun
     });
+
+    const mesh = new THREE.Mesh(geometry, material);
     
-    // Start
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
-    }
-})();
+    // Rastgele konumlara dağıt
+    mesh.position.x = (Math.random() - 0.5) * 50;
+    mesh.position.y = (Math.random() - 0.5) * 50;
+    mesh.position.z = (Math.random() - 0.5) * 30 - 10;
+    
+    // Dönüş ve süzülme ayarları
+    mesh.userData = {
+        rotationSpeed: {
+            x: (Math.random() - 0.5) * 0.015,
+            y: (Math.random() - 0.5) * 0.015,
+            z: (Math.random() - 0.5) * 0.015
+        },
+        floatSpeed: Math.random() * 0.01 + 0.005,
+        floatOffset: Math.random() * Math.PI * 2
+    };
+
+    scene.add(mesh);
+    objects.push(mesh);
+}
+
+// 4. Animasyon Döngüsü
+const clock = new THREE.Clock();
+let mouseX = 0;
+let mouseY = 0;
+
+function animate() {
+    requestAnimationFrame(animate);
+    const elapsedTime = clock.getElapsedTime();
+
+    // Objeleri kendi ekseninde döndür ve dalgalandır
+    objects.forEach(obj => {
+        obj.rotation.x += obj.userData.rotationSpeed.x;
+        obj.rotation.y += obj.userData.rotationSpeed.y;
+        obj.rotation.z += obj.userData.rotationSpeed.z;
+        
+        // Y ekseninde yavaşça süzülme
+        obj.position.y += Math.sin(elapsedTime * 2 + obj.userData.floatOffset) * obj.userData.floatSpeed;
+    });
+
+    // Kamera farenin hareketine göre çok hafif oynasın (Parallax etkisi)
+    camera.position.x += (mouseX * 5 - camera.position.x) * 0.05;
+    camera.position.y += (-mouseY * 5 - camera.position.y) * 0.05;
+    camera.lookAt(scene.position);
+
+    composer.render();
+}
+
+// 5. Olay Dinleyicileri (Event Listeners)
+window.addEventListener('mousemove', (event) => {
+    // Fare koordinatlarını merkeze göre -1 ile 1 arasına normalize et
+    mouseX = (event.clientX / window.innerWidth) * 2 - 1;
+    mouseY = (event.clientY / window.innerHeight) * 2 - 1;
+});
+
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    composer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// Başlat
+animate();
