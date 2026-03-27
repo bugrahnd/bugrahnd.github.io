@@ -1,135 +1,119 @@
 import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
-import { EffectComposer } from 'https://unpkg.com/three@0.160.0/examples/jsm/postprocessing/EffectComposer.js';
-import { RenderPass } from 'https://unpkg.com/three@0.160.0/examples/jsm/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'https://unpkg.com/three@0.160.0/examples/jsm/postprocessing/UnrealBloomPass.js';
 
-// 1. Sahne, Kamera ve Render Motoru Kurulumu
+// 1. Temel Kurulum
 const canvas = document.getElementById('canvas3d');
-if (!canvas) console.error("Canvas bulunamadı!");
-
-// Arka planın transparan olması için alpha: true ekliyoruz (CSS ile uyum için)
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
 
+// Gölgeleri aktif ediyoruz (Spotlight'ın en önemli özelliği)
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
 const scene = new THREE.Scene();
 
-const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 100);
-camera.position.set(0, 0, 12);
+const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 100);
+camera.position.set(0, 0, 8); // Kamerayı tam karşıya aldık
 
-// 2. Ana Obje (Neon TorusKnot - Oyunumsu bir hissiyat verir)
-const geometry = new THREE.TorusKnotGeometry(1.8, 0.5, 128, 32);
-const material = new THREE.MeshStandardMaterial({ 
-    color: 0xff6b35, 
-    emissive: 0xff6b35, 
-    emissiveIntensity: 2,
-    wireframe: true // Matrix/Cyberpunk havası katar
+// 2. Arka Plan Duvarı (Işığın ve gölgenin düşeceği yüzey)
+const planeGeo = new THREE.PlaneGeometry(50, 50);
+const planeMat = new THREE.MeshStandardMaterial({ 
+    color: 0x111111, 
+    roughness: 0.8,
+    metalness: 0.2
 });
-const mesh = new THREE.Mesh(geometry, material);
+const plane = new THREE.Mesh(planeGeo, planeMat);
+plane.position.z = -3; // Yazıların arkasında kalması için geriye ittik
+plane.receiveShadow = true; // Gölgeyi kabul et
+scene.add(plane);
+
+// 3. Merkezdeki Obje (Oyun dünyasını temsil eden Poligon Şekil)
+const objGeo = new THREE.IcosahedronGeometry(1.2, 0); // Düşük poligonlu (Low-poly) bir şekil
+const objMat = new THREE.MeshStandardMaterial({ 
+    color: 0x888888, 
+    roughness: 0.4, 
+    metalness: 0.5 
+});
+const mesh = new THREE.Mesh(objGeo, objMat);
+mesh.castShadow = true;   // Gölge yaratsın
+mesh.receiveShadow = true; // Kendi üzerine de gölge düşsün
 scene.add(mesh);
 
-// 3. Etrafta Uçuşan Partiküller (Oyun dünyası tozu)
-const particleGeo = new THREE.BufferGeometry();
-const particleCount = 300;
-const posArray = new Float32Array(particleCount * 3);
-for(let i = 0; i < particleCount * 3; i++) {
-    posArray[i] = (Math.random() - 0.5) * 20; // x, y, z
-}
-particleGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
-const particleMat = new THREE.PointsMaterial({
-    size: 0.05,
-    color: 0xffd93d,
-    transparent: true,
-    opacity: 0.8,
-    blending: THREE.AdditiveBlending
-});
-const particles = new THREE.Points(particleGeo, particleMat);
-scene.add(particles);
+// 4. Işıklandırma (Senin attığın Spotlight mantığı)
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.2); // Genel loş ışık
+scene.add(ambientLight);
 
-// 4. Işıklandırma
-scene.add(new THREE.AmbientLight(0x404040)); // Temel ışık
+const spotLight = new THREE.SpotLight(0xff6b35, 150); // Turuncu spot ışığı
+spotLight.position.set(2.5, 3, 3);
+spotLight.angle = Math.PI / 5;
+spotLight.penumbra = 0.5; // Işığın kenarlarını yumuşatır
+spotLight.decay = 2;
+spotLight.distance = 20;
 
-// 5. Post-Processing (UNREAL BLOOM)
-const renderScene = new RenderPass(scene, camera);
-// Çözünürlük, Güç, Yarıçap, Eşik (Threshold)
-const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
-bloomPass.threshold = 0;
-bloomPass.strength = 1.8; // İlk başta karanlık tema gücü
-bloomPass.radius = 0.5;
+// Spotlight gölge ayarları
+spotLight.castShadow = true;
+spotLight.shadow.mapSize.width = 1024;
+spotLight.shadow.mapSize.height = 1024;
+spotLight.shadow.camera.near = 1;
+spotLight.shadow.camera.far = 10;
+spotLight.shadow.focus = 1;
+scene.add(spotLight);
 
-const composer = new EffectComposer(renderer);
-composer.addPass(renderScene);
-composer.addPass(bloomPass);
-
-// 6. Tema Değişikliği (Açık/Koyu) Kontrolü
+// 5. Açık / Koyu Tema Kontrolü
 function updateTheme() {
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     if (isDark) {
-        // Karanlık Tema: Yüksek neon parlaklığı, turuncu/sarı renkler
-        bloomPass.strength = 1.8;
-        material.emissiveIntensity = 2;
-        material.color.setHex(0xff6b35); // Turuncu
-        material.emissive.setHex(0xff6b35);
-        particleMat.color.setHex(0xffd93d); // Sarı
+        // Karanlık Tema: Duvar koyu, ışık turuncu, loş ortam
+        planeMat.color.setHex(0x111111);
+        spotLight.color.setHex(0xff6b35); // Turuncu
+        ambientLight.intensity = 0.2;
     } else {
-        // Aydınlık Tema: Göz yormaması için düşük parlaklık, mor/turkuaz renkler
-        bloomPass.strength = 0.5; 
-        material.emissiveIntensity = 0.8;
-        material.color.setHex(0x9b59b6); // Mor
-        material.emissive.setHex(0x9b59b6);
-        particleMat.color.setHex(0x4ecdc4); // Turkuaz
+        // Aydınlık Tema: Duvar açık gri, ışık pembe/mor, aydınlık ortam
+        planeMat.color.setHex(0xdddddd);
+        spotLight.color.setHex(0x9b59b6); // Mor/Pembe
+        ambientLight.intensity = 0.6;
     }
 }
 
-// HTML etiketindeki 'data-theme' değişimini dinle
+// Tema değişikliğini dinle
 const observer = new MutationObserver(updateTheme);
 observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-updateTheme(); // Sayfa yüklendiğinde temayı kontrol et
+updateTheme(); // Başlangıçta çalıştır
 
-// 7. Ekran Yeniden Boyutlandırma
+// 6. Ekran Yeniden Boyutlandırma
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
-    composer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// 8. Fare (Mouse) Etkileşimi
+// Fare etkileşimi için değişkenler
 let mouseX = 0;
 let mouseY = 0;
-let targetX = 0;
-let targetY = 0;
-const windowHalfX = window.innerWidth / 2;
-const windowHalfY = window.innerHeight / 2;
-
-document.addEventListener('mousemove', (event) => {
-    mouseX = (event.clientX - windowHalfX);
-    mouseY = (event.clientY - windowHalfY);
+window.addEventListener('mousemove', (e) => {
+    mouseX = (e.clientX / window.innerWidth) * 2 - 1;
+    mouseY = -(e.clientY / window.innerHeight) * 2 + 1;
 });
 
-// 9. Animasyon Döngüsü
+// 7. Animasyon Döngüsü
 const clock = new THREE.Clock();
+
 function animate() {
     requestAnimationFrame(animate);
     
-    const delta = clock.getDelta();
-    
-    // Farenin konumuna doğru yumuşak (smooth) dönüş
-    targetX = mouseX * 0.001;
-    targetY = mouseY * 0.001;
-    
-    // Kendi etrafında dönme
-    mesh.rotation.y += 0.3 * delta;
-    mesh.rotation.x += 0.2 * delta;
-    
-    // Fareye tepki
-    mesh.rotation.y += 0.05 * (targetX - mesh.rotation.y);
-    mesh.rotation.x += 0.05 * (targetY - mesh.rotation.x);
-    
-    // Partiküllerin yavaşça dönmesi
-    particles.rotation.y -= 0.05 * delta;
+    const time = clock.getElapsedTime();
 
-    // renderer.render(scene, camera) YERİNE composer kullanıyoruz (Bloom için)
-    composer.render();
+    // Senin kodundaki ışığın dairesel hareket mantığı
+    spotLight.position.x = Math.cos(time * 0.5) * 4;
+    spotLight.position.y = Math.sin(time * 0.3) * 2 + 1;
+    
+    // Objenin yavaşça dönmesi ve fareye tepki vermesi
+    mesh.rotation.x += 0.005;
+    mesh.rotation.y += 0.01;
+    mesh.position.x += (mouseX * 0.5 - mesh.position.x) * 0.05;
+    mesh.position.y += (mouseY * 0.5 - mesh.position.y) * 0.05;
+
+    renderer.render(scene, camera);
 }
+
 animate();
