@@ -1,119 +1,149 @@
 import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+import { GUI } from 'https://unpkg.com/three@0.160.0/examples/jsm/libs/lil-gui.module.min.js';
+import { PLYLoader } from 'https://unpkg.com/three@0.160.0/examples/jsm/loaders/PLYLoader.js';
+import { OrbitControls } from 'https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js';
 
-// 1. Temel Kurulum
-const canvas = document.getElementById('canvas3d');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-renderer.setPixelRatio(window.devicePixelRatio);
-renderer.setSize(window.innerWidth, window.innerHeight);
+let renderer, scene, camera;
+let spotLight;
 
-// Gölgeleri aktif ediyoruz (Spotlight'ın en önemli özelliği)
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+init();
 
-const scene = new THREE.Scene();
+function init() {
+    // 1. Render Motoru (Arka planı transparan yaptık ki sitenin renkleri görünsün)
+    const canvas = document.getElementById('canvas3d');
+    renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setAnimationLoop(animate);
 
-const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 100);
-camera.position.set(0, 0, 8); // Kamerayı tam karşıya aldık
+    renderer.toneMapping = THREE.NeutralToneMapping;
+    renderer.toneMappingExposure = 1;
 
-// 2. Arka Plan Duvarı (Işığın ve gölgenin düşeceği yüzey)
-const planeGeo = new THREE.PlaneGeometry(50, 50);
-const planeMat = new THREE.MeshStandardMaterial({ 
-    color: 0x111111, 
-    roughness: 0.8,
-    metalness: 0.2
-});
-const plane = new THREE.Mesh(planeGeo, planeMat);
-plane.position.z = -3; // Yazıların arkasında kalması için geriye ittik
-plane.receiveShadow = true; // Gölgeyi kabul et
-scene.add(plane);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-// 3. Merkezdeki Obje (Oyun dünyasını temsil eden Poligon Şekil)
-const objGeo = new THREE.IcosahedronGeometry(1.2, 0); // Düşük poligonlu (Low-poly) bir şekil
-const objMat = new THREE.MeshStandardMaterial({ 
-    color: 0x888888, 
-    roughness: 0.4, 
-    metalness: 0.5 
-});
-const mesh = new THREE.Mesh(objGeo, objMat);
-mesh.castShadow = true;   // Gölge yaratsın
-mesh.receiveShadow = true; // Kendi üzerine de gölge düşsün
-scene.add(mesh);
+    // 2. Sahne ve Kamera
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(7, 4, 1);
 
-// 4. Işıklandırma (Senin attığın Spotlight mantığı)
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.2); // Genel loş ışık
-scene.add(ambientLight);
+    // 3. Kamera Kontrolleri (Fare ile döndürme)
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.minDistance = 2;
+    controls.maxDistance = 10;
+    controls.maxPolarAngle = Math.PI / 2; // Yerin altına geçmeyi engeller
+    controls.target.set(0, 1, 0);
+    controls.update();
 
-const spotLight = new THREE.SpotLight(0xff6b35, 150); // Turuncu spot ışığı
-spotLight.position.set(2.5, 3, 3);
-spotLight.angle = Math.PI / 5;
-spotLight.penumbra = 0.5; // Işığın kenarlarını yumuşatır
-spotLight.decay = 2;
-spotLight.distance = 20;
+    // 4. Dokular (Spot ışığının filtresi)
+    const textureLoader = new THREE.TextureLoader();
+    // Orijinal repodaki disturb.jpg dosyasını CDN'den çekiyoruz
+    const disturbTexture = textureLoader.load('https://unpkg.com/three@0.160.0/examples/textures/disturb.jpg');
+    disturbTexture.minFilter = THREE.LinearFilter;
+    disturbTexture.magFilter = THREE.LinearFilter;
+    disturbTexture.colorSpace = THREE.SRGBColorSpace;
 
-// Spotlight gölge ayarları
-spotLight.castShadow = true;
-spotLight.shadow.mapSize.width = 1024;
-spotLight.shadow.mapSize.height = 1024;
-spotLight.shadow.camera.near = 1;
-spotLight.shadow.camera.far = 10;
-spotLight.shadow.focus = 1;
-scene.add(spotLight);
+    // 5. Işıklandırma
+    const ambient = new THREE.HemisphereLight(0xffffff, 0x8d8d8d, 0.25);
+    scene.add(ambient);
 
-// 5. Açık / Koyu Tema Kontrolü
-function updateTheme() {
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    if (isDark) {
-        // Karanlık Tema: Duvar koyu, ışık turuncu, loş ortam
-        planeMat.color.setHex(0x111111);
-        spotLight.color.setHex(0xff6b35); // Turuncu
-        ambientLight.intensity = 0.2;
-    } else {
-        // Aydınlık Tema: Duvar açık gri, ışık pembe/mor, aydınlık ortam
-        planeMat.color.setHex(0xdddddd);
-        spotLight.color.setHex(0x9b59b6); // Mor/Pembe
-        ambientLight.intensity = 0.6;
-    }
+    spotLight = new THREE.SpotLight(0xffffff, 100);
+    spotLight.name = 'spotLight';
+    spotLight.map = disturbTexture; // Deseni ışığa atıyoruz
+    spotLight.position.set(2.5, 5, 2.5);
+    spotLight.angle = Math.PI / 6;
+    spotLight.penumbra = 1;
+    spotLight.decay = 2;
+    spotLight.distance = 0;
+
+    spotLight.castShadow = true;
+    spotLight.shadow.mapSize.width = 1024;
+    spotLight.shadow.mapSize.height = 1024;
+    spotLight.shadow.camera.near = 2;
+    spotLight.shadow.camera.far = 10;
+    spotLight.shadow.focus = 1;
+    spotLight.shadow.bias = -0.003;
+    spotLight.shadow.intensity = 1;
+    scene.add(spotLight);
+
+    // Işık asistanları (Görünmez başlattık, menüden açılabilir)
+    spotLight.lightHelper = new THREE.SpotLightHelper(spotLight);
+    spotLight.lightHelper.visible = false;
+    scene.add(spotLight.lightHelper);
+
+    spotLight.shadowCameraHelper = new THREE.CameraHelper(spotLight.shadow.camera);
+    spotLight.shadowCameraHelper.visible = false;
+    scene.add(spotLight.shadowCameraHelper);
+
+    // 6. Zemin (Gölgelerin düşeceği yer)
+    const geometry = new THREE.PlaneGeometry(100, 100);
+    const material = new THREE.MeshLambertMaterial({ color: 0x222222 }); // Sitenle uyumlu koyu zemin
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.set(0, -1, 0);
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.receiveShadow = true;
+    scene.add(mesh);
+
+    // 7. Orijinal 3D Modeli Yükleme (Lucy Heykeli)
+    new PLYLoader().load('https://unpkg.com/three@0.160.0/examples/models/ply/binary/Lucy100k.ply', function (geometry) {
+        geometry.scale(0.0024, 0.0024, 0.0024);
+        geometry.computeVertexNormals();
+
+        const material = new THREE.MeshLambertMaterial({ color: 0xaaaaaa });
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.rotation.y = -Math.PI / 2;
+        mesh.position.y = 0.8;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        scene.add(mesh);
+    });
+
+    // 8. Pencere Boyutu Değişimi
+    window.addEventListener('resize', onWindowResize);
+
+    // 9. lil-gui (Sağ Üstteki Kontrol Paneli)
+    const gui = new GUI();
+    const params = {
+        color: spotLight.color.getHex(),
+        intensity: spotLight.intensity,
+        distance: spotLight.distance,
+        angle: spotLight.angle,
+        penumbra: spotLight.penumbra,
+        decay: spotLight.decay,
+        focus: spotLight.shadow.focus,
+        shadowIntensity: spotLight.shadow.intensity,
+        helpers: false
+    };
+
+    gui.addColor(params, 'color').onChange(val => spotLight.color.setHex(val)).name('Işık Rengi');
+    gui.add(params, 'intensity', 0, 500).onChange(val => spotLight.intensity = val).name('Güç');
+    gui.add(params, 'distance', 0, 20).onChange(val => spotLight.distance = val).name('Mesafe');
+    gui.add(params, 'angle', 0, Math.PI / 3).onChange(val => spotLight.angle = val).name('Açı');
+    gui.add(params, 'penumbra', 0, 1).onChange(val => spotLight.penumbra = val).name('Yumuşaklık');
+    gui.add(params, 'decay', 1, 2).onChange(val => spotLight.decay = val).name('Sönümlenme');
+    gui.add(params, 'focus', 0, 1).onChange(val => spotLight.shadow.focus = val).name('Gölge Odak');
+    gui.add(params, 'shadowIntensity', 0, 1).onChange(val => spotLight.shadow.intensity = val).name('Gölge Gücü');
+    gui.add(params, 'helpers').onChange(val => {
+        spotLight.lightHelper.visible = val;
+        spotLight.shadowCameraHelper.visible = val;
+    }).name('Asistan Çizgiler');
 }
 
-// Tema değişikliğini dinle
-const observer = new MutationObserver(updateTheme);
-observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-updateTheme(); // Başlangıçta çalıştır
-
-// 6. Ekran Yeniden Boyutlandırma
-window.addEventListener('resize', () => {
+function onWindowResize() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
-});
-
-// Fare etkileşimi için değişkenler
-let mouseX = 0;
-let mouseY = 0;
-window.addEventListener('mousemove', (e) => {
-    mouseX = (e.clientX / window.innerWidth) * 2 - 1;
-    mouseY = -(e.clientY / window.innerHeight) * 2 + 1;
-});
-
-// 7. Animasyon Döngüsü
-const clock = new THREE.Clock();
+}
 
 function animate() {
-    requestAnimationFrame(animate);
-    
-    const time = clock.getElapsedTime();
+    const time = performance.now() / 3000;
 
-    // Senin kodundaki ışığın dairesel hareket mantığı
-    spotLight.position.x = Math.cos(time * 0.5) * 4;
-    spotLight.position.y = Math.sin(time * 0.3) * 2 + 1;
-    
-    // Objenin yavaşça dönmesi ve fareye tepki vermesi
-    mesh.rotation.x += 0.005;
-    mesh.rotation.y += 0.01;
-    mesh.position.x += (mouseX * 0.5 - mesh.position.x) * 0.05;
-    mesh.position.y += (mouseY * 0.5 - mesh.position.y) * 0.05;
+    // Işığın dairesel hareketi
+    if (spotLight) {
+        spotLight.position.x = Math.cos(time) * 2.5;
+        spotLight.position.z = Math.sin(time) * 2.5;
+        if (spotLight.lightHelper) spotLight.lightHelper.update();
+    }
 
     renderer.render(scene, camera);
 }
-
-animate();
