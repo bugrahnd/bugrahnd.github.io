@@ -1,117 +1,135 @@
-import * as THREE from 'three';
-import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { RenderPass }     from 'three/addons/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+import { EffectComposer } from 'https://unpkg.com/three@0.160.0/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'https://unpkg.com/three@0.160.0/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'https://unpkg.com/three@0.160.0/examples/jsm/postprocessing/UnrealBloomPass.js';
 
+// 1. Sahne, Kamera ve Render Motoru Kurulumu
 const canvas = document.getElementById('canvas3d');
-if (!canvas) { console.warn('canvas3d bulunamadı'); }
+if (!canvas) console.error("Canvas bulunamadı!");
 
-const scene  = new THREE.Scene();
-scene.background = null;
-
-const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 120);
-camera.position.z = 28;
-
+// Arka planın transparan olması için alpha: true ekliyoruz (CSS ile uyum için)
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.toneMapping = THREE.ReinhardToneMapping;
+
+const scene = new THREE.Scene();
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 100);
+camera.position.set(0, 0, 12);
+
+// 2. Ana Obje (Neon TorusKnot - Oyunumsu bir hissiyat verir)
+const geometry = new THREE.TorusKnotGeometry(1.8, 0.5, 128, 32);
+const material = new THREE.MeshStandardMaterial({ 
+    color: 0xff6b35, 
+    emissive: 0xff6b35, 
+    emissiveIntensity: 2,
+    wireframe: true // Matrix/Cyberpunk havası katar
+});
+const mesh = new THREE.Mesh(geometry, material);
+scene.add(mesh);
+
+// 3. Etrafta Uçuşan Partiküller (Oyun dünyası tozu)
+const particleGeo = new THREE.BufferGeometry();
+const particleCount = 300;
+const posArray = new Float32Array(particleCount * 3);
+for(let i = 0; i < particleCount * 3; i++) {
+    posArray[i] = (Math.random() - 0.5) * 20; // x, y, z
+}
+particleGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+const particleMat = new THREE.PointsMaterial({
+    size: 0.05,
+    color: 0xffd93d,
+    transparent: true,
+    opacity: 0.8,
+    blending: THREE.AdditiveBlending
+});
+const particles = new THREE.Points(particleGeo, particleMat);
+scene.add(particles);
+
+// 4. Işıklandırma
+scene.add(new THREE.AmbientLight(0x404040)); // Temel ışık
+
+// 5. Post-Processing (UNREAL BLOOM)
+const renderScene = new RenderPass(scene, camera);
+// Çözünürlük, Güç, Yarıçap, Eşik (Threshold)
+const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+bloomPass.threshold = 0;
+bloomPass.strength = 1.8; // İlk başta karanlık tema gücü
+bloomPass.radius = 0.5;
 
 const composer = new EffectComposer(renderer);
-composer.addPass(new RenderPass(scene, camera));
-composer.addPass(new UnrealBloomPass(
-    new THREE.Vector2(window.innerWidth, window.innerHeight),
-    0.55, 0.4, 0.2
-));
+composer.addPass(renderScene);
+composer.addPass(bloomPass);
 
-const PALETTE  = [0x4F8EF7, 0x7C5CFC, 0x38BDF8];
-const GEO_POOL = [
-    new THREE.IcosahedronGeometry(1,   0),
-    new THREE.IcosahedronGeometry(0.7, 0),
-    new THREE.BoxGeometry(1.1, 1.1, 1.1),
-    new THREE.TetrahedronGeometry(1,   0),
-    new THREE.OctahedronGeometry(0.9,  0),
-];
-
-const objects = [];
-const COUNT   = 22;
-
-for (let i = 0; i < COUNT; i++) {
-    const geo   = GEO_POOL[Math.floor(Math.random() * GEO_POOL.length)];
-    const color = PALETTE[Math.floor(Math.random() * PALETTE.length)];
-    const isWire = Math.random() > 0.35;
-
-    const mat = new THREE.MeshStandardMaterial({
-        color:             isWire ? color : 0x080C18,
-        emissive:          color,
-        emissiveIntensity: isWire ? Math.random() * 0.6 + 0.2 : Math.random() * 1.0 + 0.4,
-        wireframe:         isWire,
-        transparent:       !isWire,
-        opacity:           isWire ? 1 : 0.55,
-    });
-
-    const scale = Math.random() * 0.7 + 0.5;
-    const mesh  = new THREE.Mesh(geo, mat);
-    mesh.scale.setScalar(scale);
-
-    const angle  = (i / COUNT) * Math.PI * 2;
-    const radius = 14 + Math.random() * 12;
-    mesh.position.set(
-        Math.cos(angle) * radius + (Math.random() - 0.5) * 8,
-        (Math.random() - 0.5) * 30,
-        (Math.random() - 0.5) * 18 - 8
-    );
-
-    mesh.userData = {
-        rx: (Math.random() - 0.5) * 0.008,
-        ry: (Math.random() - 0.5) * 0.010,
-        rz: (Math.random() - 0.5) * 0.006,
-        floatAmp:    Math.random() * 0.018 + 0.006,
-        floatSpeed:  Math.random() * 0.4   + 0.25,
-        floatOffset: Math.random() * Math.PI * 2,
-        baseY:       mesh.position.y,
-    };
-
-    scene.add(mesh);
-    objects.push(mesh);
+// 6. Tema Değişikliği (Açık/Koyu) Kontrolü
+function updateTheme() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    if (isDark) {
+        // Karanlık Tema: Yüksek neon parlaklığı, turuncu/sarı renkler
+        bloomPass.strength = 1.8;
+        material.emissiveIntensity = 2;
+        material.color.setHex(0xff6b35); // Turuncu
+        material.emissive.setHex(0xff6b35);
+        particleMat.color.setHex(0xffd93d); // Sarı
+    } else {
+        // Aydınlık Tema: Göz yormaması için düşük parlaklık, mor/turkuaz renkler
+        bloomPass.strength = 0.5; 
+        material.emissiveIntensity = 0.8;
+        material.color.setHex(0x9b59b6); // Mor
+        material.emissive.setHex(0x9b59b6);
+        particleMat.color.setHex(0x4ecdc4); // Turkuaz
+    }
 }
 
-scene.add(new THREE.AmbientLight(0xffffff, 0.3));
+// HTML etiketindeki 'data-theme' değişimini dinle
+const observer = new MutationObserver(updateTheme);
+observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+updateTheme(); // Sayfa yüklendiğinde temayı kontrol et
 
-const clock = new THREE.Clock();
-let mouseX = 0, mouseY = 0, targetX = 0, targetY = 0;
-
-function animate() {
-    requestAnimationFrame(animate);
-    const t = clock.getElapsedTime();
-
-    objects.forEach(obj => {
-        const d = obj.userData;
-        obj.rotation.x += d.rx;
-        obj.rotation.y += d.ry;
-        obj.rotation.z += d.rz;
-        obj.position.y = d.baseY + Math.sin(t * d.floatSpeed + d.floatOffset) * d.floatAmp * 30;
-    });
-
-    targetX += (mouseX * 3 - targetX) * 0.04;
-    targetY += (-mouseY * 3 - targetY) * 0.04;
-    camera.position.x = targetX;
-    camera.position.y = targetY;
-    camera.lookAt(scene.position);
-
-    composer.render();
-}
-
-window.addEventListener('mousemove', e => {
-    mouseX = (e.clientX / window.innerWidth)  * 2 - 1;
-    mouseY = (e.clientY / window.innerHeight) * 2 - 1;
-}, { passive: true });
-
+// 7. Ekran Yeniden Boyutlandırma
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
     composer.setSize(window.innerWidth, window.innerHeight);
-}, { passive: true });
+});
 
+// 8. Fare (Mouse) Etkileşimi
+let mouseX = 0;
+let mouseY = 0;
+let targetX = 0;
+let targetY = 0;
+const windowHalfX = window.innerWidth / 2;
+const windowHalfY = window.innerHeight / 2;
+
+document.addEventListener('mousemove', (event) => {
+    mouseX = (event.clientX - windowHalfX);
+    mouseY = (event.clientY - windowHalfY);
+});
+
+// 9. Animasyon Döngüsü
+const clock = new THREE.Clock();
+function animate() {
+    requestAnimationFrame(animate);
+    
+    const delta = clock.getDelta();
+    
+    // Farenin konumuna doğru yumuşak (smooth) dönüş
+    targetX = mouseX * 0.001;
+    targetY = mouseY * 0.001;
+    
+    // Kendi etrafında dönme
+    mesh.rotation.y += 0.3 * delta;
+    mesh.rotation.x += 0.2 * delta;
+    
+    // Fareye tepki
+    mesh.rotation.y += 0.05 * (targetX - mesh.rotation.y);
+    mesh.rotation.x += 0.05 * (targetY - mesh.rotation.x);
+    
+    // Partiküllerin yavaşça dönmesi
+    particles.rotation.y -= 0.05 * delta;
+
+    // renderer.render(scene, camera) YERİNE composer kullanıyoruz (Bloom için)
+    composer.render();
+}
 animate();
