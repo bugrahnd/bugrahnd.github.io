@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="_ds/modernist-2ba1524d-ad75-46c4-86af-5d1f11be3b41/styles.css">
+<script src="_ds/modernist-2ba1524d-ad75-46c4-86af-5d1f11be3b41/_ds_bundle.js"></script>
+<script src="./image-slot.js"></script>
+<style>
+  html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--color-bg); color: var(--color-text); overflow-x: hidden;
+         transition: background-color 420ms ease, color 420ms ease; }
+  a { color: var(--color-text); text-decoration: none; }
+  a:hover { color: var(--color-accent); }
+  html[data-bd-theme="dark"] {
+    --color-bg: #161413;
+    --color-surface: #201e1d;
+    --color-text: #f4f2ef;
+    --color-divider: color-mix(in srgb, #f4f2ef 34%, transparent);
+    --color-accent: #ff563c;
+    --shadow-sm: 0 1px 2px color-mix(in srgb, #000 40%, transparent);
+    --shadow-md: 0 3px 10px color-mix(in srgb, #000 46%, transparent);
+    --shadow-lg: 0 12px 32px color-mix(in srgb, #000 55%, transparent);
+  }
+  /* Responsive overrides — the only thing that cannot be expressed inline. */
+  @media (max-width: 1000px) {
+    [data-r~="split"] { grid-template-columns: 1fr !important; }
+    [data-r~="pair"] { grid-template-columns: 1fr !important; }
+    [data-r~="stat"] { grid-template-columns: 1fr !important; }
+    [data-r~="stat"] > * { border-left: 0 !important; border-top: 1px solid var(--color-divider) !important; }
+    [data-r~="jrow"] { grid-template-columns: 1fr !important; gap: 6px !important; }
+    [data-r~="jrow"] > [data-jstate] { text-align: left !important; }
+    [data-r~="hide-sm"] { display: none !important; }
+    [data-r~="show-sm"] { display: inline-flex !important; }
+    [data-r~="bleed"] { margin-right: 0 !important; }
+    [data-r~="endcap"] { align-items: start !important; }
+  }
+  @media (max-width: 1279px) { [data-rail] { display: none !important; } }
+  @media (hover: none) { [data-cursor] { display: none !important; } }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    * { animation-duration: 1ms !important; transition-duration: 1ms !important; }
+  }
+</style>
+</helmet>
+
+<div style="min-height: 100vh; background: var(--color-bg); color: var(--color-text); font-family: var(--font-body);">
+
+  <div data-cursor style="position: fixed; top: 0; left: 0; z-index: 200; opacity: 0; pointer-events: none; padding: 7px 11px; background: var(--color-accent); color: var(--color-bg); font-family: var(--font-heading); font-weight: 800; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; transition: opacity 220ms ease; will-change: transform;">VIEW PROJECT</div>
+
+  <div data-sweep aria-hidden="true" style="position: fixed; top: 0; left: 0; width: 100%; height: 4px; background: var(--color-accent); transform: scaleX(0); transform-origin: left center; z-index: 130; pointer-events: none;"></div>
+
+  <nav data-rail aria-label="Section index" style="position: fixed; left: 16px; top: 50%; transform: translateY(-50%); z-index: 90; display: flex; flex-direction: column; gap: 16px;">
+    <a href="#top" data-rail-item="1" aria-label="Opening" style="display: flex; align-items: center; gap: 9px;">
+      <span data-rail-rule style="display: block; width: 12px; height: 2px; background: var(--color-text); opacity: 0.32; transition: width 340ms cubic-bezier(0.16,0.84,0.24,1), background-color 260ms ease, opacity 260ms ease;"></span>
+      <span data-rail-num style="font-family: var(--font-heading); font-weight: 800; font-size: 9px; letter-spacing: 0.16em; font-variant-numeric: tabular-nums; opacity: 0.32; transition: opacity 260ms ease, color 260ms ease;">01</span>
+    </a>
+    <a href="#about" data-rail-item="2" aria-label="Profile" style="display: flex; align-items: center; gap: 9px;">
+      <span data-rail-rule style="display: block; width: 12px; height: 2px; background: var(--color-text); opacity: 0.32; transition: width 340ms cubic-bezier(0.16,0.84,0.24,1), background-color 260ms ease, opacity 260ms ease;"></span>
+      <span data-rail-num style="font-family: var(--font-heading); font-weight: 800; font-size: 9px; letter-spacing: 0.16em; font-variant-numeric: tabular-nums; opacity: 0.32; transition: opacity 260ms ease, color 260ms ease;">02</span>
+    </a>
+    <a href="#work" data-rail-item="3" aria-label="Selected work" style="display: flex; align-items: center; gap: 9px;">
+      <span data-rail-rule style="display: block; width: 12px; height: 2px; background: var(--color-text); opacity: 0.32; transition: width 340ms cubic-bezier(0.16,0.84,0.24,1), background-color 260ms ease, opacity 260ms ease;"></span>
+      <span data-rail-num style="font-family: var(--font-heading); font-weight: 800; font-size: 9px; letter-spacing: 0.16em; font-variant-numeric: tabular-nums; opacity: 0.32; transition: opacity 260ms ease, color 260ms ease;">03</span>
+    </a>
+    <a href="#journey" data-rail-item="4" aria-label="Journey" style="display: flex; align-items: center; gap: 9px;">
+      <span data-rail-rule style="display: block; width: 12px; height: 2px; background: var(--color-text); opacity: 0.32; transition: width 340ms cubic-bezier(0.16,0.84,0.24,1), background-color 260ms ease, opacity 260ms ease;"></span>
+      <span data-rail-num style="font-family: var(--font-heading); font-weight: 800; font-size: 9px; letter-spacing: 0.16em; font-variant-numeric: tabular-nums; opacity: 0.32; transition: opacity 260ms ease, color 260ms ease;">04</span>
+    </a>
+    <a href="#contact" data-rail-item="5" aria-label="Contact" style="display: flex; align-items: center; gap: 9px;">
+      <span data-rail-rule style="display: block; width: 12px; height: 2px; background: var(--color-text); opacity: 0.32; transition: width 340ms cubic-bezier(0.16,0.84,0.24,1), background-color 260ms ease, opacity 260ms ease;"></span>
+      <span data-rail-num style="font-family: var(--font-heading); font-weight: 800; font-size: 9px; letter-spacing: 0.16em; font-variant-numeric: tabular-nums; opacity: 0.32; transition: opacity 260ms ease, color 260ms ease;">05</span>
+    </a>
+  </nav>
+
+  <header style="position: sticky; top: 0; z-index: 100; background: var(--color-bg); border-bottom: 2px solid var(--color-divider);">
+    <div style="max-width: 1560px; margin: 0 auto; padding: 0 clamp(18px, 4vw, 64px); height: 68px; display: flex; align-items: center; gap: clamp(16px, 3vw, 44px);">
+      <a href="#top" style="width: 40px; height: 40px; flex: none; border: 2px solid var(--color-text); display: grid; place-items: center; font-family: var(--font-heading); font-weight: 800; font-size: 15px; letter-spacing: -0.02em; margin-right: auto;">BD</a>
+      <nav data-r="hide-sm" style="display: flex; align-items: center; gap: clamp(18px, 2.4vw, 34px); font-family: var(--font-heading); font-weight: 600; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;">
+        <a href="#work" style="padding: 4px 0; border-bottom: 2px solid transparent; transition: color 200ms ease, border-color 200ms ease;" style-hover="color: var(--color-accent); border-bottom-color: var(--color-accent);">Work</a>
+        <a href="#about" style="padding: 4px 0; border-bottom: 2px solid transparent; transition: color 200ms ease, border-color 200ms ease;" style-hover="color: var(--color-accent); border-bottom-color: var(--color-accent);">About</a>
+        <a href="#journey" style="padding: 4px 0; border-bottom: 2px solid transparent; transition: color 200ms ease, border-color 200ms ease;" style-hover="color: var(--color-accent); border-bottom-color: var(--color-accent);">Journey</a>
+        <a href="#contact" style="padding: 4px 0; border-bottom: 2px solid transparent; transition: color 200ms ease, border-color 200ms ease;" style-hover="color: var(--color-accent); border-bottom-color: var(--color-accent);">Contact</a>
+      </nav>
+      <span data-scene-readout data-r="hide-sm" aria-hidden="true" style="font-family: var(--font-heading); font-weight: 600; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; font-variant-numeric: tabular-nums; color: color-mix(in srgb, var(--color-text) 55%, transparent);">Scene 01/05</span>
+      <div role="group" aria-label="Color theme" style="display: flex; border: 2px solid var(--color-divider);">
+        <button type="button" data-theme-opt="light" onClick="{{ setLight }}" aria-label="Light theme" style="appearance: none; border: 0; background: transparent; color: var(--color-text); font-family: var(--font-heading); font-weight: 800; font-size: 10px; letter-spacing: 0.14em; padding: 8px 11px; cursor: pointer; transition: background-color 200ms ease, color 200ms ease;">LIGHT</button>
+        <button type="button" data-theme-opt="dark" onClick="{{ setDark }}" aria-label="Dark theme" style="appearance: none; border: 0; border-left: 2px solid var(--color-divider); background: transparent; color: var(--color-text); font-family: var(--font-heading); font-weight: 800; font-size: 10px; letter-spacing: 0.14em; padding: 8px 11px; cursor: pointer; transition: background-color 200ms ease, color 200ms ease;">DARK</button>
+      </div>
+      <button type="button" data-r="show-sm" onClick="{{ openMenu }}" aria-label="Open menu" style="display: none; appearance: none; align-items: center; gap: 8px; border: 2px solid var(--color-divider); background: transparent; color: var(--color-text); font-family: var(--font-heading); font-weight: 800; font-size: 10px; letter-spacing: 0.14em; padding: 9px 12px; cursor: pointer;">MENU</button>
+    </div>
+  </header>
+
+  <sc-if value="{{ menuOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position: fixed; inset: 0; z-index: 150; background: var(--color-bg); padding: 20px clamp(18px, 6vw, 48px) 40px; display: flex; flex-direction: column;">
+      <div style="display: flex; align-items: center; height: 48px; border-bottom: 2px solid var(--color-divider); padding-bottom: 18px;">
+        <span style="font-family: var(--font-heading); font-weight: 800; font-size: 11px; letter-spacing: 0.2em; margin-right: auto;">NAVIGATION</span>
+        <button type="button" onClick="{{ closeMenu }}" aria-label="Close menu" style="appearance: none; border: 2px solid var(--color-divider); background: transparent; color: var(--color-text); font-family: var(--font-heading); font-weight: 800; font-size: 10px; letter-spacing: 0.14em; padding: 9px 12px; cursor: pointer;">CLOSE</button>
+      </div>
+      <nav style="display: flex; flex-direction: column; margin-top: 8px;">
+        <a href="#work" onClick="{{ closeMenu }}" style="font-family: var(--font-heading); font-weight: 800; font-size: clamp(34px, 12vw, 64px); letter-spacing: -0.03em; text-transform: uppercase; padding: 18px 0; border-bottom: 1px solid var(--color-divider);">Work</a>
+        <a href="#about" onClick="{{ closeMenu }}" style="font-family: var(--font-heading); font-weight: 800; font-size: clamp(34px, 12vw, 64px); letter-spacing: -0.03em; text-transform: uppercase; padding: 18px 0; border-bottom: 1px solid var(--color-divider);">About</a>
+        <a href="#journey" onClick="{{ closeMenu }}" style="font-family: var(--font-heading); font-weight: 800; font-size: clamp(34px, 12vw, 64px); letter-spacing: -0.03em; text-transform: uppercase; padding: 18px 0; border-bottom: 1px solid var(--color-divider);">Journey</a>
+        <a href="#contact" onClick="{{ closeMenu }}" style="font-family: var(--font-heading); font-weight: 800; font-size: clamp(34px, 12vw, 64px); letter-spacing: -0.03em; text-transform: uppercase; padding: 18px 0; border-bottom: 1px solid var(--color-divider); color: var(--color-accent);">Contact</a>
+      </nav>
+    </div>
+  </sc-if>
+
+  <main id="top" style="max-width: 1560px; margin: 0 auto; padding: 0 clamp(18px, 4vw, 64px);">
+
+    <section aria-label="Introduction" data-scene="1" style="padding-top: clamp(28px, 6vh, 72px);">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding-bottom: 14px;">
+        <span style="font-family: var(--font-heading); font-weight: 600; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: color-mix(in srgb, var(--color-text) 58%, transparent);">01 — Opening scene</span>
+        <span data-r="hide-sm" style="font-family: var(--font-heading); font-weight: 600; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: color-mix(in srgb, var(--color-text) 58%, transparent);">Computer engineering · Game development</span>
+      </div>
+
+      <div data-r="split" style="border-top: 2px solid var(--color-divider); display: grid; grid-template-columns: 1.02fr 0.98fr; gap: clamp(22px, 3vw, 56px); padding-top: clamp(18px, 3vh, 34px); align-items: end;">
+        <div>
+          <h1 style="margin: 0; font-family: var(--font-heading); font-weight: 800; text-transform: uppercase; line-height: 0.84; letter-spacing: -0.045em; font-size: clamp(52px, 11.4vw, 168px);">
+            <span data-name-line style="display: block;">BUĞRAHAN</span>
+            <span data-name-line style="display: block; position: relative;">
+              <span data-name-text style="display: block; color: transparent; -webkit-text-stroke: 2px var(--color-text);">DEVECİ</span>
+              <canvas data-name-canvas aria-hidden="true" style="position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;"></canvas>
+            </span>
+          </h1>
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: clamp(18px, 2.4vh, 30px); font-family: var(--font-heading); font-weight: 800; font-size: clamp(13px, 1.35vw, 19px); letter-spacing: 0.1em; text-transform: uppercase;">
+            <span>Game developer</span>
+            <span style="width: 22px; height: 2px; background: var(--color-accent);"></span>
+            <span>Creative technologist</span>
+          </div>
+          <p style="margin: 18px 0 0; max-width: 44ch; font-size: 17px; line-height: 1.55; color: color-mix(in srgb, var(--color-text) 74%, transparent);">I build games, interactive experiences and digital products — game systems and shaders inside Unity, AI-assisted software outside it.</p>
+          <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-top: clamp(20px, 3vh, 34px);">
+            <a href="#work" class="btn btn-primary" style="padding: 15px 22px; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; gap: 10px;">Explore work <span aria-hidden="true">→</span></a>
+            <a href="#contact" class="btn btn-secondary" style="padding: 15px 22px; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; border-width: 2px;">Get in touch</a>
+          </div>
+        </div>
+
+        <figure style="margin: 0; position: relative; border: 2px solid var(--color-divider); background: var(--color-surface); height: clamp(300px, 52vh, 560px); overflow: hidden;">
+          <canvas data-hero-canvas style="display: block; width: 100%; height: 100%;" aria-hidden="true"></canvas>
+          <figcaption style="position: absolute; inset: 0; pointer-events: none; font-family: var(--font-heading); font-weight: 800; font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: color-mix(in srgb, var(--color-text) 62%, transparent);">
+            <span style="position: absolute; top: 12px; left: 14px;">Scene_01 · wireframe mesh</span>
+            <span style="position: absolute; top: 12px; right: 14px; color: var(--color-accent);">● live</span>
+            <span style="position: absolute; bottom: 12px; left: 14px;">Move cursor to orbit</span>
+            <span data-hero-readout style="position: absolute; bottom: 12px; right: 14px; font-variant-numeric: tabular-nums;">rot 000.0°</span>
+          </figcaption>
+        </figure>
+      </div>
+
+      <div data-r="stat" style="margin-top: clamp(22px, 4vh, 48px); border-top: 2px solid var(--color-divider); border-bottom: 2px solid var(--color-divider); display: grid; grid-template-columns: repeat(3, 1fr);">
+        <div style="padding: 18px clamp(14px, 2vw, 26px) 18px 0;">
+          <div style="font-family: var(--font-heading); font-weight: 600; font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: color-mix(in srgb, var(--color-text) 55%, transparent);">Discipline</div>
+          <div style="font-family: var(--font-heading); font-weight: 800; font-size: clamp(16px, 1.7vw, 22px); letter-spacing: -0.01em; margin-top: 6px;">Games · Interactive software</div>
+        </div>
+        <div style="padding: 18px clamp(14px, 2vw, 26px); border-left: 1px solid var(--color-divider);">
+          <div style="font-family: var(--font-heading); font-weight: 600; font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: color-mix(in srgb, var(--color-text) 55%, transparent);">Core stack</div>
+          <div style="font-family: var(--font-heading); font-weight: 800; font-size: clamp(16px, 1.7vw, 22px); letter-spacing: -0.01em; margin-top: 6px;">Unity · C# · Flutter</div>
+        </div>
+        <div style="padding: 18px 0 18px clamp(14px, 2vw, 26px); border-left: 1px solid var(--color-divider);">
+          <div style="font-family: var(--font-heading); font-weight: 600; font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: color-mix(in srgb, var(--color-text) 55%, transparent);">Currently</div>
+          <div style="font-family: var(--font-heading); font-weight: 800; font-size: clamp(16px, 1.7vw, 22px); letter-spacing: -0.01em; margin-top: 6px;">Computer engineering, B.Sc.</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="about" data-scene="2" style="scroll-margin-top: 88px; padding-top: clamp(64px, 12vh, 140px);">
+      <div style="font-family: var(--font-heading); font-weight: 600; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: color-mix(in srgb, var(--color-text) 58%, transparent); padding-bottom: 14px;">02 — Profile &amp; capability</div>
+      <div data-r="split" style="border-top: 2px solid var(--color-divider); display: grid; grid-template-columns: 1fr 1.08fr; gap: clamp(28px, 4vw, 72px); padding-top: clamp(20px, 3vh, 40px);">
+        <div data-rev>
+          <h2 style="margin: 0; font-family: var(--font-heading); font-weight: 800; text-transform: uppercase; line-height: 0.88; letter-spacing: -0.04em; font-size: clamp(40px, 6.4vw, 104px);">
+            <span style="display: block;">I build</span>
+            <span style="display: block;">interactive</span>
+            <span style="display: block; color: transparent; -webkit-text-stroke: 2px var(--color-accent);">experiences.</span>
+          </h2>
+          <p style="margin: clamp(20px, 3vh, 34px) 0 0; max-width: 48ch; font-size: 16px; line-height: 1.65; color: color-mix(in srgb, var(--color-text) 76%, transparent);">Computer engineering student, game developer by practice. I work on the parts of a product people actually feel: how input lands, how a system reads on screen, how a scene holds attention for the second longer than it should.</p>
+          <p style="margin: 14px 0 0; max-width: 48ch; font-size: 16px; line-height: 1.65; color: color-mix(in srgb, var(--color-text) 76%, transparent);">Started with the web in 2018, moved into Unity, and now split my time between game projects and AI-assisted software.</p>
+          <div style="display: flex; gap: 0; margin-top: clamp(24px, 3vh, 38px); border-top: 1px solid var(--color-divider);">
+            <div style="padding: 14px 20px 0 0;">
+              <div style="font-family: var(--font-heading); font-weight: 800; font-size: clamp(24px, 3vw, 40px); letter-spacing: -0.03em; font-variant-numeric: tabular-nums;">2018</div>
+              <div style="font-family: var(--font-heading); font-weight: 600; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: color-mix(in srgb, var(--color-text) 55%, transparent);">First shipped page</div>
+            </div>
+            <div style="padding: 14px 0 0 20px; border-left: 1px solid var(--color-divider);">
+              <div style="font-family: var(--font-heading); font-weight: 800; font-size: clamp(24px, 3vw, 40px); letter-spacing: -0.03em; font-variant-numeric: tabular-nums;">03</div>
+              <div style="font-family: var(--font-heading); font-weight: 600; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: color-mix(in srgb, var(--color-text) 55%, transparent);">Practice areas</div>
+            </div>
+          </div>
+        </div>
+
+        <div data-rev>
+          <div style="display: flex; align-items: baseline; justify-content: space-between; border-bottom: 2px solid var(--color-divider); padding-bottom: 10px;">
+            <span style="font-family: var(--font-heading); font-weight: 800; font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase;">Expertise</span>
+            <span style="font-family: var(--font-heading); font-weight: 600; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: color-mix(in srgb, var(--color-text) 55%, transparent);">Accent = primary tool</span>
+          </div>
+
+          <div style="padding: 20px 0 22px; border-bottom: 1px solid var(--color-divider);">
+            <div style="display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px;">
+              <span style="font-family: var(--font-heading); font-weight: 800; font-size: clamp(18px, 2vw, 26px); letter-spacing: -0.02em; text-transform: uppercase;">Game development</span>
+              <span style="font-family: var(--font-heading); font-weight: 600; font-size: 10px; letter-spacing: 0.18em; color: color-mix(in srgb, var(--color-text) 50%, transparent); font-variant-numeric: tabular-nums;">06</span>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+              <span style="border: 2px solid var(--color-accent); color: var(--color-accent); padding: 8px 13px; font-family: var(--font-heading); font-weight: 800; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;">Unity</span>
+              <span style="border: 2px solid var(--color-accent); color: var(--color-accent); padding: 8px 13px; font-family: var(--font-heading); font-weight: 800; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;">C#</span>
+              <span style="border: 1px solid var(--color-divider); padding: 8px 13px; font-family: var(--font-heading); font-weight: 600; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;">Game systems</span>
+              <span style="border: 1px solid var(--color-divider); padding: 8px 13px; font-family: var(--font-heading); font-weight: 600; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;">Shaders</span>
+              <span style="border: 1px solid var(--color-divider); padding: 8px 13px; font-family: var(--font-heading); font-weight: 600; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;">Multiplayer</span>
+              <span style="border: 1px solid var(--color-divider); padding: 8px 13px; font-family: var(--font-heading); font-weight: 600; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;">Game UI</span>
+            </div>
+          </div>
+
+          <div style="padding: 20px 0 22px; border-bottom: 1px solid var(--color-divider);">
+            <div style="display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px;">
+              <span style="font-family: var(--font-heading); font-weight: 800; font-size: clamp(18px, 2vw, 26px); letter-spacing: -0.02em; text-transform: uppercase;">AI &amp; software</span>
+              <span style="font-family: var(--font-heading); font-weight: 600; font-size: 10px; letter-spacing: 0.18em; color: color-mix(in srgb, var(--color-text) 50%, transparent); font-variant-numeric: tabular-nums;">04</span>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+              <span style="border: 2px solid var(--color-accent); color: var(--color-accent); padding: 8px 13px; font-family: var(--font-heading); font-weight: 800; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;">AI integration</span>
+              <span style="border: 1px solid var(--color-divider); padding: 8px 13px; font-family: var(--font-heading); font-weight: 600; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;">APIs</span>
+              <span style="border: 1px solid var(--color-divider); padding: 8px 13px; font-family: var(--font-heading); font-weight: 600; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;">Flutter</span>
+              <span style="border: 1px solid var(--color-divider); padding: 8px 13px; font-family: var(--font-heading); font-weight: 600; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;">Computer vision</span>
+            </div>
+          </div>
+
+          <div style="padding: 20px 0 0;">
+            <div style="display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px;">
+              <span style="font-family: var(--font-heading); font-weight: 800; font-size: clamp(18px, 2vw, 26px); letter-spacing: -0.02em; text-transform: uppercase;">Design</span>
+              <span style="font-family: var(--font-heading); font-weight: 600; font-size: 10px; letter-spacing: 0.18em; color: color-mix(in srgb, var(--color-text) 50%, transparent); font-variant-numeric: tabular-nums;">03</span>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+              <span style="border: 1px solid var(--color-divider); padding: 8px 13px; font-family: var(--font-heading); font-weight: 600; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;">Interface design</span>
+              <span style="border: 1px solid var(--color-divider); padding: 8px 13px; font-family: var(--font-heading); font-weight: 600; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;">UI/UX</span>
+              <span style="border: 1px solid var(--color-divider); padding: 8px 13px; font-family: var(--font-heading); font-weight: 600; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;">Interaction design</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="work" data-scene="3" style="scroll-margin-top: 88px; padding-top: clamp(64px, 12vh, 140px);">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding-bottom: 14px;">
+        <span style="font-family: var(--font-heading); font-weight: 600; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: color-mix(in srgb, var(--color-text) 58%, transparent);">03 — Selected work</span>
+        <span style="font-family: var(--font-heading); font-weight: 600; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: color-mix(in srgb, var(--color-text) 58%, transparent); font-variant-numeric: tabular-nums;">04 projects</span>
+      </div>
+
+      <article data-rev data-cursor-label="View project →" onMouseEnter="{{ workEnter }}" onMouseLeave="{{ workLeave }}" data-r="split endcap" style="border-top: 2px solid var(--color-divider); padding-top: clamp(18px, 2.6vh, 32px); display: grid; grid-template-columns: 0.82fr 1.18fr; gap: clamp(20px, 3vw, 56px); align-items: end; cursor: pointer;">
+        <div>
+          <div style="display: flex; align-items: baseline; gap: 14px;">
+            <span style="font-family: var(--font-heading); font-weight: 800; font-size: clamp(38px, 5vw, 74px); line-height: 0.85; letter-spacing: -0.04em; color: var(--color-accent); font-variant-numeric: tabular-nums;">01</span>
+            <span style="font-family: var(--font-heading); font-weight: 600; font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: color-mix(in srgb, var(--color-text) 55%, transparent);">Feature project</span>
+          </div>
+          <h3 data-title style="margin: 14px 0 0; font-family: var(--font-heading); font-weight: 800; text-transform: uppercase; font-size: clamp(34px, 4.6vw, 72px); line-height: 0.9; letter-spacing: -0.035em; transition: color 300ms ease;">Son Karar</h3>
+          <p style="margin: 14px 0 0; max-width: 40ch; font-size: 15px; line-height: 1.6; color: color-mix(in srgb, var(--color-text) 74%, transparent);">A psychological horror game where the tension is carried by decision pressure rather than jump scares — built solo in Unity.</p>
+          <div style="display: flex; flex-wrap: wrap; gap: 7px; margin-top: 18px;">
+            <span style="border: 1px solid var(--color-divider); padding: 6px 11px; font-family: var(--font-heading); font-weight: 600; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;">Psychological horror</span>
+            <span style="border: 1px solid var(--color-divider); padding: 6px 11px; font-family: var(--font-heading); font-weight: 600; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;">Unity</span>
+            <span style="border: 1px solid var(--color-divider); padding: 6px 11px; font-family: var(--font-heading); font-weight: 600; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;">C#</span>
+            <span style="border: 1px solid var(--color-divider); padding: 6px 11px; font-family: var(--font-heading); font-weight: 600; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;">Game design</span>
+          </div>
+          <div data-meta style="margin-top: 16px; opacity: 0; transform: translateY(8px); transition: opacity 380ms ease, transform 480ms cubic-bezier(0.16, 0.84, 0.24, 1);">
+            <div style="font-family: var(--font-heading); font-weight: 600; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: color-mix(in srgb, var(--color-text) 55%, transparent);">Role — design · systems · UI · audio pass</div>
+          </div>
+          <a href="#contact" style="display: inline-flex; align-items: center; gap: 10px; margin-top: 20px; font-family: var(--font-heading); font-weight: 800; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; border-bottom: 2px solid var(--color-accent); padding-bottom: 5px;">View project <span data-arrow aria-hidden="true" style="display: inline-block; transition: transform 320ms cubic-bezier(0.16, 0.84, 0.24, 1);">→</span></a>
+        </div>
+        <div data-r="bleed" style="overflow: hidden; height: clamp(280px, 48vh, 540px); position: relative; margin-right: calc(-1 * clamp(18px, 4vw, 64px));">
+          <div data-img class="grayscale" style="position: absolute; inset: 0; transition: transform 900ms cubic-bezier(0.16, 0.84, 0.24, 1), filter 700ms ease;">
+            <image-slot id="bd-work-01" shape="rect" fit="cover" placeholder="Drop Son Karar key art"></image-slot>
+          </div>
+        </div>
+      </article>
+
+      <div data-r="pair" style="display: grid; grid-template-columns: 1fr 1fr; gap: clamp(20px, 3vw, 48px); margin-top: clamp(48px, 8vh, 104px);">
+        <article data-rev data-cursor-label="View project →" onMouseEnter="{{ workEnter }}" onMouseLeave="{{ workLeave }}" style="border-top: 2px solid var(--color-divider); padding-top: 20px; cursor: pointer;">
+          <div style="overflow: hidden; height: clamp(220px, 32vh, 380px); position: relative;">
+            <div data-img class="grayscale" style="position: absolute; inset: 0; transition: transform 900ms cubic-bezier(0.16, 0.84, 0.24, 1), filter 700ms ease;">
+              <image-slot id="bd-work-02" shape="rect" fit="cover" placeholder="Drop project 02 visual"></image-slot>
+            </div>
+          </div>
+          <div style="display: flex; align-items: baseline; gap: 12px; margin-top: 18px;">
+            <span style="font-family: var(--font-heading); font-weight: 800; font-size: clamp(26px, 3vw, 44px); line-height: 0.85; letter-spacing: -0.03em; color: var(--color-accent); font-variant-numeric: tabular-nums;">02</span>
+            <h3 data-title style="margin: 0; font-family: var(--font-heading); font-weight: 800; text-transform: uppercase; font-size: clamp(22px, 2.4vw, 34px); line-height: 0.95; letter-spacing: -0.025em; transition: color 300ms ease;">[ Project title ]</h3>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 7px; margin-top: 14px;">
+            <span style="border: 1px solid var(--color-divider); padding: 6px 11px; font-family: var(--font-heading); font-weight: 600; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;">Category</span>
+            <span style="border: 1px solid var(--color-divider); padding: 6px 11px; font-family: var(--font-heading); font-weight: 600; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;">Unity</span>
+            <span style="border: 1px solid var(--color-divider); padding: 6px 11px; font-family: var(--font-heading); font-weight: 600; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;">C#</span>
+          </div>
+          <div data-meta style="margin-top: 14px; opacity: 0; transform: translateY(8px); transition: opacity 380ms ease, transform 480ms cubic-bezier(0.16, 0.84, 0.24, 1);">
+            <div style="font-family: var(--font-heading); font-weight: 600; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: color-mix(in srgb, var(--color-text) 55%, transparent);">Role — to be filled</div>
+          </div>
+        </article>
+
+        <article data-rev data-cursor-label="View project →" onMouseEnter="{{ workEnter }}" onMouseLeave="{{ workLeave }}" style="border-top: 2px solid var(--color-divider); padding-top: 20px; cursor: pointer;">
+          <div style="overflow: hidden; height: clamp(220px, 32vh, 380px); position: relative;">
+            <div data-img class="grayscale" style="position: absolute; inset: 0; transition: transform 900ms cubic-bezier(0.16, 0.84, 0.24, 1), filter 700ms ease;">
+              <image-slot id="bd-work-03" shape="rect" fit="cover" placeholder="Drop project 03 visual"></image-slot>
+            </div>
+          </div>
+          <div style="display: flex; align-items: baseline; gap: 12px; margin-top: 18px;">
+            <span style="font-family: var(--font-heading); font-weight: 800; font-size: clamp(26px, 3vw, 44px); line-height: 0.85; letter-spacing: -0.03em; color: var(--color-accent); font-variant-numeric: tabular-nums;">03</span>
+            <h3 data-title style="margin: 0; font-family: var(--font-heading); font-weight: 800; text-transform: uppercase; font-size: clamp(22px, 2.4vw, 34px); line-height: 0.95; letter-spacing: -0.025em; transition: color 300ms ease;">[ Project title ]</h3>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 7px; margin-top: 14px;">
+            <span style="border: 1px solid var(--color-divider); padding: 6px 11px; font-family: var(--font-heading); font-weight: 600; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;">Category</span>
+            <span style="border: 1px solid var(--color-divider); padding: 6px 11px; font-family: var(--font-heading); font-weight: 600; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;">AI</span>
+            <span style="border: 1px solid var(--color-divider); padding: 6px 11px; font-family: var(--font-heading); font-weight: 600; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;">Flutter</span>
+          </div>
+          <div data-meta style="margin-top: 14px; opacity: 0; transform: translateY(8px); transition: opacity 380ms ease, transform 480ms cubic-bezier(0.16, 0.84, 0.24, 1);">
+            <div style="font-family: var(--font-heading); font-weight: 600; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: color-mix(in srgb, var(--color-text) 55%, transparent);">Role — to be filled</div>
+          </div>
+        </article>
+      </div>
+
+      <article data-rev data-cursor-label="View project →" onMouseEnter="{{ workEnter }}" onMouseLeave="{{ workLeave }}" data-r="split" style="border-top: 2px solid var(--color-divider); padding-top: clamp(18px, 2.6vh, 30px); margin-top: clamp(48px, 8vh, 104px); display: grid; grid-template-columns: 1.18fr 0.82fr; gap: clamp(20px, 3vw, 56px); align-items: center; cursor: pointer;">
+        <div style="overflow: hidden; height: clamp(220px, 36vh, 420px); position: relative;">
+          <div data-img class="grayscale" style="position: absolute; inset: 0; transition: transform 900ms cubic-bezier(0.16, 0.84, 0.24, 1), filter 700ms ease;">
+            <image-slot id="bd-work-04" shape="rect" fit="cover" placeholder="Drop project 04 visual"></image-slot>
+          </div>
+        </div>
+        <div>
+          <div style="display: flex; align-items: baseline; gap: 12px;">
+            <span style="font-family: var(--font-heading); font-weight: 800; font-size: clamp(26px, 3vw, 44px); line-height: 0.85; letter-spacing: -0.03em; color: var(--color-accent); font-variant-numeric: tabular-nums;">04</span>
+            <span style="font-family: var(--font-heading); font-weight: 600; font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: color-mix(in srgb, var(--color-text) 55%, transparent);">Supporting work</span>
+          </div>
+          <h3 data-title style="margin: 12px 0 0; font-family: var(--font-heading); font-weight: 800; text-transform: uppercase; font-size: clamp(26px, 3.2vw, 46px); line-height: 0.92; letter-spacing: -0.03em; transition: color 300ms ease;">[ Project title ]</h3>
+          <p style="margin: 12px 0 0; max-width: 38ch; font-size: 15px; line-height: 1.6; color: color-mix(in srgb, var(--color-text) 74%, transparent);">One or two lines on what it is and what you made — send me the copy and it drops straight into this slot.</p>
+          <div style="display: flex; flex-wrap: wrap; gap: 7px; margin-top: 16px;">
+            <span style="border: 1px solid var(--color-divider); padding: 6px 11px; font-family: var(--font-heading); font-weight: 600; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;">Category</span>
+            <span style="border: 1px solid var(--color-divider); padding: 6px 11px; font-family: var(--font-heading); font-weight: 600; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;">Tech</span>
+          </div>
+          <div data-meta style="margin-top: 14px; opacity: 0; transform: translateY(8px); transition: opacity 380ms ease, transform 480ms cubic-bezier(0.16, 0.84, 0.24, 1);">
+            <div style="font-family: var(--font-heading); font-weight: 600; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: color-mix(in srgb, var(--color-text) 55%, transparent);">Role — to be filled</div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section id="journey" data-scene="4" style="scroll-margin-top: 88px; padding-top: clamp(64px, 12vh, 140px); padding-bottom: clamp(56px, 10vh, 120px);">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding-bottom: 14px;">
+        <span style="font-family: var(--font-heading); font-weight: 600; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: color-mix(in srgb, var(--color-text) 58%, transparent);">04 — Journey</span>
+        <span style="font-family: var(--font-heading); font-weight: 600; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: color-mix(in srgb, var(--color-text) 58%, transparent);">Hover to expand</span>
+      </div>
+
+      <div data-rev onMouseEnter="{{ jEnter }}" onMouseLeave="{{ jLeave }}" onClick="{{ jToggle }}" data-r="jrow" style="border-top: 2px solid var(--color-divider); padding: clamp(16px, 2.4vh, 26px) 0; display: grid; grid-template-columns: clamp(110px, 12vw, 190px) 1fr 130px; gap: clamp(16px, 3vw, 40px); align-items: start;">
+        <div>
+          <div style="font-family: var(--font-heading); font-weight: 800; font-size: clamp(30px, 3.6vw, 58px); line-height: 0.86; letter-spacing: -0.035em; font-variant-numeric: tabular-nums;">2026</div>
+          <div data-jline style="height: 2px; width: 0; margin-top: 12px; background: var(--color-accent); transition: width 540ms cubic-bezier(0.16,0.84,0.24,1);"></div>
+        </div>
+        <div>
+          <h3 style="margin: 0; font-family: var(--font-heading); font-weight: 800; font-size: clamp(17px, 1.8vw, 24px); letter-spacing: -0.01em; text-transform: uppercase;">Game development</h3>
+          <div data-detail style="max-height: 0; overflow: hidden; opacity: 0; transition: max-height 620ms cubic-bezier(0.16, 0.84, 0.24, 1), opacity 380ms ease;">
+            <p style="margin: 12px 0 0; max-width: 58ch; font-size: 15px; line-height: 1.6; color: color-mix(in srgb, var(--color-text) 74%, transparent);">Original game projects in Unity — systems, shaders and interface work, from prototype through playable build.</p>
+            <div style="display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px;">
+              <span style="border: 1px solid var(--color-divider); padding: 5px 10px; font-family: var(--font-heading); font-weight: 600; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;">Unity</span>
+              <span style="border: 1px solid var(--color-divider); padding: 5px 10px; font-family: var(--font-heading); font-weight: 600; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;">C#</span>
+              <span style="border: 1px solid var(--color-divider); padding: 5px 10px; font-family: var(--font-heading); font-weight: 600; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;">Shaders</span>
+            </div>
+          </div>
+        </div>
+        <div data-jstate style="text-align: right; font-family: var(--font-heading); font-weight: 800; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--color-accent);">Ongoing</div>
+      </div>
+
+      <div data-rev onMouseEnter="{{ jEnter }}" onMouseLeave="{{ jLeave }}" onClick="{{ jToggle }}" data-r="jrow" style="border-top: 1px solid var(--color-divider); padding: clamp(16px, 2.4vh, 26px) 0; display: grid; grid-template-columns: clamp(110px, 12vw, 190px) 1fr 130px; gap: clamp(16px, 3vw, 40px); align-items: start;">
+        <div>
+          <div style="font-family: var(--font-heading); font-weight: 800; font-size: clamp(30px, 3.6vw, 58px); line-height: 0.86; letter-spacing: -0.035em; font-variant-numeric: tabular-nums;">2025</div>
+          <div data-jline style="height: 2px; width: 0; margin-top: 12px; background: var(--color-accent); transition: width 540ms cubic-bezier(0.16,0.84,0.24,1);"></div>
+        </div>
+        <div>
+          <h3 style="margin: 0; font-family: var(--font-heading); font-weight: 800; font-size: clamp(17px, 1.8vw, 24px); letter-spacing: -0.01em; text-transform: uppercase;">Google AI &amp; Technology Academy</h3>
+          <div data-detail style="max-height: 0; overflow: hidden; opacity: 0; transition: max-height 620ms cubic-bezier(0.16, 0.84, 0.24, 1), opacity 380ms ease;">
+            <p style="margin: 12px 0 0; max-width: 58ch; font-size: 15px; line-height: 1.6; color: color-mix(in srgb, var(--color-text) 74%, transparent);">Applied AI and software track — model integration, APIs and building on top of them.</p>
+            <div style="display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px;">
+              <span style="border: 1px solid var(--color-divider); padding: 5px 10px; font-family: var(--font-heading); font-weight: 600; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;">AI integration</span>
+              <span style="border: 1px solid var(--color-divider); padding: 5px 10px; font-family: var(--font-heading); font-weight: 600; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;">APIs</span>
+            </div>
+          </div>
+        </div>
+        <div data-jstate style="text-align: right; font-family: var(--font-heading); font-weight: 600; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: color-mix(in srgb, var(--color-text) 55%, transparent);">Program</div>
+      </div>
+
+      <div data-rev onMouseEnter="{{ jEnter }}" onMouseLeave="{{ jLeave }}" onClick="{{ jToggle }}" data-r="jrow" style="border-top: 1px solid var(--color-divider); padding: clamp(16px, 2.4vh, 26px) 0; display: grid; grid-template-columns: clamp(110px, 12vw, 190px) 1fr 130px; gap: clamp(16px, 3vw, 40px); align-items: start;">
+        <div>
+          <div style="font-family: var(--font-heading); font-weight: 800; font-size: clamp(30px, 3.6vw, 58px); line-height: 0.86; letter-spacing: -0.035em; font-variant-numeric: tabular-nums;">2025</div>
+          <div data-jline style="height: 2px; width: 0; margin-top: 12px; background: var(--color-accent); transition: width 540ms cubic-bezier(0.16,0.84,0.24,1);"></div>
+        </div>
+        <div>
+          <h3 style="margin: 0; font-family: var(--font-heading); font-weight: 800; font-size: clamp(17px, 1.8vw, 24px); letter-spacing: -0.01em; text-transform: uppercase;">Game jams &amp; prototypes</h3>
+          <div data-detail style="max-height: 0; overflow: hidden; opacity: 0; transition: max-height 620ms cubic-bezier(0.16, 0.84, 0.24, 1), opacity 380ms ease;">
+            <p style="margin: 12px 0 0; max-width: 58ch; font-size: 15px; line-height: 1.6; color: color-mix(in srgb, var(--color-text) 74%, transparent);">Short-cycle builds under jam constraints — scope discipline, fast iteration, one idea per build.</p>
+            <div style="display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px;">
+              <span style="border: 1px solid var(--color-divider); padding: 5px 10px; font-family: var(--font-heading); font-weight: 600; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;">Unity</span>
+              <span style="border: 1px solid var(--color-divider); padding: 5px 10px; font-family: var(--font-heading); font-weight: 600; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;">Game design</span>
+            </div>
+          </div>
+        </div>
+        <div data-jstate style="text-align: right; font-family: var(--font-heading); font-weight: 600; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: color-mix(in srgb, var(--color-text) 55%, transparent);">Practice</div>
+      </div>
+
+      <div data-rev onMouseEnter="{{ jEnter }}" onMouseLeave="{{ jLeave }}" onClick="{{ jToggle }}" data-r="jrow" style="border-top: 1px solid var(--color-divider); border-bottom: 2px solid var(--color-divider); padding: clamp(16px, 2.4vh, 26px) 0; display: grid; grid-template-columns: clamp(110px, 12vw, 190px) 1fr 130px; gap: clamp(16px, 3vw, 40px); align-items: start;">
+        <div>
+          <div style="font-family: var(--font-heading); font-weight: 800; font-size: clamp(30px, 3.6vw, 58px); line-height: 0.86; letter-spacing: -0.035em; font-variant-numeric: tabular-nums;">2018</div>
+          <div data-jline style="height: 2px; width: 0; margin-top: 12px; background: var(--color-accent); transition: width 540ms cubic-bezier(0.16,0.84,0.24,1);"></div>
+        </div>
+        <div>
+          <h3 style="margin: 0; font-family: var(--font-heading); font-weight: 800; font-size: clamp(17px, 1.8vw, 24px); letter-spacing: -0.01em; text-transform: uppercase;">Web development</h3>
+          <div data-detail style="max-height: 0; overflow: hidden; opacity: 0; transition: max-height 620ms cubic-bezier(0.16, 0.84, 0.24, 1), opacity 380ms ease;">
+            <p style="margin: 12px 0 0; max-width: 58ch; font-size: 15px; line-height: 1.6; color: color-mix(in srgb, var(--color-text) 74%, transparent);">Where it started — self-taught front-end work, and the habit of shipping things people can open.</p>
+            <div style="display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px;">
+              <span style="border: 1px solid var(--color-divider); padding: 5px 10px; font-family: var(--font-heading); font-weight: 600; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;">HTML</span>
+              <span style="border: 1px solid var(--color-divider); padding: 5px 10px; font-family: var(--font-heading); font-weight: 600; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;">CSS</span>
+              <span style="border: 1px solid var(--color-divider); padding: 5px 10px; font-family: var(--font-heading); font-weight: 600; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;">JavaScript</span>
+            </div>
+          </div>
+        </div>
+        <div data-jstate style="text-align: right; font-family: var(--font-heading); font-weight: 600; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: color-mix(in srgb, var(--color-text) 55%, transparent);">Origin</div>
+      </div>
+    </section>
+  </main>
+
+  <section id="contact" data-scene="5" style="scroll-margin-top: 88px; background: var(--color-accent); color: var(--color-bg); transition: background-color 420ms ease, color 420ms ease;">
+    <div style="max-width: 1560px; margin: 0 auto; padding: clamp(48px, 10vh, 112px) clamp(18px, 4vw, 64px) clamp(24px, 4vh, 40px);">
+      <div style="font-family: var(--font-heading); font-weight: 800; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; opacity: 0.85;">05 — End of scene</div>
+      <h2 style="margin: clamp(20px, 3vh, 36px) 0 0; font-family: var(--font-heading); font-weight: 800; text-transform: uppercase; line-height: 0.84; letter-spacing: -0.045em; font-size: clamp(46px, 10.5vw, 172px);">
+        <span style="display: block;">Have an idea?</span>
+        <span style="display: block; color: transparent; -webkit-text-stroke: 2px var(--color-bg);">Let's build it.</span>
+      </h2>
+      <div data-r="split" style="display: grid; grid-template-columns: 1fr 1fr; gap: clamp(20px, 3vw, 48px); align-items: end; margin-top: clamp(28px, 5vh, 56px);">
+        <p style="margin: 0; max-width: 42ch; font-size: 17px; line-height: 1.55; opacity: 0.9;">Open to game projects, interactive work and collaborations — as well as internships in game and software development.</p>
+        <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+          <a href="#contact" style="display: inline-flex; align-items: center; gap: 12px; border: 2px solid var(--color-bg); color: var(--color-bg); padding: 16px 24px; font-family: var(--font-heading); font-weight: 800; font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; transition: background-color 240ms ease, color 240ms ease;" style-hover="background: var(--color-bg); color: var(--color-accent);">Get in touch <span aria-hidden="true">→</span></a>
+        </div>
+      </div>
+      <div style="margin-top: clamp(36px, 7vh, 72px); border-top: 2px solid color-mix(in srgb, var(--color-bg) 55%, transparent); padding-top: 20px; display: flex; flex-wrap: wrap; gap: 18px 28px; align-items: baseline;">
+        <a href="#contact" style="color: var(--color-bg); font-family: var(--font-heading); font-weight: 800; font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; border-bottom: 2px solid transparent; padding-bottom: 3px; transition: border-color 220ms ease;" style-hover="border-bottom-color: var(--color-bg);">Email ↗</a>
+        <a href="#contact" style="color: var(--color-bg); font-family: var(--font-heading); font-weight: 800; font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; border-bottom: 2px solid transparent; padding-bottom: 3px; transition: border-color 220ms ease;" style-hover="border-bottom-color: var(--color-bg);">GitHub ↗</a>
+        <a href="#contact" style="color: var(--color-bg); font-family: var(--font-heading); font-weight: 800; font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; border-bottom: 2px solid transparent; padding-bottom: 3px; transition: border-color 220ms ease;" style-hover="border-bottom-color: var(--color-bg);">LinkedIn ↗</a>
+        <a href="#contact" style="color: var(--color-bg); font-family: var(--font-heading); font-weight: 800; font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; border-bottom: 2px solid transparent; padding-bottom: 3px; transition: border-color 220ms ease;" style-hover="border-bottom-color: var(--color-bg);">itch.io ↗</a>
+        <span style="margin-left: auto; font-family: var(--font-heading); font-weight: 600; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; opacity: 0.8;">© 2026 Buğrahan Deveci · bugrahnd.com.tr</span>
+      </div>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'light' | 'dark'&quot;,&quot;section&quot;:&quot;Theme&quot;},&quot;accent&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;options&quot;:[&quot;#ec3013&quot;,&quot;#dd2b0f&quot;,&quot;#ff563c&quot;,&quot;#e15b47&quot;],&quot;default&quot;:&quot;#ec3013&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Theme&quot;},&quot;heroMotion&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Motion&quot;},&quot;wireDensity&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:12,&quot;max&quot;:34,&quot;step&quot;:2,&quot;default&quot;:26,&quot;unit&quot;:&quot;cols&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Motion&quot;},&quot;cursorLabels&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Motion&quot;}}">
+class Component extends DCLogic {
+  state = { menu: false };
+
+  componentDidMount() {
+    let stored = null;
+    try { stored = localStorage.getItem('bd-theme'); } catch (e) { stored = null; }
+    this.applyTheme(stored === 'dark' || stored === 'light' ? stored : (this.props.theme || 'light'));
+    this.applyAccent();
+    this.setupReveals();
+    this.setupCursor();
+    this.startHero();
+    this.setupRail();
+    this.setupIntro();
+    this._onResize = () => this.resizeHero();
+    window.addEventListener('resize', this._onResize);
+  }
+
+  componentDidUpdate(prev) {
+    if (prev.accent !== this.props.accent) this.applyAccent();
+    if (prev.theme !== this.props.theme && this.props.theme) this.applyTheme(this.props.theme);
+    if (prev.wireDensity !== this.props.wireDensity) this.drawHero(this._t || 0);
+    if (prev.heroMotion !== this.props.heroMotion) { this.stopHero(); this.startHero(); }
+    if (prev.cursorLabels !== this.props.cursorLabels && this.props.cursorLabels === false) {
+      const cur = document.querySelector('[data-cursor]');
+      if (cur) cur.style.opacity = '0';
+    }
+  }
+
+  componentWillUnmount() {
+    this.stopHero();
+    window.removeEventListener('resize', this._onResize);
+    if (this._onMove) document.removeEventListener('mousemove', this._onMove);
+    if (this._onScroll) window.removeEventListener('scroll', this._onScroll);
+    if (this._io) this._io.disconnect();
+  }
+
+  /* ── section rail + scene counter ──────────────────────── */
+  setupRail() {
+    const items = Array.from(document.querySelectorAll('[data-rail-item]'));
+    const scenes = Array.from(document.querySelectorAll('[data-scene]'));
+    const out = document.querySelector('[data-scene-readout]');
+    if (!scenes.length) return;
+    let active = -1;
+    const sync = () => {
+      this._rafRail = null;
+      const line = innerHeight * 0.38;
+      let idx = 0;
+      scenes.forEach((s, i) => { if (s.getBoundingClientRect().top <= line) idx = i; });
+      if (idx === active) return;
+      active = idx;
+      items.forEach((el, i) => {
+        const on = i === idx;
+        const rule = el.querySelector('[data-rail-rule]');
+        const num = el.querySelector('[data-rail-num]');
+        if (rule) {
+          rule.style.width = on ? '26px' : '12px';
+          rule.style.background = on ? 'var(--color-accent)' : 'var(--color-text)';
+          rule.style.opacity = on ? '1' : '0.32';
+        }
+        if (num) {
+          num.style.opacity = on ? '1' : '0.32';
+          num.style.color = on ? 'var(--color-accent)' : '';
+        }
+        el.setAttribute('aria-current', on ? 'true' : 'false');
+      });
+      if (out) out.textContent = 'Scene 0' + (idx + 1) + '/0' + scenes.length;
+    };
+    this._onScroll = () => { if (!this._rafRail) this._rafRail = requestAnimationFrame(sync); };
+    window.addEventListener('scroll', this._onScroll, { passive: true });
+    sync();
+  }
+
+  /* ── one-time intro: name wipe + accent sweep ──────────── */
+  setupIntro() {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const lines = Array.from(document.querySelectorAll('[data-name-line]'));
+    lines.forEach((el, i) => {
+      el.style.clipPath = 'inset(0 0 110% 0)';
+      el.style.transform = 'translateY(16px)';
+      el.style.transition = 'clip-path 820ms cubic-bezier(0.16,0.84,0.24,1) ' + (i * 110 + 90) + 'ms, transform 820ms cubic-bezier(0.16,0.84,0.24,1) ' + (i * 110 + 90) + 'ms';
+    });
+    const sweep = document.querySelector('[data-sweep]');
+    const reveal = () => {
+      if (this._intro) return;
+      this._intro = true;
+      lines.forEach((el, i) => {
+        el.style.clipPath = 'inset(-30% -5% -20% -5%)';
+        el.style.transform = 'none';
+        setTimeout(() => { el.style.clipPath = 'none'; el.style.transition = ''; }, 1000 + i * 110);
+      });
+      if (!sweep) return;
+      sweep.style.transition = 'transform 320ms cubic-bezier(0.4,0,0.2,1)';
+      sweep.style.transform = 'scaleX(1)';
+      setTimeout(() => {
+        sweep.style.transformOrigin = 'right center';
+        sweep.style.transition = 'transform 380ms cubic-bezier(0.4,0,0.2,1)';
+        sweep.style.transform = 'scaleX(0)';
+      }, 460);
+    };
+    requestAnimationFrame(reveal);
+    setTimeout(reveal, 90);
+    // Safety: never leave the name clipped if a frame or timer is dropped.
+    setTimeout(() => lines.forEach((el) => { el.style.clipPath = 'none'; el.style.transform = 'none'; el.style.transition = ''; }), 1800);
+  }
+
+  /* ── theme ─────────────────────────────────────────────── */
+  applyTheme(t) {
+    this._theme = t;
+    document.documentElement.setAttribute('data-bd-theme', t);
+    try { localStorage.setItem('bd-theme', t); } catch (e) { /* private mode */ }
+    document.querySelectorAll('[data-theme-opt]').forEach((b) => {
+      const on = b.getAttribute('data-theme-opt') === t;
+      b.style.background = on ? 'var(--color-accent)' : 'transparent';
+      b.style.color = on ? 'var(--color-bg)' : 'var(--color-text)';
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+    requestAnimationFrame(() => { this.readColors(); this.drawHero(this._t || 0); });
+  }
+
+  applyAccent() {
+    const a = this.props.accent;
+    if (a) document.documentElement.style.setProperty('--color-accent', a);
+    else document.documentElement.style.removeProperty('--color-accent');
+    requestAnimationFrame(() => { this.readColors(); this.drawHero(this._t || 0); });
+  }
+
+  readColors() {
+    const cs = getComputedStyle(document.documentElement);
+    const ink = (cs.getPropertyValue('--color-text') || '').trim();
+    const acc = (cs.getPropertyValue('--color-accent') || '').trim();
+    this._ink = ink || '#201e1d';
+    this._acc = acc || '#ec3013';
+  }
+
+  /* ── scroll reveals (applied after mount so nothing is hidden while streaming) ── */
+  setupReveals() {
+    if (typeof IntersectionObserver === 'undefined') return;
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const els = Array.from(document.querySelectorAll('[data-rev]'));
+    const below = els.filter((el) => el.getBoundingClientRect().top > innerHeight * 0.9);
+    below.forEach((el) => {
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(26px)';
+      el.style.transition = 'opacity 760ms cubic-bezier(0.16,0.84,0.24,1), transform 900ms cubic-bezier(0.16,0.84,0.24,1)';
+    });
+    const show = (el) => { el.style.opacity = '1'; el.style.transform = 'none'; };
+    this._io = new IntersectionObserver((entries) => {
+      entries.forEach((en) => { if (en.isIntersecting) { show(en.target); this._io.unobserve(en.target); } });
+    }, { rootMargin: '0px 0px -10% 0px' });
+    below.forEach((el) => this._io.observe(el));
+    setTimeout(() => below.forEach(show), 6000);
+  }
+
+  /* ── contextual cursor label ───────────────────────────── */
+  setupCursor() {
+    const cur = document.querySelector('[data-cursor]');
+    if (!cur || matchMedia('(hover: none)').matches) return;
+    this._onMove = (e) => {
+      cur.style.transform = 'translate3d(' + (e.clientX + 18) + 'px,' + (e.clientY + 18) + 'px,0)';
+    };
+    document.addEventListener('mousemove', this._onMove, { passive: true });
+    document.querySelectorAll('[data-cursor-label]').forEach((el) => {
+      el.addEventListener('mouseenter', () => {
+        if (this.props.cursorLabels === false) return;
+        cur.textContent = el.getAttribute('data-cursor-label');
+        cur.style.opacity = '1';
+      });
+      el.addEventListener('mouseleave', () => { cur.style.opacity = '0'; });
+    });
+  }
+
+  /* ── hero: wireframe mesh ──────────────────────────────── */
+  startHero() {
+    const cv = document.querySelector('[data-hero-canvas]');
+    if (!cv || !cv.getContext) return;
+    this._cv = cv;
+    this._ctx = cv.getContext('2d');
+    const nc = document.querySelector('[data-name-canvas]');
+    if (nc && nc.getContext) {
+      this._nc = nc;
+      this._nctx = nc.getContext('2d');
+      this._nameText = document.querySelector('[data-name-text]');
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => this.resizeHero());
+    }
+    this._mx = 0; this._my = 0; this._t = 0;
+    this.readColors();
+    this.resizeHero();
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce || this.props.heroMotion === false) { this.drawHero(0.6); return; }
+    this._heroMove = (e) => {
+      const r = cv.getBoundingClientRect();
+      const nx = ((e.clientX - r.left) / r.width - 0.5) * 2;
+      const ny = ((e.clientY - r.top) / r.height - 0.5) * 2;
+      this._mx = Math.max(-1.6, Math.min(1.6, nx));
+      this._my = Math.max(-1.6, Math.min(1.6, ny));
+    };
+    window.addEventListener('mousemove', this._heroMove, { passive: true });
+    const loop = (ms) => {
+      this._t = ms / 1000;
+      this.drawHero(this._t);
+      this._raf = requestAnimationFrame(loop);
+    };
+    this._raf = requestAnimationFrame(loop);
+  }
+
+  stopHero() {
+    if (this._raf) cancelAnimationFrame(this._raf);
+    this._raf = null;
+    if (this._heroMove) { window.removeEventListener('mousemove', this._heroMove); this._heroMove = null; }
+  }
+
+  resizeHero() {
+    const cv = this._cv;
+    if (!cv) return;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const w = cv.clientWidth || 600;
+    const h = cv.clientHeight || 400;
+    cv.width = Math.round(w * dpr);
+    cv.height = Math.round(h * dpr);
+    this._w = w; this._h = h;
+    this._ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const nc = this._nc;
+    if (nc) {
+      const nw = nc.clientWidth || 0, nh = nc.clientHeight || 0;
+      nc.width = Math.round(nw * dpr);
+      nc.height = Math.round(nh * dpr);
+      this._nw = nw; this._nh = nh;
+      this._nctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      this.prepName();
+    }
+    this.drawHero(this._t || 0);
+  }
+
+  drawHero(t) {
+    if (this._ctx) this.drawMesh(this._ctx, this._w, this._h, t, {});
+    if (this._nctx && this._nw > 8) {
+      this.drawMesh(this._nctx, this._nw, this._nh, t + 3.5, { cols: 26, sxk: 0.52, tiltk: 0.17, myk: 0.25, zkk: 0.15, cyk: 0.5, alphak: 2.4, lwk: 1.1, noRidge: true });
+      this.maskToName();
+    }
+    this.syncReadout(t);
+  }
+
+  drawMesh(ctx, w, h, t, o) {
+    if (!ctx || !w || !h) return;
+    const COLS = Math.max(10, Math.round(o.cols || (this.props.wireDensity || 26)));
+    const ROWS = Math.max(6, Math.round(COLS * 0.62));
+    ctx.clearRect(0, 0, w, h);
+
+    const rz = 0.62 + this._mx * 0.42 + Math.sin(t * 0.13) * 0.05;
+    const tilt = (o.tiltk || 0.40) + this._my * 0.10 * (o.myk == null ? 1 : o.myk);
+    const cx = w / 2;
+    const cy = h * (o.cyk || 0.56);
+    const sx = o.sxk ? w * o.sxk : Math.min(w * 0.40, h * 0.92);
+    const zk = o.zkk ? h * o.zkk : Math.min(h * 0.16, 90);
+    const cos = Math.cos(rz), sin = Math.sin(rz);
+
+    const pt = (gx, gy) => {
+      const z = Math.sin(gx * 2.1 + t * 0.42) * Math.cos(gy * 1.7 - t * 0.28) + 0.45 * Math.sin((gx + gy) * 2.9 + t * 0.7);
+      const X = gx * cos - gy * sin;
+      const Y = gx * sin + gy * cos;
+      return [cx + X * sx, cy + Y * sx * tilt - z * zk * 0.5, z];
+    };
+
+    const ridge = Math.round((ROWS - 1) * (0.5 + this._my * 0.22));
+    ctx.lineCap = 'round';
+
+    for (let r = 0; r < ROWS; r++) {
+      const gy = (r / (ROWS - 1)) * 2 - 1;
+      const isRidge = !o.noRidge && r === Math.max(0, Math.min(ROWS - 1, ridge));
+      ctx.beginPath();
+      for (let c = 0; c < COLS; c++) {
+        const p = pt((c / (COLS - 1)) * 2 - 1, gy);
+        if (c === 0) ctx.moveTo(p[0], p[1]); else ctx.lineTo(p[0], p[1]);
+      }
+      ctx.strokeStyle = isRidge ? this._acc : this._ink;
+      ctx.globalAlpha = Math.min(1, (isRidge ? 0.95 : 0.10 + 0.16 * (r / ROWS)) * (o.alphak || 1));
+      ctx.lineWidth = (isRidge ? 2 : 1) * (o.lwk || 1);
+      ctx.stroke();
+    }
+
+    for (let c = 0; c < COLS; c++) {
+      const gx = (c / (COLS - 1)) * 2 - 1;
+      ctx.beginPath();
+      for (let r = 0; r < ROWS; r++) {
+        const p = pt(gx, (r / (ROWS - 1)) * 2 - 1);
+        if (r === 0) ctx.moveTo(p[0], p[1]); else ctx.lineTo(p[0], p[1]);
+      }
+      ctx.strokeStyle = this._ink;
+      ctx.globalAlpha = Math.min(1, (0.09 + 0.10 * (c / COLS)) * (o.alphak || 1));
+      ctx.lineWidth = 1 * (o.lwk || 1);
+      ctx.stroke();
+    }
+
+    ctx.globalAlpha = 1;
+    if (!o.noRidge) {
+      ctx.fillStyle = this._acc;
+      for (let c = 0; c < COLS; c += 4) {
+        const p = pt((c / (COLS - 1)) * 2 - 1, (Math.max(0, Math.min(ROWS - 1, ridge)) / (ROWS - 1)) * 2 - 1);
+        ctx.fillRect(p[0] - 2, p[1] - 2, 4, 4);
+      }
+    }
+
+  }
+
+  syncReadout(t) {
+    const out = document.querySelector('[data-hero-readout]');
+    if (!out) return;
+    const rz = 0.62 + this._mx * 0.42 + Math.sin(t * 0.13) * 0.05;
+    const deg = ((rz * 180 / Math.PI) % 360 + 360) % 360;
+    out.textContent = 'rot ' + (deg < 100 ? '0' : '') + (deg < 10 ? '0' : '') + deg.toFixed(1) + '°';
+  }
+
+  /* Measure the live DOM word once per layout, so the glyph mask matches it. */
+  prepName() {
+    const ctx = this._nctx;
+    const span = document.querySelector('[data-name-text]');
+    this._nameText = span;
+    this._nameFont = null;
+    if (!ctx || !span || !this._nh) return;
+    const cs = getComputedStyle(span);
+    const fs = parseFloat(cs.fontSize) || 100;
+    const fam = cs.fontFamily || 'sans-serif';
+    ctx.font = (cs.fontWeight || '800') + ' ' + fs + 'px ' + fam;
+    if ('letterSpacing' in ctx) {
+      ctx.letterSpacing = (cs.letterSpacing && cs.letterSpacing !== 'normal') ? cs.letterSpacing : '0px';
+      this._nameLS = ctx.letterSpacing;
+    }
+    const txt = (span.textContent || '').toLocaleUpperCase('tr-TR');
+    const m = ctx.measureText(txt);
+    const fbA = m.fontBoundingBoxAscent || fs * 0.88;
+    const fbD = m.fontBoundingBoxDescent || fs * 0.21;
+    // CSS puts the baseline at half-leading + font ascent inside the line box.
+    this._nameBase = (this._nh - (fbA + fbD)) / 2 + fbA;
+    this._nameTxt = txt;
+    this._nameFont = ctx.font;
+  }
+
+  maskToName() {
+    const ctx = this._nctx;
+    if (!ctx || !this._nameFont || !this._nameTxt) return;
+    ctx.globalCompositeOperation = 'destination-in';
+    ctx.globalAlpha = 1;
+    ctx.font = this._nameFont;
+    if (this._nameLS) ctx.letterSpacing = this._nameLS;
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = '#000';
+    ctx.fillText(this._nameTxt, 0, this._nameBase);
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  /* ── interaction handlers ──────────────────────────────── */
+  renderVals() {
+    return {
+      menuOpen: !!this.state.menu,
+      openMenu: () => this.setState({ menu: true }),
+      closeMenu: () => this.setState({ menu: false }),
+      setLight: () => this.applyTheme('light'),
+      setDark: () => this.applyTheme('dark'),
+      workEnter: (e) => {
+        const root = e.currentTarget;
+        const img = root.querySelector('[data-img]');
+        const meta = root.querySelector('[data-meta]');
+        const title = root.querySelector('[data-title]');
+        const arrow = root.querySelector('[data-arrow]');
+        if (img) { img.style.transform = 'scale(1.045)'; img.style.filter = 'grayscale(0) contrast(1.02)'; }
+        if (meta) { meta.style.opacity = '1'; meta.style.transform = 'none'; }
+        if (title) title.style.color = 'var(--color-accent)';
+        if (arrow) arrow.style.transform = 'translateX(6px)';
+      },
+      workLeave: (e) => {
+        const root = e.currentTarget;
+        const img = root.querySelector('[data-img]');
+        const meta = root.querySelector('[data-meta]');
+        const title = root.querySelector('[data-title]');
+        const arrow = root.querySelector('[data-arrow]');
+        if (img) { img.style.transform = 'none'; img.style.filter = ''; }
+        if (meta) { meta.style.opacity = '0'; meta.style.transform = 'translateY(8px)'; }
+        if (title) title.style.color = '';
+        if (arrow) arrow.style.transform = 'none';
+      },
+      jEnter: (e) => this.setRow(e.currentTarget, true),
+      jLeave: (e) => this.setRow(e.currentTarget, false),
+      jToggle: (e) => {
+        const d = e.currentTarget.querySelector('[data-detail]');
+        this.setRow(e.currentTarget, !d || d.style.maxHeight === '0px' || !d.style.maxHeight);
+      }
+    };
+  }
+
+  setRow(root, open) {
+    const d = root.querySelector('[data-detail]');
+    if (d) {
+      d.style.maxHeight = open ? d.scrollHeight + 40 + 'px' : '0px';
+      d.style.opacity = open ? '1' : '0';
+    }
+    const line = root.querySelector('[data-jline]');
+    if (line) line.style.width = open ? '100%' : '0';
+    const y = root.querySelector('[data-jstate]');
+    if (y) y.style.opacity = open ? '1' : '';
+    document.querySelectorAll('[data-r~="jrow"]').forEach((r) => {
+      if (!r.style.transition) r.style.transition = 'opacity 320ms ease';
+      r.style.opacity = open ? (r === root ? '1' : '0.34') : '1';
+    });
+  }
+}
+</script>
+</body>
+</html>
