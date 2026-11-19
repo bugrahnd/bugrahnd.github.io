@@ -41,7 +41,7 @@ const GROUPS = [
       { key: 'engage.chatCooldownSec', kind: 'num', label: 'Mesaj bekleme süresi', unit: 'saniye', hint: 'Aynı izleyicinin mesajı en fazla bu sıklıkla asker verir.' },
       { key: 'engage.chatTroopCap', kind: 'num', label: 'Mesajdan en çok asker', unit: 'asker / tur', hint: 'Bir izleyicinin bir turda yorumlardan alabileceği en çok asker (son 30 sn ve isyan katları dahil). Dolunca izleyiciye bir kez "bedava hakkın doldu" notu çıkar. 0 = sınırsız.' },
       { key: 'troops.followBonus', kind: 'num', label: 'Takip bonusu', unit: 'asker', hint: 'Takip eden izleyicinin şehrine giden asker.' },
-      { key: 'troops.shareBonus', kind: 'num', label: 'Paylaşım bonusu', unit: 'asker', hint: 'Yayını paylaşan izleyicinin şehrine giden asker.' },
+      { key: 'troops.shareBonus', kind: 'num', label: 'Paylaşım bonusu', unit: 'asker', hint: 'Yayını paylaşan izleyicinin şehrine giden asker. 0 = paylaşım asker vermez ve ekranda hiçbir şey göstermez.' },
       { key: 'engage.likesPerTroop', kind: 'num', label: 'Kaç beğeni = 1 asker', unit: 'beğeni', hint: 'Takımdaki izleyicinin her bu kadar beğenisi şehrine 1 asker verir; haritada "❤ +N" olarak çıkar (0 = beğeni asker vermez, yalnızca moral). Ekrandaki "1 GÜL = N BEĞENİ" satırı bundan hesaplanır.' },
       { key: 'engage.likeTroopCap', kind: 'num', label: 'Beğeniden en çok asker', unit: 'asker / tur', hint: 'Bir izleyicinin bir turda beğenilerden alabileceği en çok asker. Sınırdan sonra beğeniler yalnızca HÜCUM barını doldurur (o sınırsızdır). 0 = sınırsız.' },
       { key: 'engage.likeMilestone', kind: 'num', label: 'Beğeni isim aralığı', unit: 'beğeni', hint: 'İzleyici turda her bu kadar beğeniye ulaşınca adı şehrinde çıkar (ör. "Ahmet · 50 beğeni").' },

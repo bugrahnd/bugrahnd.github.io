@@ -531,6 +531,8 @@ export class Game {
   }
 
   onBonus(u, kind) {
+    // Share bonus 0 (default): a share does nothing at all (no troops, floater, credit or held count).
+    if (kind === 'share' && !(this.cfg.troops.shareBonus > 0)) return;
     const player = this.touchPlayer(u);
     if (!player) {
       const pend = this.pending.get(u.name);
@@ -542,6 +544,7 @@ export class Game {
   }
 
   applyBonus(player, kind) {
+    if (kind === 'share' && !(this.cfg.troops.shareBonus > 0)) return; // held shares after the bonus was switched off
     const team = this.team(player.team);
     const n = (kind === 'follow' ? this.cfg.troops.followBonus : this.cfg.troops.shareBonus) * this.finaleMult();
     const plate = this.addTroops(team, n);
