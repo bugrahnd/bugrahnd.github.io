@@ -86,8 +86,14 @@ const MAP_TOP_INSET = 206;
 //   cta     sb-142 h 58   "PLAKANI YAZ: 34"
 //   gifts   sb-80  h 80   four-gift strip (x <= zones.rightColLeft)
 export const DEFAULT_ZONES = { top: 230, chatTop: 1250, chatRight: 720, bottomBar: 130, rightColLeft: 900, rightColTop: 1000 };
-const STREAM_BAND_TOP = 368; // from safeTop
-const STREAM_BAND_BOTTOM = 146; // above safeBottom
+// Row heights incl. gaps (STREAM_STRIP_H + BOARDS_H + LEAD_H = 368, the band top from
+// safeTop; GIFTS_H + CTA_H + 4 = 146, the band bottom above safeBottom). Rows of hidden
+// blocks collapse (Hud._streamRows) and the band grows; hud.css reads --s-* offsets.
+const STREAM_STRIP_H = 82;
+const STREAM_BOARDS_H = 196;
+const STREAM_LEAD_H = 90;
+const STREAM_GIFTS_H = 84;
+const STREAM_CTA_H = 58;
 const STREAM_MAP_INSET = 62; // imperative line over the top of the band
 
 const CTA_LINES = [
@@ -109,6 +115,7 @@ export class Hud {
     this.variant = null;
     this.defaultVariant = opts.variant === 'full' ? 'full' : 'stream';
     this.zones = { ...DEFAULT_ZONES, ...(config.hud.tiktokZones || {}) };
+    this.show = {}; // block id -> false when hidden by the streamer (settings "Ekran")
     this._build();
     if (opts.zones) this._buildZones();
     this.feedLines = [];
@@ -276,9 +283,9 @@ export class Hud {
     const cta = el('div', 'cta', r);
     this.ctaEl = cta;
     const ctaMain = el('div', 'cta-main', cta);
-    el('span', 'cta-a', ctaMain, 'PLAKANI YAZ:');
-    el('span', 'cta-chip', ctaMain, '34');
-    el('div', 'cta-sub2', cta, 'İstersen emoji ekle, rozetin olur: 34 🔥');
+    this.ctaA = el('span', 'cta-a', ctaMain, 'PLAKANI YAZ:');
+    this.ctaMainChip = el('span', 'cta-chip', ctaMain, '34');
+    this.ctaSub2 = el('div', 'cta-sub2', cta, 'İstersen emoji ekle, rozetin olur: 34 🔥');
     const ctaLine = el('div', 'cta-line', cta);
     this.ctaChip = el('span', 'cta-chip small', ctaLine, CTA_LINES[0][0]);
     this.ctaText = el('span', 'cta-text', ctaLine, CTA_LINES[0][1]);
@@ -286,25 +293,8 @@ export class Hud {
 
     // Gift strip: four gifts by name, coin value and a two-word effect (hud.giftStrip in
     // the config; the game's own icons, not TikTok artwork). Other gifts work by coin value.
-    const tiers = el('div', 'tiers panel-dark', r);
-    const strip = this.cfg.hud.giftStrip || this.cfg.gifts.tiers.map((t) => ({ name: t.label, coins: t.minCoins, effect: t.legend }));
-    // An entry without a name shows its coin value instead ("1.000+ jeton"); `plus`
-    // marks "this value or more". Effects follow coin value, never the name.
-    strip.slice(0, 4).forEach((g, i) => {
-      const s = el('div', `tier gs${i}`, tiers);
-      const name = String(g.name || '').trim();
-      const coinText = `${fmt(Number(g.coins) || 0)}${g.plus ? '+' : ''}${name ? '' : ' jeton'}`;
-      s.classList.toggle('noname', !name);
-      if (name) {
-        const top = el('span', 'tier-name', s);
-        iconEl(a, g.icon || 'icon_gem', top, 'icon tiny');
-        el('span', '', top, name);
-      }
-      const c = el('span', 'tier-coins', s);
-      iconEl(a, 'icon_coin', c, 'icon tiny');
-      el('span', '', c, coinText);
-      el('span', 'tier-label', s, String(g.effect || ''));
-    });
+    this.tiersEl = el('div', 'tiers panel-dark', r);
+    this.setGiftStrip(this.cfg.hud.giftStrip);
 
     // Feed
     this.feedEl = el('div', 'feed', r);
@@ -380,6 +370,66 @@ export class Hud {
     this.debugEl.style.display = 'none';
   }
 
+  /** (Re)builds the four-gift strip. Entries: { name, coins, effect, icon?, plus? }. */
+  setGiftStrip(list) {
+    const a = this.assets;
+    const tiers = this.tiersEl;
+    const strip = Array.isArray(list) && list.length ? list : this.cfg.gifts.tiers.map((t) => ({ name: t.label, coins: t.minCoins, effect: t.legend }));
+    const key = JSON.stringify(strip.slice(0, 4));
+    if (key === this._stripKey) return;
+    this._stripKey = key;
+    tiers.replaceChildren();
+    // An entry without a name shows its coin value instead ("1.000+ jeton"); `plus`
+    // marks "this value or more". Effects follow coin value, never the name.
+    strip.slice(0, 4).forEach((g, i) => {
+      const s = el('div', `tier gs${i}`, tiers);
+      const name = String(g.name || '').trim();
+      const coinText = `${fmt(Number(g.coins) || 0)}${g.plus ? '+' : ''}${name ? '' : ' jeton'}`;
+      s.classList.toggle('noname', !name);
+      if (name) {
+        const top = el('span', 'tier-name', s);
+        iconEl(a, g.icon || 'icon_gem', top, 'icon tiny');
+        el('span', '', top, name);
+      }
+      const c = el('span', 'tier-coins', s);
+      iconEl(a, 'icon_coin', c, 'icon tiny');
+      el('span', '', c, coinText);
+      el('span', 'tier-label', s, String(g.effect || ''));
+    });
+  }
+
+  /** Call-to-action text ("PLAKANI YAZ:") and its example chip ("34"). */
+  setCta(text, example) {
+    if (this.ctaA.textContent !== text) this.ctaA.textContent = text;
+    if (this.ctaMainChip.textContent !== example) this.ctaMainChip.textContent = example;
+    const sub = `İstersen emoji ekle, rozetin olur: ${example} 🔥`;
+    if (this.ctaSub2.textContent !== sub) this.ctaSub2.textContent = sub;
+  }
+
+  /**
+   * Shows/hides HUD blocks (ids: cityBoard, gifterBoard, likers, leader, credit,
+   * imperative, giftStrip, session, minimap). Returns true when the layout changed
+   * (the caller then re-runs applyLayout so the map band grows into the freed rows).
+   */
+  setVisibility(show) {
+    const next = { ...show };
+    if (JSON.stringify(next) === JSON.stringify(this.show)) return false;
+    this.show = next;
+    for (const [id, on] of Object.entries(next)) this.root.classList.toggle(`hide-${id}`, on === false);
+    return true;
+  }
+
+  _vis(id) { return this.show[id] !== false; }
+
+  /** Drops queued/visible per-viewer items (credits, nudges, announcements): a wiped map. */
+  clearTransient() {
+    this.creditQueue.length = 0;
+    if (this.crediting) this.crediting.until = this.timeNow;
+    for (const name of [...this.nudges.keys()]) this.dismissNudge(name);
+    this.announceQueue.length = 0;
+    this.calloutQueue.length = 0;
+  }
+
   /** Lays the stage out and returns the rectangle (px) where the map should be drawn. */
   applyLayout(w, h, forced) {
     // The HUD is designed on a 1080x1920 (portrait) or 1920x1080 (landscape) stage,
@@ -414,8 +464,16 @@ export class Hud {
     this.root.style.height = `${dh * u}px`;
     this.layout = portrait ? 'portrait' : 'landscape';
     this._place(stream ? 'stream' : 'full');
+    // Stream rows collapse when the streamer hides their blocks; the map band takes the
+    // space. Still between safeTop and safeBottom (TikTok header / chat never overlap).
+    const R = this._streamRows();
+    doc.style.setProperty('--s-boards', String(R.boards));
+    doc.style.setProperty('--s-lead', String(R.lead));
+    doc.style.setProperty('--s-bt', String(R.bandTop));
+    doc.style.setProperty('--s-bb', String(R.bandBottom));
+    doc.style.setProperty('--s-cta', String(R.cta));
     const b = stream
-      ? { x: 6, y: Z.top + STREAM_BAND_TOP, w: 1068, h: Z.chatTop - STREAM_BAND_BOTTOM - (Z.top + STREAM_BAND_TOP) }
+      ? { x: 6, y: Z.top + R.bandTop, w: 1068, h: Z.chatTop - R.bandBottom - (Z.top + R.bandTop) }
       : { ...BANDS[this.layout] };
     b.h += ex;
     this.bandDesign = b;
@@ -429,9 +487,26 @@ export class Hud {
     this.bandEl.style.width = `${rect.w}px`;
     this.bandEl.style.height = `${rect.h}px`;
     // The map itself is fitted below the leader spot and credit strip.
-    const inset = (stream ? STREAM_MAP_INSET : MAP_TOP_INSET) * u;
+    const inset = (stream ? (this._vis('imperative') ? STREAM_MAP_INSET : 0) : MAP_TOP_INSET) * u;
     rect.fit = { x: rect.x, y: rect.y + inset, w: rect.w, h: Math.max(rect.h * 0.5, rect.h - inset) };
     return rect;
+  }
+
+  /**
+   * Stream layout rows in design units (see the table at the top): offsets from safeTop
+   * for the boards row, the leader row and the map band top; offsets above safeBottom for
+   * the map band bottom and the call to action. All blocks shown = the original layout.
+   */
+  _streamRows() {
+    let y = STREAM_STRIP_H;
+    const boards = y;
+    if (this._vis('cityBoard') || this._vis('gifterBoard')) y += STREAM_BOARDS_H;
+    const lead = y;
+    if (this._vis('leader') || this._vis('credit')) y += STREAM_LEAD_H;
+    let bottom = this._vis('giftStrip') ? STREAM_GIFTS_H : 0;
+    const cta = bottom + STREAM_CTA_H;
+    bottom = cta + 4;
+    return { boards, lead, bandTop: y, bandBottom: bottom, cta };
   }
 
   /** Moves the few nodes that live in different containers per portrait variant. */

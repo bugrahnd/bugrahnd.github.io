@@ -16,6 +16,7 @@ import { DemoSim, DEMO_PRESETS } from './demo-sim.js';
 import { Game } from './game.js';
 import { assignTeamColors, hexCss } from './colors.js';
 import { urlOpts, isLoopbackHost } from './util.js';
+import { applySettings } from './settings.js';
 
 const fetchJson = (url) => fetch(url, { cache: 'no-cache' }).then((r) => {
   if (!r.ok) throw new Error(`${url}: ${r.status}`);
@@ -28,6 +29,8 @@ async function main() {
   const [config, provData, aliases] = await Promise.all([
     fetchJson('config/game.json'), fetchJson('data/provinces.json'), fetchJson('data/aliases.json'),
   ]);
+  // Pristine copy: streamer settings from the bridge are applied on top of this.
+  const baseConfig = JSON.parse(JSON.stringify(config));
   const provinces = provData.provinces;
   for (const p of provinces) {
     // Defensive defaults for older data files.
@@ -113,6 +116,36 @@ async function main() {
   window.__director = director;
   window.__scene = scene; window.__renderer = renderer;
 
+  // ---- streamer settings / commands / source changes from the bridge ----
+  let resize = () => {}; // assigned below
+  window.__settings = null;
+  const onSettings = (values) => {
+    const s = applySettings(config, baseConfig, values);
+    window.__settings = { values, applied: s };
+    hud.setGiftStrip(s.giftStrip);
+    hud.setCta(s.cta.text, s.cta.example);
+    if (hud.setVisibility(s.show)) resize();
+    audio.applyVolumes(urlOpts.mute || s.mute);
+    director.enabled = s.director;
+  };
+  const onCommand = (name) => {
+    if (name === 'restartRound') game.restartRound();
+    else if (name === 'endRound') game.endRound(null);
+    else if (name === 'resetSession') { game.resetSession(); hud.feed('Günlük skor sıfırlandı', 0xffd166, 'trophy', true); }
+    else if (name === 'clearMap') game.clearMap();
+  };
+  // Simulator <-> live switch: fake simulator teams must never stay on a real stream.
+  let lastMode = null;
+  const onBridgeMessage = (msg) => {
+    if (msg.type === 'settings') { onSettings(msg.values); return; }
+    if (msg.type === 'command') { onCommand(String(msg.name || '')); return; }
+    if (msg.type === 'status' && (msg.mode === 'sim' || msg.mode === 'live')) {
+      if (lastMode && msg.mode !== lastMode) game.clearMap();
+      lastMode = msg.mode;
+    }
+    game.handleEvent(msg);
+  };
+
   // Event source: the bridge WebSocket, or the in-browser demo simulator.
   let net = { connected: false };
   let demo = null;
@@ -130,7 +163,7 @@ async function main() {
   if (demoWanted) startDemo();
   else {
     hud.setConnected(false);
-    const bridge = new BridgeClient((msg) => game.handleEvent(msg), (ok) => hud.setConnected(ok), streamBridge);
+    const bridge = new BridgeClient(onBridgeMessage, (ok) => hud.setConnected(ok), streamBridge);
     net = bridge;
     // On localhost the bridge is the real source: never fall back to fake viewers, keep
     // reconnecting and show a small waiting state (demo only with ?demo=1). Remote hosts
@@ -138,8 +171,8 @@ async function main() {
     setTimeout(() => { if (!bridge.connected && !bridge.received && !demo) hud.setStatus({ mode: '', connected: false, error: 'Köprü bekleniyor…' }); }, 4000);
   }
 
-  function resize() {
-    W = Math.max(1, Math.round(window.visualViewport?.width || window.innerWidth));
+  resize = function resizeNow() {
+    W =Math.max(1, Math.round(window.visualViewport?.width || window.innerWidth));
     H = Math.max(1, Math.round(window.visualViewport?.height || window.innerHeight));
     renderer.setSize(W, H, false);
     band = hud.applyLayout(W, H, urlOpts.layout);
@@ -152,9 +185,9 @@ async function main() {
     overlay.style.setProperty('--bx', `${band.x}px`); overlay.style.setProperty('--by', `${band.y}px`);
     overlay.style.setProperty('--vw', `${W}px`); overlay.style.setProperty('--vh', `${H}px`);
     document.documentElement.style.setProperty('--plate-k', String(band.u));
-  }
-  window.addEventListener('resize', resize);
-  window.visualViewport?.addEventListener('resize', resize);
+  };
+  window.addEventListener('resize', () => resize());
+  window.visualViewport?.addEventListener('resize', () => resize());
   // Phones: no page scroll, pinch zoom or double-tap zoom.
   for (const ev of ['touchmove', 'gesturestart', 'dblclick']) document.addEventListener(ev, (e) => e.preventDefault(), { passive: false });
   resize();
@@ -184,7 +217,7 @@ async function main() {
     else if (k === 'n') hud.feed(audio.toggleMute() ? 'Ses kapalı' : 'Ses açık', 0xffd166, 'hourglass', true);
     else if (k === 'd') { debug = !debug; hud.toggleDebug(debug); }
     else if (k === 'c') director.enabled = !director.enabled;
-    else if (k === 'x') { game.resetSession(); hud.feed('Oturum skor tablosu sıfırlandı', 0xffd166, 'trophy', true); }
+    else if (k === 'x') onCommand('resetSession');
   });
 
   document.getElementById('loading').remove();

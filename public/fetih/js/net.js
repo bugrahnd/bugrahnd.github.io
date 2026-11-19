@@ -24,7 +24,9 @@ export class BridgeClient {
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
     let ws;
     try {
-      ws = new WebSocket(this.url || `${proto}://${location.host}/ws`);
+      // ?c=game lets the bridge count connected game pages for the panel.
+      const base = this.url || `${proto}://${location.host}/ws`;
+      ws = new WebSocket(base + (base.includes('?') ? '&' : '?') + 'c=game');
     } catch (e) {
       this._schedule();
       return;

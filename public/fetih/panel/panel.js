@@ -1,4 +1,6 @@
 // Control panel: talks to the server via /api/* and listens to /ws like the game does.
+import { initSettings } from './settings.js';
+
 const $ = (id) => document.getElementById(id);
 const LOG_MAX = 100;
 
@@ -30,7 +32,9 @@ function resolveBridge() {
   return DEFAULT_BRIDGE;
 }
 const BRIDGE = resolveBridge();
-const WS_URL = BRIDGE.replace(/^http/, 'ws') + '/ws';
+// ?c=panel: the bridge counts game pages and panels separately.
+const WS_URL = BRIDGE.replace(/^http/, 'ws') + '/ws?c=panel';
+let settingsUi = null;
 
 // ---------------------------------------------------------------- api
 class BridgeDownError extends Error {}
@@ -109,6 +113,7 @@ function applyState(s) {
     ? 'İmza sunucusu API anahtarı yüklü. Bağlanınca simülatör durur.'
     : 'Bağlanınca simülatör durur. Bağlantı kesilince simülatör moduna dönülür.';
   renderStatus();
+  settingsUi?.onState(s);
 }
 
 function renderStatus() {
@@ -149,12 +154,14 @@ function describe(e) {
     case 'follow': return 'takip etti';
     case 'share': return 'yayını paylaştı';
     case 'join': return 'yayına girdi';
+    case 'settings': return `oyun ayarları gönderildi (${Object.keys(e.values || {}).length} değişiklik)`;
+    case 'command': return `komut: ${e.name}`;
     case 'status': return `mod=${e.mode} bağlı=${e.connected}${e.username ? ' @' + e.username : ''}${e.viewers != null ? ' izleyici=' + e.viewers : ''}${e.error ? ' hata=' + e.error : ''}`;
     default: return JSON.stringify(e);
   }
 }
 
-const TYPE_TR = { chat: 'sohbet', gift: 'hediye', like: 'beğeni', follow: 'takip', share: 'paylaşım', join: 'giriş', status: 'durum' };
+const TYPE_TR = { chat: 'sohbet', gift: 'hediye', like: 'beğeni', follow: 'takip', share: 'paylaşım', join: 'giriş', status: 'durum', settings: 'ayar', command: 'komut' };
 
 function queueLog(e) {
   rateCount++;
@@ -215,6 +222,7 @@ function connectWs() {
       status = e;
       renderStatus();
     }
+    if (e.type === 'settings') settingsUi?.onRemote(e);
     queueLog(e);
   };
   ws.onclose = () => {
@@ -275,6 +283,7 @@ async function refresh() {
     for (const e of events) queueLog(e);
   } catch { /* ignore */ }
   await refresh();
+  settingsUi = initSettings({ api });
   connectWs();
   setInterval(refresh, 2000);
 })();

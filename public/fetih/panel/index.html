@@ -92,6 +92,21 @@
       </div>
     </section>
 
+    <section class="card settings-card" id="settings">
+      <div class="row between">
+        <h2>Oyun ayarları</h2>
+        <span id="set-pages" class="set-pages"></span>
+      </div>
+      <p class="hint">Burada yapılan değişiklikler "Kaydet"e basınca yayındaki oyuna hemen gönderilir ve köprü kapanıp açılsa da saklanır.
+        Oyun sayfası (LIVE Studio'daki bağlantı) açık olmalı; açık değilse açıldığında uygulanır.</p>
+      <div id="settings-form" class="settings-form"><p class="muted">Ayarlar yükleniyor…</p></div>
+      <div class="row wrap set-actions">
+        <button type="button" id="set-save" class="primary">Kaydet</button>
+        <button type="button" id="set-reset">Varsayılana dön</button>
+        <span id="set-msg" class="set-msg" role="status" aria-live="polite"></span>
+      </div>
+    </section>
+
     <section class="card log-card">
       <div class="row between">
         <h2>Olay akışı <span id="rate" class="muted"></span></h2>

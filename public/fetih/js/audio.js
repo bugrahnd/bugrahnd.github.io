@@ -105,6 +105,16 @@ export class AudioManager {
     this.music = { key, src, gain: g };
   }
 
+  /** Streamer settings: re-read cfg.music / cfg.sfx and set mute (null = leave as is). */
+  applyVolumes(mute = null) {
+    if (mute !== null) this.muted = !!mute;
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    this.sfxBus.gain.setTargetAtTime(this.cfg.sfx, t, 0.1);
+    this.musicBus.gain.setTargetAtTime(this.musicOn ? this.cfg.music : 0, t, 0.2);
+    this.master.gain.setTargetAtTime(this.muted ? 0 : this.cfg.master, t, 0.05);
+  }
+
   toggleMusic() {
     this.musicOn = !this.musicOn;
     if (this.musicBus) this.musicBus.gain.setTargetAtTime(this.musicOn ? this.cfg.music : 0, this.ctx.currentTime, 0.2);

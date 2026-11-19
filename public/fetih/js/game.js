@@ -1490,6 +1490,21 @@ export class Game {
     this.startRound(false);
   }
 
+  /**
+   * Wipes every team and player (incl. held gifts and gifts waiting for the next round)
+   * and starts a fresh round. The session scoreboard (rounds won) is kept.
+   * Used by the panel's "Haritayı temizle" and when the bridge switches simulator <-> live.
+   */
+  clearMap() {
+    this.players.clear();
+    this.pending.clear();
+    this.barePlate.clear();
+    this.emojiHintAt.clear();
+    this.deferred = [];
+    this.view.hud.clearTransient?.();
+    this.restartRound();
+  }
+
   // ---------- HUD summaries ----------
 
   updateGarrisonSums() {
