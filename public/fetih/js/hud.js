@@ -128,11 +128,15 @@ const STREAM_MAP_INSET = 58; // imperative line over the top of the band
 
 /** How-to lines in the tips slot; the like line uses the live likes-per-troop number. */
 function ctaLines(cfg) {
-  const per = cfg.engage?.likesPerTroop ?? 10;
+  const per = cfg.engage?.likesPerTroop ?? 100;
+  // Exchange rate from the config: troops for one 1-coin gift x likes per troop.
+  const g1 = (cfg.troops?.giftCurve || []).find((p) => p[0] === 1)?.[1] ?? 10;
+  const rose = per > 0 ? Math.round(g1) * per : 0;
   return [
     ['34', 'yaz → İstanbul’a katıl'],
     ['ankara', 'şehir adı da olur'],
-    ['❤️ ekrana bas', per > 0 ? `${per} beğeni = 1 asker` : 'moral → HÜCUM!'],
+    ['❤️ ekrana bas', 'HÜCUM barını doldur!'],
+    ...(rose > 0 ? [['🌹 1 Gül', `= ${fmt(rose)} beğeni`]] : []),
     ['❤️ beğeni', 'moral dolar → HÜCUM!'],
     ['💬 her mesaj', '+1 asker'],
     ['🎁 hediye', 'adınla asker yürür'],

@@ -91,6 +91,8 @@ export function applySettings(config, base, values = {}) {
   // ---- Bedava hareketler ----
   C.engage.chatTroops = isNum(v['engage.chatTroops'], 0, 50) ? v['engage.chatTroops'] : B.engage.chatTroops;
   C.engage.chatCooldownSec = isNum(v['engage.chatCooldownSec'], 0, 60) ? v['engage.chatCooldownSec'] : B.engage.chatCooldownSec;
+  C.engage.chatTroopCap = isNum(v['engage.chatTroopCap'], 0, 1000) ? v['engage.chatTroopCap'] : B.engage.chatTroopCap;
+  C.engage.likeTroopCap = isNum(v['engage.likeTroopCap'], 0, 1000) ? v['engage.likeTroopCap'] : B.engage.likeTroopCap;
   C.troops.followBonus = isNum(v['troops.followBonus'], 0, 1000) ? v['troops.followBonus'] : B.troops.followBonus;
   C.troops.shareBonus = isNum(v['troops.shareBonus'], 0, 1000) ? v['troops.shareBonus'] : B.troops.shareBonus;
   C.engage.likesPerTroop = isNum(v['engage.likesPerTroop'], 0, 1000) ? v['engage.likesPerTroop'] : B.engage.likesPerTroop;

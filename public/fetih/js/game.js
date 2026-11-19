@@ -65,6 +65,7 @@ export class Game {
     this.likeAcc = 0; this.likeRate = 0; // likes per second (smoothed), scales the morale need
     this.likeBatches = new Set(); // players with a like floater waiting (engage.likeBatchSec)
     this.likePops = new Map(); // name -> pending like name pop
+    this.freeCapQueue = []; this.lastFreeCapNudge = -1e9; // "bedava hakkın doldu" notes
     this.lastLikePop = -1e9; this.lastLikeCredit = -1e9; this.lastLikeHint = -1e9;
     this.labelTimer = 0;
     this.leadProvinces = 0;
@@ -238,14 +239,57 @@ export class Game {
     }
     if (this.round.phase !== 'play') return;
     const e = this.cfg.engage || {};
-    if (this.time - (player.lastChatTroop ?? -1e9) < (e.chatCooldownSec ?? 4)) return;
+    if (this.time - (player.lastChatTroop ?? -1e9) < (e.chatCooldownSec ?? 10)) return;
     player.lastChatTroop = this.time;
     const team = this.team(player.team);
     if (!team.awake) this.wakeTeam(team, true);
     const mult = this.actionMult(team);
-    const add = (e.chatTroops ?? 1) * mult;
+    // engage.chatTroopCap: troops from chat per viewer per round (after multipliers; 0 = no cap).
+    const cap = e.chatTroopCap ?? 10;
+    let add = (e.chatTroops ?? 1) * mult;
+    if (cap > 0) add = Math.min(add, Math.max(0, cap - (player.chatTroopsRound || 0)));
+    if (add <= 0) { this.freeCapReached(player); return; }
+    player.chatTroopsRound = (player.chatTroopsRound || 0) + add;
     const plate = this.addTroops(team, add);
     this.view.floater(this.prov.get(plate), `+${fmt(add)}${mult > 1 ? ' ×' + mult : ''}`, team.colorHex, false, 'tiny');
+    if (cap > 0 && player.chatTroopsRound >= cap) this.freeCapReached(player);
+  }
+
+  /** Likes this many = what one 1-coin gift (a Rose) gives: "1 GÜL = 1.000 BEĞENİ". */
+  likesPerRose() {
+    const per = this.cfg.engage?.likesPerTroop ?? 100;
+    return per > 0 ? Math.round(this.giftTroops(1)) * per : 0;
+  }
+
+  /**
+   * A viewer used up their free troops (likes or chat cap): once per round, a personal note
+   * in the credit slot and at their province ("bedava hakkın doldu · 1 Gül = 1.000 beğeni").
+   * Stream-wide rate limit (engage.freeCapNudgeGapSec); waiting notes go out one by one.
+   */
+  freeCapReached(player) {
+    if (player.freeNudged || this.round.phase !== 'play') return;
+    player.freeNudged = true;
+    this.freeCapQueue.push(player);
+    if (this.freeCapQueue.length > 8) this.freeCapQueue.shift();
+  }
+
+  stepFreeCap() {
+    if (!this.freeCapQueue.length || this.round.phase !== 'play') return;
+    if (this.time - this.lastFreeCapNudge < (this.cfg.engage?.freeCapNudgeGapSec ?? 5)) return;
+    const p = this.freeCapQueue.shift();
+    if (!this.players.has(p.name)) return;
+    this.lastFreeCapNudge = this.time;
+    const team = this.team(p.team);
+    const rate = this.likesPerRose();
+    const text = rate > 0 ? `bedava hakkın doldu · 1 Gül = ${fmt(rate)} beğeni` : 'bedava hakkın doldu · Gül at, asker kazan';
+    const pv = this.prov.get(team.provinces ? (team.rally || team.plate) : team.plate);
+    this.view.tags.spawn({ x: pv.wx, z: pv.wz, nick: p.nick, badge: p.badge, avatar: p.avatar, colorHex: 0xffd166, size: 'm', sec: 3.4, text });
+    this.view.hud.credit?.({
+      key: 'free|' + p.name, nick: p.nick, badge: p.badge, avatar: p.avatar, colorHex: team.colorHex,
+      coins: 0, giftName: '', count: 0, tierIndex: 0, like: true, troops: 0,
+      msg: `${p.nick}: ${text}`, troopsText: text,
+    });
+    this.view.hud.feed?.(`${p.nick}: ${text}`, 0xffd166, 'gift', true);
   }
 
   /** Multiplier for free actions (likes, chat): finale and comeback stack. */
@@ -380,19 +424,26 @@ export class Game {
    */
   likeTroops(player, team, count) {
     const e = this.cfg.engage || {};
-    const per = e.likesPerTroop ?? 10;
+    const per = e.likesPerTroop ?? 100;
     if (per > 0) {
       player.likeRem = (player.likeRem || 0) + count;
       const n = Math.floor(player.likeRem / per);
       if (n > 0) {
         player.likeRem -= n * per;
         if (!team.awake) this.wakeTeam(team, true);
-        const add = n * this.actionMult(team);
-        const plate = this.addTroops(team, add);
-        let b = player.likeBatch;
-        if (!b) { b = player.likeBatch = { troops: 0, likes: 0, plate, at: this.time, x2: false }; this.likeBatches.add(player); }
-        b.troops += add; b.plate = plate; b.x2 = b.x2 || add > n;
-        player.likeTroopsRound = (player.likeTroopsRound || 0) + add;
+        // engage.likeTroopCap: troops from likes per viewer per round (after multipliers;
+        // 0 = no cap). Past it, likes still fill the HÜCUM bar (onLike), just no troops.
+        const cap = e.likeTroopCap ?? 10;
+        let add = n * this.actionMult(team);
+        if (cap > 0) add = Math.min(add, Math.max(0, cap - (player.likeTroopsRound || 0)));
+        if (add > 0) {
+          const plate = this.addTroops(team, add);
+          let b = player.likeBatch;
+          if (!b) { b = player.likeBatch = { troops: 0, likes: 0, plate, at: this.time, x2: false }; this.likeBatches.add(player); }
+          b.troops += add; b.plate = plate; b.x2 = b.x2 || add > n;
+          player.likeTroopsRound = (player.likeTroopsRound || 0) + add;
+        }
+        if (cap > 0 && (player.likeTroopsRound || 0) >= cap) { player.likeCapped = true; this.freeCapReached(player); }
       }
     }
     if (player.likeBatch) player.likeBatch.likes += count;
@@ -412,6 +463,7 @@ export class Game {
   stepLikes() {
     const e = this.cfg.engage || {};
     if (this.likePops.size && this.round.phase === 'play' && this.time - this.lastLikePop >= (e.likeNameGapSec ?? 2.5)) this.likePop(e);
+    this.stepFreeCap();
     const batchSec = e.likeBatchSec ?? 1;
     for (const p of this.likeBatches) {
       const b = p.likeBatch;
@@ -443,10 +495,11 @@ export class Game {
     const b = p.likeBatch;
     if (b) { p.likeBatch = null; this.likeBatches.delete(p); }
     const pv = this.prov.get(b ? b.plate : (team.provinces ? (team.rally || team.plate) : team.plate));
-    const per = e.likesPerTroop ?? 10;
+    const per = e.likesPerTroop ?? 100;
     const got = b ? ` · +${fmt(b.troops)} asker${b.x2 ? ' ×2' : ''}` : '';
     let text;
-    if (best.first) text = b ? `❤ +${fmt(b.troops)} asker${b.x2 ? ' ×2' : ''} · ${per} beğeni = 1` : (per > 0 ? `❤ ${per} beğeni = 1 asker` : '❤ moral doluyor');
+    if (p.likeCapped && !b) text = `❤ ${fmt(best.likes)} beğeni · HÜCUM doluyor!`;
+    else if (best.first) text = b ? `❤ +${fmt(b.troops)} asker${b.x2 ? ' ×2' : ''} · ${per} beğeni = 1` : (per > 0 ? `❤ ${per} beğeni = 1 asker` : '❤ moral doluyor');
     else text = `❤ ${fmt(best.likes)} beğeni${got}`;
     this.view.tags.spawn({ x: pv.wx, z: pv.wz, nick: p.nick, badge: p.badge, avatar: p.avatar, colorHex: 0xff5a8a, size: 'm', sec: 2.8, text });
     // The credit strip shows a short like credit when it is idle.
@@ -1169,8 +1222,9 @@ export class Game {
     if (atk) { const t = this.teams.get(atk.team); cands.push({ k: 'atk' + t.plate, p: 5, text: `${up(t.name)} SALDIRIYOR, GÜL AT!`, colorHex: t.colorHex }); }
     const behind = st.find((t) => this.isComeback(t) && t.memberCount > 0);
     if (behind) cands.push({ k: 'reb' + behind.plate, p: 5, text: `${up(behind.name)} İSYANDA! BEĞEN, YAZ: ${this.cfg.engage?.comebackMult ?? 2} KAT!`, colorHex: behind.colorHex });
-    const per = this.cfg.engage?.likesPerTroop ?? 10;
-    cands.push({ k: 'tap', p: 1, text: per > 0 ? `EKRANA BAS: ${per} BEĞENİ = 1 ASKER!` : 'EKRANA BAS, MORAL DOLDUR!', colorHex: 0xff5a8a });
+    cands.push({ k: 'tap', p: 1, text: 'EKRANA BAS, HÜCUMU DOLDUR!', colorHex: 0xff5a8a });
+    const rose = this.likesPerRose();
+    if (rose > 0) cands.push({ k: 'rose', p: 1, text: `1 GÜL = ${fmt(rose)} BEĞENİ!`, colorHex: 0xffd166 });
     cands.push({ k: 'chat', p: 1, text: 'YAZ: HER MESAJ +1 ASKER!', colorHex: 0x9bf09b });
     if (st[0]) cands.push({ k: 'lead', p: 1, text: `${up(st[0].name)} ÖNDE! DURDUR ONU!`, colorHex: st[0].colorHex });
     // Highest priority that was not just shown; urgent lines may repeat after one other.
@@ -1557,6 +1611,7 @@ export class Game {
     for (const p of this.players.values()) {
       p.coins = 0; p.likes = 0; p.paradeArmy = null; p.lastChatTroop = -1e9;
       p.likeRem = 0; p.likeMilestoneAt = 0; p.likeNamed = false; p.likeBatch = null; p.likeTroopsRound = 0;
+      p.chatTroopsRound = 0; p.likeCapped = false; p.freeNudged = false; // free-troop caps are per round
       this.teams.get(p.team).memberCount++;
     }
     let woke = 0;
@@ -1565,7 +1620,7 @@ export class Game {
     // Prune stale held gifts.
     const maxAge = this.cfg.teams.pendingGiftMaxAgeMin * 60;
     for (const [name, pend] of this.pending) if (this.time - pend.ts > maxAge) this.pending.delete(name);
-    this.likeBatches.clear(); this.likePops.clear();
+    this.likeBatches.clear(); this.likePops.clear(); this.freeCapQueue.length = 0;
 
     this.view.hud.hideEnd();
     if (!first) {
