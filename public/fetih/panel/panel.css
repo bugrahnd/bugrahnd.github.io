@@ -140,7 +140,28 @@ button:disabled { opacity: .5; cursor: default; }
 .set-table td { padding: 2px 4px; }
 .set-table tr.on td { color: #ffd166; font-weight: 700; }
 .set-table.strip input { width: 100%; min-width: 0; padding: 5px 6px; }
-.set-table.strip td:nth-child(3) { width: 90px; }
+.set-table.strip td:nth-child(3) { width: 80px; }
+.strip-rows { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 6px; }
+.strip-row { position: relative; border: 1px solid #2a3040; border-radius: 6px; padding: 5px 6px; display: flex; flex-direction: column; gap: 4px; }
+.strip-l1, .strip-l2 { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.strip-num { width: 22px; flex: none; }
+.gift-name-td { display: flex; align-items: center; gap: 6px; flex: 1 1 220px; min-width: 0; }
+.gift-name-td input { flex: 1 1 120px; min-width: 0; padding: 5px 6px; }
+.strip-coins, .strip-effect, .strip-plus { flex-direction: row; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); }
+.strip-coins input { width: 80px; padding: 5px 6px; }
+.strip-effect input { width: 150px; padding: 5px 6px; }
+.strip-plus input { width: 16px; height: 16px; margin: 0; }
+.gift-pick-img { width: 26px; height: 26px; object-fit: contain; flex: none; }
+.gift-id { font-size: 11px; }
+.gift-out { color: #9bf09b; font-size: 12px; white-space: nowrap; }
+.row-act { white-space: nowrap; }
+button.small { padding: 2px 7px; font-size: 12px; }
+.gift-picker { position: absolute; left: 28px; top: 40px; z-index: 30; width: 340px; max-width: 80vw; background: #161a22; border: 1px solid #3a4152; border-radius: 8px; padding: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.5); display: flex; flex-direction: column; gap: 6px; }
+.gift-picker input[type="search"] { width: 100%; }
+.gift-picker-list { max-height: 280px; overflow: auto; display: flex; flex-direction: column; gap: 2px; }
+.gift-picker-item { display: grid; grid-template-columns: 32px 1fr auto; align-items: center; gap: 8px; text-align: left; padding: 3px 6px; }
+.gift-picker-item img { width: 32px; height: 32px; object-fit: contain; }
+.gp-coins { color: #ffd166; font-size: 12px; white-space: nowrap; }
 .set-adv { margin-top: 6px; }
 .set-adv summary { cursor: pointer; color: var(--muted); font-size: 12px; }
 .curve { display: flex; gap: 6px; flex-wrap: wrap; align-items: flex-end; }

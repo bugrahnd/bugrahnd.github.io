@@ -63,6 +63,9 @@ export class Game {
     this.nextArmyId = 1;
     this.passiveAcc = 0;
     this.likeAcc = 0; this.likeRate = 0; // likes per second (smoothed), scales the morale need
+    this.likeBatches = new Set(); // players with a like floater waiting (engage.likeBatchSec)
+    this.likePops = new Map(); // name -> pending like name pop
+    this.lastLikePop = -1e9; this.lastLikeCredit = -1e9; this.lastLikeHint = -1e9;
     this.labelTimer = 0;
     this.leadProvinces = 0;
     this.session = this.loadSession();
@@ -306,6 +309,12 @@ export class Game {
       for (const g of pend.gifts) this.applyGift(player, g);
       if (pend.follow) this.applyBonus(player, 'follow');
       if (pend.share) this.applyBonus(player, 'share');
+      // Likes sent before joining count now (capped by engage.pendingLikesMax).
+      if (pend.likes > 0 && this.round.phase === 'play') {
+        player.likes += pend.likes;
+        this.likeTroops(player, team, pend.likes);
+        if (player.likeBatch) player.likeBatch.held = pend.likes;
+      }
     }
   }
 
@@ -315,6 +324,11 @@ export class Game {
     const total = Math.max(0, Number(msg.total) || coins * count);
     if (!coins || !total) return;
     const g = { coins, count, total, giftName: typeof msg.giftName === 'string' ? msg.giftName.slice(0, 40) : 'Hediye' };
+    // TikTok gift id and image (live mode, optional): the HUD shows the real gift picture.
+    g.giftId = Math.floor(Number(msg.giftId)) || 0;
+    g.icon = /^https:///i.test(String(msg.icon || '')) ? safeImageUrl(msg.icon) : '';
+    if (g.icon) this.view.hud.noteGiftIcon?.(g.giftId, g.giftName, g.icon);
+    if (!g.icon) g.icon = this.view.hud.giftIconFor?.(g.giftId, g.giftName) || '';
     this.stats.gifts++; this.stats.coins += total;
     const player = this.touchPlayer(u);
     if (!player) {
@@ -334,9 +348,11 @@ export class Game {
 
   onLike(u, count) {
     const player = this.touchPlayer(u);
-    if (!player || this.round.phase !== 'play') return;
+    if (!player) { this.holdLikes(u, count); return; }
+    if (this.round.phase !== 'play') return;
     player.likes += count;
     const team = this.team(player.team);
+    this.likeTroops(player, team, count);
     if (!team.awake) this.wakeTeam(team, true);
     const pv = this.prov.get(team.provinces ? (team.rally || team.plate) : team.plate);
     // Sparks at the liker's province (light throttle) + the plate's morale bar fills.
@@ -353,6 +369,112 @@ export class Game {
     this.view.plates.setMorale(team.plate, clamp(team.morale / need, 0, 1), mult > 1);
     // One HÜCUM at a time (morale.oneAtATime): a full bar waits for the current charge.
     if (team.morale >= need && !this.hucumBusy(team)) this.startHucum(team);
+  }
+
+  // ---------- likes -> troops, name pops, held likes ----------
+
+  /**
+   * Every engage.likesPerTroop likes from a member = +1 troop (finale and comeback
+   * multiply). Troops land at once; the floater is batched per viewer (likeBatchSec) so a
+   * burst reads as one "❤ +10". Milestones (likeMilestone likes in the round) pop the name.
+   */
+  likeTroops(player, team, count) {
+    const e = this.cfg.engage || {};
+    const per = e.likesPerTroop ?? 10;
+    if (per > 0) {
+      player.likeRem = (player.likeRem || 0) + count;
+      const n = Math.floor(player.likeRem / per);
+      if (n > 0) {
+        player.likeRem -= n * per;
+        if (!team.awake) this.wakeTeam(team, true);
+        const add = n * this.actionMult(team);
+        const plate = this.addTroops(team, add);
+        let b = player.likeBatch;
+        if (!b) { b = player.likeBatch = { troops: 0, likes: 0, plate, at: this.time, x2: false }; this.likeBatches.add(player); }
+        b.troops += add; b.plate = plate; b.x2 = b.x2 || add > n;
+        player.likeTroopsRound = (player.likeTroopsRound || 0) + add;
+      }
+    }
+    if (player.likeBatch) player.likeBatch.likes += count;
+    // Milestone name pop ("Ahmet · 50 beğeni"), and the very first likes of a viewer in the
+    // round, so a viewer sees their own name within a second of tapping.
+    const m = Math.max(10, e.likeMilestone ?? 50);
+    const reached = Math.floor(player.likes / m) * m;
+    if (reached > (player.likeMilestoneAt || 0) || !player.likeNamed) {
+      player.likeMilestoneAt = Math.max(player.likeMilestoneAt || 0, reached);
+      player.likeNamed = true;
+      this.likePops.set(player.name, { player, likes: reached || player.likes, first: !reached, t: this.time });
+      while (this.likePops.size > 6) this.likePops.delete(this.likePops.keys().next().value);
+    }
+  }
+
+  /** Called every frame: rate-limited name pops / credits, then batched like floaters. */
+  stepLikes() {
+    const e = this.cfg.engage || {};
+    if (this.likePops.size && this.round.phase === 'play' && this.time - this.lastLikePop >= (e.likeNameGapSec ?? 2.5)) this.likePop(e);
+    const batchSec = e.likeBatchSec ?? 1;
+    for (const p of this.likeBatches) {
+      const b = p.likeBatch;
+      if (!b) { this.likeBatches.delete(p); continue; }
+      if (this.time - b.at < batchSec) continue;
+      this.likeBatches.delete(p); p.likeBatch = null;
+      const team = this.team(p.team);
+      if (!team || this.round.phase !== 'play') continue;
+      const pv = this.prov.get(b.plate);
+      this.view.floater(pv, `❤ +${fmt(b.troops)}${b.x2 ? ' ×2' : ''}`, 0xff5a8a, b.troops >= 10, 'like');
+    }
+  }
+
+  /**
+   * One name pop at the liker's province ("Ahmet ❤ 50 beğeni · +5 asker"). A like batch that is
+   * still waiting is folded into the pop (one readable label instead of a tag plus a floater).
+   */
+  likePop(e) {
+    // Most likes first; stale pops (> 6 s) are dropped.
+    let best = null;
+    for (const [k, v] of this.likePops) {
+      if (this.time - v.t > 6 || !this.players.has(k)) { this.likePops.delete(k); continue; }
+      if (!best || v.likes > best.likes) best = v;
+    }
+    if (!best) return;
+    this.likePops.delete(best.player.name);
+    this.lastLikePop = this.time;
+    const p = best.player; const team = this.team(p.team);
+    const b = p.likeBatch;
+    if (b) { p.likeBatch = null; this.likeBatches.delete(p); }
+    const pv = this.prov.get(b ? b.plate : (team.provinces ? (team.rally || team.plate) : team.plate));
+    const per = e.likesPerTroop ?? 10;
+    const got = b ? ` · +${fmt(b.troops)} asker${b.x2 ? ' ×2' : ''}` : '';
+    let text;
+    if (best.first) text = b ? `❤ +${fmt(b.troops)} asker${b.x2 ? ' ×2' : ''} · ${per} beğeni = 1` : (per > 0 ? `❤ ${per} beğeni = 1 asker` : '❤ moral doluyor');
+    else text = `❤ ${fmt(best.likes)} beğeni${got}`;
+    this.view.tags.spawn({ x: pv.wx, z: pv.wz, nick: p.nick, badge: p.badge, avatar: p.avatar, colorHex: 0xff5a8a, size: 'm', sec: 2.8, text });
+    // The credit strip shows a short like credit when it is idle.
+    if (!best.first && this.time - this.lastLikeCredit > (e.likeCreditGapSec ?? 4)) {
+      if (this.view.hud.likeCredit?.({
+        key: 'like|' + p.name, nick: p.nick, badge: p.badge, avatar: p.avatar, colorHex: team.colorHex,
+        troops: p.likeTroopsRound || 0, likes: best.likes, team: team.name, code: this.codeOf(team.plate),
+      })) this.lastLikeCredit = this.time;
+    }
+  }
+
+  /** Likes from a viewer who has not joined: held (capped) and a rate-limited hint. */
+  holdLikes(u, count) {
+    const e = this.cfg.engage || {};
+    const cap = e.pendingLikesMax ?? 500;
+    let pend = this.pending.get(u.name);
+    if (!pend) { pend = { gifts: [], follow: 0, share: 0, likes: 0, ts: this.time }; this.pending.set(u.name, pend); }
+    pend.likes = Math.min(cap, (pend.likes || 0) + count);
+    pend.ts = this.time;
+    pend.nick = cleanNick(u.nick || u.name);
+    pend.avatar = safeImageUrl(u.avatar);
+    if (this.round.phase !== 'play') return;
+    if (this.time - this.lastLikeHint < (e.likeHintGapSec ?? 12)) return;
+    if (this.time - (pend.likeHintAt ?? -1e9) < (e.likeHintPerUserSec ?? 30)) return;
+    pend.likeHintAt = this.time;
+    this.lastLikeHint = this.time;
+    const coins = pend.gifts.reduce((s, x) => s + x.total, 0);
+    this.view.hud.nudge(u.name, pend.nick, pend.avatar, coins, 0, pend.likes);
   }
 
   onBonus(u, kind) {
@@ -471,7 +593,11 @@ export class Game {
       if (had && player.coins >= 100) this.view.hud.feed(`${player.nick} artık ${team.name} komutanı!`, team.colorHex, 'crown');
     }
     if (!team.awake) this.wakeTeam(team, true);
-    const tierIndex = this.cfg.gifts.tiers.indexOf(tier);
+    // tier.rank (0-4) = spectacle class (sound, credit length, callouts, camera); the
+    // ladder has more steps than classes. Older configs without rank use the list index.
+    const tierIndex = Math.min(4, tier.rank ?? this.cfg.gifts.tiers.indexOf(tier));
+    // The gift strip jumps to this step for a moment ("az önce atıldı").
+    this.view.hud.giftPulse?.(g.coins, g.giftId, g.giftName);
     // Each tier has its own sound (tier.sfx: one key or a layered list).
     const sfx = Array.isArray(tier.sfx) ? tier.sfx : [tier.sfx || 'sfx_gift_small'];
     sfx.forEach((k, i) => this.view.audio.play(k, { vol: tierIndex === 0 ? 0.35 : i ? 0.6 : 0.8, minGap: tierIndex === 0 ? 0.1 : 0.2 }));
@@ -489,7 +615,7 @@ export class Game {
     // Personal credit at a fixed HUD spot (queued, repeats merged) + the province lights up.
     this.view.hud.credit({
       key: player.name, nick: player.nick, badge: player.badge, avatar: player.avatar, colorHex: team.colorHex,
-      troops, coins: g.total, giftName: g.giftName, count: g.count, team: team.name, code: this.codeOf(team.plate), tierIndex, x2: fm > 1,
+      troops, coins: g.total, giftName: g.giftName, giftIcon: g.icon, count: g.count, team: team.name, code: this.codeOf(team.plate), tierIndex, x2: fm > 1,
       // Announced gifts: the credit outlasts the full-screen card.
       extraSec: tier.announce ? (tier.announceSec || 5) * 0.5 : 0,
     });
@@ -498,7 +624,7 @@ export class Game {
 
     if (tier.mode === 'garrison' || tierIndex === 0) {
       // A small soldier carrying the gifter's name marches into their province.
-      if (this.parade(team, player, troops)) return;
+      if (this.parade(team, player, troops, tier.paradeFigures || 1, tier.unit || "infantry")) return;
       const plate = this.addTroops(team, troops);
       const pv = this.prov.get(plate);
       this.view.floater(pv, `+${fmtShort(troops)}`, team.colorHex, true);
@@ -511,13 +637,13 @@ export class Game {
     if (tier.announce) {
       this.view.hud.announce({
         tier: tier.label, tierId: tier.id, nick: player.nick, badge: player.badge, avatar: player.avatar, effect: tier.legend || '',
-        giftName: g.giftName, count: g.count, troops, team: team.name, colorHex: team.colorHex,
+        giftName: g.giftName, giftIcon: g.icon, count: g.count, troops, team: team.name, colorHex: team.colorHex,
         sec: tier.announceSec || 5,
       });
       if (tier.horn) this.view.audio.play(tier.horn, { vol: 0.9, minGap: 1 });
     }
     if (tierIndex >= 2) this.view.hud.feed(`${player.nick} → ${tier.label}! ${fmtShort(troops)} asker (${team.name})`, team.colorHex, 'gift');
-    else if (tierIndex === 1 && g.coins >= 30) this.view.hud.feed(`${player.nick} → ${fmtShort(troops)} şövalye (${team.name})`, team.colorHex, 'gift', true);
+    else if (tierIndex === 1 && g.coins >= 30) this.view.hud.feed(`${player.nick} → ${tier.label}: ${fmtShort(troops)} asker (${team.name})`, team.colorHex, 'gift', true);
 
     // Landless team: everything becomes an uprising at home.
     if (team.provinces === 0) {
@@ -541,7 +667,7 @@ export class Game {
       let first = null;
       for (const t of targets) {
         const src = this.bestSourceFor(team, t);
-        const a = this.launchArmy(team, src, t, each, { kind: 'gift', types, nick: player.nick, giver: player, big: true, banner: true, maxFigures: tier.maxFigures, unitKey: 'mixed' });
+        const a = this.launchArmy(team, src, t, each, { kind: 'gift', types, nick: player.nick, giver: player, big: true, banner: true, maxFigures: tier.maxFigures, minFigures: tier.minFigures, unitKey: 'mixed' });
         first = first || a;
         this.view.effects.lightning(this.prov.get(t).wx, TILE_H, this.prov.get(t).wz);
       }
@@ -580,7 +706,7 @@ export class Game {
     }
     const unitKey = tier.units ? 'mixed' : (tier.cavalryFromCoins && g.coins >= tier.cavalryFromCoins ? 'cavalry' : tier.unit || 'knight');
     const army = this.launchArmy(team, src, target, troops, {
-      kind: 'gift', types, nick: player.nick, giver: player, big: tierIndex >= 3, banner: tierIndex >= 3, maxFigures: tier.maxFigures, unitKey,
+      kind: 'gift', types, nick: player.nick, giver: player, big: tierIndex >= 3, banner: tierIndex >= 3, maxFigures: tier.maxFigures, minFigures: tier.minFigures, unitKey,
     });
     team.lastGiftArmy = { player, tier, army, t: this.time };
     if (tier.siege) this.launchSieges(team, tier, g, [target], src);
@@ -609,7 +735,7 @@ export class Game {
    * delivers the troops on arrival. Repeats from the same viewer join that soldier.
    * Returns false when no parade is possible (landless team, too many on the map).
    */
-  parade(team, player, troops) {
+  parade(team, player, troops, figures = 1, unit = 'infantry') {
     const e = this.cfg.engage || {};
     if (team.provinces === 0) return false;
     const last = player.paradeArmy;
@@ -631,7 +757,7 @@ export class Game {
       if (pointInProvince(x, y, pv.p)) { sx = x; sz = wzOf(y); break; }
     }
     const army = this._makeArmy(team, sx, sz, pv.wx, pv.wz, troops, {
-      kind: 'parade', types: 'infantry', unitKey: 'infantry', nick: player.nick, maxFigures: 1, dest: plate, giver: player,
+      kind: 'parade', types: unit, unitKey: unit, nick: player.nick, maxFigures: figures, minFigures: figures, dest: plate, giver: player,
     });
     army.speed = Math.max(army.speed, 16);
     player.paradeArmy = army;
@@ -764,9 +890,10 @@ export class Game {
 
   // ---------- armies ----------
 
-  figureCountFor(troops, maxFigs) {
+  figureCountFor(troops, maxFigs, minFigs = 1) {
     const per = this.cfg.visual.troopsPerFigure;
-    let n = clamp(1 + Math.floor(Math.sqrt(troops / per)), 1, maxFigs);
+    // minFigs: gift-ladder steps show at least this many figures (a squad looks like one).
+    let n = clamp(Math.max(minFigs, 1 + Math.floor(Math.sqrt(troops / per))), 1, Math.max(maxFigs, minFigs));
     const budget = this.cfg.visual.maxFiguresTotal - this.liveFigures;
     if (n > budget) n = Math.max(budget > 0 ? 1 : 0, budget);
     return n;
@@ -776,7 +903,7 @@ export class Game {
     const war = this.cfg.war;
     const unitKey = o.unitKey || 'infantry';
     const hucum = this.isHucum(team);
-    const n = this.figureCountFor(troops, o.maxFigures || this.cfg.visual.maxFiguresPerArmy);
+    const n = this.figureCountFor(troops, o.maxFigures || this.cfg.visual.maxFiguresPerArmy, o.minFigures || 1);
     const types = typeof o.types === 'function' ? o.types(n) : new Array(n).fill(o.types || 'infantry');
     const figs = layoutFigures(types, 5.5 * this.cfg.visual.unitScale);
     this.liveFigures += figs.length;
@@ -897,6 +1024,7 @@ export class Game {
     this.stepSieges(dt);
     this.stepBurning(dt);
     this.stepDrama();
+    this.stepLikes();
 
     this.labelTimer -= dt;
     if (this.labelTimer <= 0) {
@@ -1031,7 +1159,8 @@ export class Game {
     if (atk) { const t = this.teams.get(atk.team); cands.push({ k: 'atk' + t.plate, p: 5, text: `${up(t.name)} SALDIRIYOR, GÜL AT!`, colorHex: t.colorHex }); }
     const behind = st.find((t) => this.isComeback(t) && t.memberCount > 0);
     if (behind) cands.push({ k: 'reb' + behind.plate, p: 5, text: `${up(behind.name)} İSYANDA! BEĞEN, YAZ: ${this.cfg.engage?.comebackMult ?? 2} KAT!`, colorHex: behind.colorHex });
-    cands.push({ k: 'tap', p: 1, text: 'EKRANA BAS, MORAL DOLDUR!', colorHex: 0xff5a8a });
+    const per = this.cfg.engage?.likesPerTroop ?? 10;
+    cands.push({ k: 'tap', p: 1, text: per > 0 ? `EKRANA BAS: ${per} BEĞENİ = 1 ASKER!` : 'EKRANA BAS, MORAL DOLDUR!', colorHex: 0xff5a8a });
     cands.push({ k: 'chat', p: 1, text: 'YAZ: HER MESAJ +1 ASKER!', colorHex: 0x9bf09b });
     if (st[0]) cands.push({ k: 'lead', p: 1, text: `${up(st[0].name)} ÖNDE! DURDUR ONU!`, colorHex: st[0].colorHex });
     // Highest priority that was not just shown; urgent lines may repeat after one other.
@@ -1417,6 +1546,7 @@ export class Game {
     this.view.plates.clearExtras?.();
     for (const p of this.players.values()) {
       p.coins = 0; p.likes = 0; p.paradeArmy = null; p.lastChatTroop = -1e9;
+      p.likeRem = 0; p.likeMilestoneAt = 0; p.likeNamed = false; p.likeBatch = null; p.likeTroopsRound = 0;
       this.teams.get(p.team).memberCount++;
     }
     let woke = 0;
@@ -1425,6 +1555,7 @@ export class Game {
     // Prune stale held gifts.
     const maxAge = this.cfg.teams.pendingGiftMaxAgeMin * 60;
     for (const [name, pend] of this.pending) if (this.time - pend.ts > maxAge) this.pending.delete(name);
+    this.likeBatches.clear(); this.likePops.clear();
 
     this.view.hud.hideEnd();
     if (!first) {
@@ -1578,7 +1709,28 @@ export class Game {
       likers: this.topLikers(this.cfg.hud.topLikers ?? 2),
       session: this.sessionBoard(),
       players: this.players.size, teams: standings.length, pending: this.pending.size,
+      hucumBar: this.hucumBarInfo(),
     };
+  }
+
+  /** The city in HÜCUM, else the one closest to it (for the labelled morale bar). */
+  hucumBarInfo() {
+    if (this.round.phase !== 'play') return null;
+    let best = null; let bestF = 0.02;
+    for (const t of this.teams.values()) {
+      if (!t.awake) continue;
+      if (this.isHucum(t)) { this.hbTeam = t; return { name: t.name, colorHex: t.colorHex, frac: 1, hucum: true, left: t.hucumUntil - this.time }; }
+      const f = clamp(t.morale / this.moraleNeed(t), 0, 1);
+      if (f > bestF) { best = t; bestF = f; }
+    }
+    // Hysteresis: the shown city changes only when another one is clearly closer (readable at chaos).
+    const cur = this.hbTeam;
+    if (best && cur && cur !== best && cur.awake && !this.isHucum(cur)) {
+      const cf = clamp(cur.morale / this.moraleNeed(cur), 0, 1);
+      if (cf > 0.02 && bestF - cf < 0.1) { best = cur; bestF = cf; }
+    }
+    this.hbTeam = best;
+    return best ? { name: best.name, colorHex: best.colorHex, frac: bestF, hucum: false, left: 0 } : null;
   }
 }
 

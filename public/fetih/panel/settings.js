@@ -28,7 +28,8 @@ const GROUPS = [
   {
     id: 'hediye', title: 'Hediyeler',
     fields: [
-      { key: 'gifts.strip', kind: 'strip', label: 'Haritanın altındaki 4 hediye', hint: 'İzleyicinin TikTok\'ta gördüğü hediye adı (boş bırakılırsa jeton değeri yazar), jeton değeri ve kısa etki yazısı. Etkiyi jeton değeri belirler, ad değil.' },
+      { key: 'gifts.strip', kind: 'strip', label: 'Hediye merdiveni (haritanın altı)', hint: 'En ucuzdan pahalıya 1-12 hediye; ekranda sayfa sayfa döner. Hediye adı izleyicinin TikTok\'ta gördüğü ad olmalı (boş bırakılırsa jeton değeri yazar). "+N asker" kısmı asker eğrisinden otomatik gelir; etki yazısını siz yazarsınız. Etkiyi jeton değeri belirler, ad değil. TikTok\'un hediye listesi varsa "Listeden seç" ile resim, ad ve fiyat hazır gelir.' },
+      { key: 'gifts.showTroops', kind: 'toggle', label: 'Kutularda asker sayısı', hint: 'Açıksa her hediye kutusunda "+N asker" yazar (sayı asker eğrisinden gelir).' },
       { key: 'gifts.curve', kind: 'curve', label: 'Hediye başına asker', hint: 'Tek bir hediyenin jeton değerine göre kaç asker verdiği. Aradaki değerler bu noktalardan hesaplanır; sayılar artan sırada olmalı.' },
     ],
   },
@@ -39,6 +40,10 @@ const GROUPS = [
       { key: 'engage.chatCooldownSec', kind: 'num', label: 'Mesaj bekleme süresi', unit: 'saniye', hint: 'Aynı izleyicinin mesajı en fazla bu sıklıkla asker verir.' },
       { key: 'troops.followBonus', kind: 'num', label: 'Takip bonusu', unit: 'asker', hint: 'Takip eden izleyicinin şehrine giden asker.' },
       { key: 'troops.shareBonus', kind: 'num', label: 'Paylaşım bonusu', unit: 'asker', hint: 'Yayını paylaşan izleyicinin şehrine giden asker.' },
+      { key: 'engage.likesPerTroop', kind: 'num', label: 'Kaç beğeni = 1 asker', unit: 'beğeni', hint: 'Takımdaki izleyicinin her bu kadar beğenisi şehrine 1 asker verir; haritada "❤ +N" olarak çıkar (0 = beğeni asker vermez, yalnızca moral).' },
+      { key: 'engage.likeMilestone', kind: 'num', label: 'Beğeni isim aralığı', unit: 'beğeni', hint: 'İzleyici turda her bu kadar beğeniye ulaşınca adı şehrinde çıkar (ör. "Ahmet · 50 beğeni").' },
+      { key: 'engage.pendingLikesMax', kind: 'num', label: 'Katılmadan önceki beğeniler', unit: 'beğeni', hint: 'Plaka yazmadan beğenen izleyicinin beğenileri, katılınca en fazla bu kadarı sayılır (0 = sayılmaz).' },
+      { key: 'show.hucumBar', kind: 'toggle', label: 'HÜCUM çubuğu', hint: 'Haritanın altında HÜCUM\'a en yakın şehrin moral çubuğu (ör. "İSTANBUL HÜCUM %80"). Ekran bölümündeki ile aynı ayar.' },
       { key: 'morale.likeSpeed', kind: 'num', label: 'Beğeni moral hızı', unit: 'kat', hint: 'Beğenilerin HÜCUM moralini ne kadar hızlı doldurduğu (1 = normal, 2 = iki kat hızlı).' },
     ],
   },
@@ -53,7 +58,8 @@ const GROUPS = [
       { key: 'show.leader', kind: 'toggle', label: 'Lider kartı', hint: 'Turun en çok hediye gönderen izleyicisi.' },
       { key: 'show.credit', kind: 'toggle', label: 'Hediye teşekkür şeridi', hint: 'Hediye gelince "+asker" teşekkür kutusu ve ipuçları.' },
       { key: 'show.imperative', kind: 'toggle', label: 'Talimat satırı', hint: 'Haritanın üstündeki büyük yazı (ör. "BEĞEN, MORAL DOLSUN!").' },
-      { key: 'show.giftStrip', kind: 'toggle', label: 'Hediye şeridi', hint: 'En alttaki 4 hediye kutusu.' },
+      { key: 'show.giftStrip', kind: 'toggle', label: 'Hediye şeridi', hint: 'En alttaki hediye merdiveni (sayfa sayfa döner).' },
+      { key: 'show.hucumBar', kind: 'toggle', label: 'HÜCUM çubuğu', hint: 'Haritanın altındaki "İSTANBUL HÜCUM %80" çubuğu.' },
       { key: 'show.minimap', kind: 'toggle', label: 'Küçük harita', hint: 'Kamera yakınlaşınca köşede çıkan Türkiye haritası.' },
       { key: 'cta.text', kind: 'text', label: 'Çağrı yazısı', hint: 'Haritanın altındaki kırmızı çağrının yazısı.' },
       { key: 'cta.example', kind: 'text', label: 'Çağrı örneği', hint: 'Çağrının yanındaki örnek kutu (ör. plaka).' },
@@ -74,6 +80,7 @@ const GROUPS = [
 const PLAIN = {
   'show.cityBoard': false, 'show.gifterBoard': false, 'show.likers': false, 'show.session': false,
   'show.credit': false, 'show.minimap': false, 'show.leader': true, 'show.imperative': true, 'show.giftStrip': true,
+  'show.hucumBar': true,
 };
 
 const COMMAND_CONFIRM = {
@@ -102,6 +109,77 @@ export function initSettings({ api }) {
   let current = {}; // saved overrides from the bridge
   let dirty = false;
   const inputs = new Map(); // key -> { get(), set(v) }
+  const peers = new Map(); // key -> controls (a key shown in two groups, e.g. show.hucumBar)
+  // TikTok room gift list from the bridge (GET /api/gifts, { type: "gifts" } over /ws).
+  let catalog = { items: [], ts: 0, source: '' };
+  let catalogNote = null; let stripPreview = null; let picker = null;
+
+  const catalogIcon = (id) => catalog.items.find((x) => x.id === id)?.icon || '';
+  function renderCatalogNote() {
+    if (!catalogNote) return;
+    if (!catalog.items.length) {
+      catalogNote.textContent = 'TikTok hediye listesi henüz yok: canlı yayına bağlanınca otomatik alınır. O zamana kadar ad ve jetonu elle yazın.';
+      return;
+    }
+    const when = catalog.ts ? new Date(catalog.ts).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' }) : 'bilinmiyor';
+    catalogNote.textContent = `TikTok hediye listesi: ${catalog.items.length} hediye · son alınma: ${when}${catalog.source === 'test' ? ' (test verisi)' : ''}. "Listeden seç" ile resim, ad ve fiyat hazır gelir.`;
+  }
+  function setCatalog(c) {
+    catalog = { items: Array.isArray(c?.items) ? c.items : [], ts: Number(c?.ts) || 0, source: String(c?.source || '') };
+    renderCatalogNote();
+    stripPreview?.();
+  }
+  async function loadCatalog() {
+    try { setCatalog(await api('gifts')); } catch { setCatalog(null); }
+  }
+
+  /** Troops for ONE gift (same log-log curve as the game) from the curve inputs, for the preview. */
+  function previewTroops(coins) {
+    const cur = inputs.get('gifts.curve')?.get() || defaults?.['gifts.curve'] || [];
+    const pts = CURVE_COINS.map((c, i) => [c, Number(cur[i]) || Number(defaults?.['gifts.curve']?.[i]) || 1]);
+    const c = Math.max(1, coins);
+    if (c <= pts[0][0]) return Math.round(pts[0][1] * c / pts[0][0]);
+    let i = 1;
+    while (i < pts.length - 1 && c > pts[i][0]) i++;
+    const [x0, y0] = pts[i - 1]; const [x1, y1] = pts[i];
+    return Math.round(y0 * Math.pow(y1 / y0, Math.log(c / x0) / Math.log(x1 / x0)));
+  }
+
+  /** Small searchable list of TikTok's gifts (icon, name, coin price) under a button. */
+  function openPicker(anchor, onPick) {
+    picker?.remove();
+    if (picker?._anchor === anchor) { picker = null; return; }
+    const box = el('div', 'gift-picker');
+    box._anchor = anchor;
+    picker = box;
+    if (!catalog.items.length) {
+      el('p', 'hint', box, 'Liste yok: TikTok hediye listesi canlı yayına bağlanınca gelir. Şimdilik ad ve jetonu elle yazın.');
+    } else {
+      const q = el('input', '', box); q.type = 'search'; q.placeholder = 'Ara (ad ya da jeton)…';
+      const list = el('div', 'gift-picker-list', box);
+      const render = () => {
+        const t = q.value.trim().toLocaleLowerCase('tr');
+        list.replaceChildren();
+        for (const it of catalog.items) {
+          if (t && !it.name.toLocaleLowerCase('tr').includes(t) && String(it.coins) !== t) continue;
+          const b = el('button', 'gift-picker-item', list); b.type = 'button';
+          const img = el('img', '', b); img.alt = ''; img.referrerPolicy = 'no-referrer'; img.loading = 'lazy';
+          if (it.icon) img.src = it.icon; else img.style.visibility = 'hidden';
+          img.onerror = () => { img.style.visibility = 'hidden'; };
+          el('span', 'gp-name', b, it.name);
+          el('span', 'gp-coins', b, `${it.coins.toLocaleString('tr-TR')} jeton`);
+          b.onclick = () => { onPick(it); box.remove(); picker = null; };
+        }
+        if (!list.childElementCount) el('p', 'hint', list, 'Eşleşen hediye yok.');
+      };
+      q.oninput = render;
+      render();
+      setTimeout(() => q.focus(), 0);
+    }
+    const close = el('button', 'small', box, 'Kapat'); close.type = 'button';
+    close.onclick = () => { box.remove(); picker = null; };
+    anchor.closest('.strip-row').append(box);
+  }
 
   const say = (text, kind = '') => {
     msgEl.textContent = text;
@@ -127,6 +205,7 @@ export function initSettings({ api }) {
 
   function build() {
     root.replaceChildren();
+    peers.clear(); inputs.clear();
     for (const g of GROUPS) {
       const fs = el('fieldset', 'set-group', root);
       el('legend', '', fs, g.title);
@@ -136,12 +215,12 @@ export function initSettings({ api }) {
         const row = el('div', 'row wrap', fs);
         const b = el('button', '', row, 'Sade görünüm');
         b.type = 'button';
-        b.title = 'Yalnızca süre, lider kartı, talimat satırı, harita, çağrı ve hediye şeridi kalır.';
+        b.title = 'Yalnızca süre, lider kartı, talimat satırı, harita, HÜCUM çubuğu, çağrı ve hediye şeridi kalır.';
         b.onclick = () => { for (const [k, v] of Object.entries(PLAIN)) inputs.get(k)?.set(v); save('Sade görünüm uygulandı'); };
         const all = el('button', '', row, 'Hepsini göster');
         all.type = 'button';
         all.onclick = () => { for (const k of Object.keys(PLAIN)) inputs.get(k)?.set(true); save('Bütün kutular açıldı'); };
-        el('span', 'muted', row, 'Sade: süre, lider kartı, talimat satırı, harita, çağrı ve hediye şeridi.');
+        el('span', 'muted', row, 'Sade: süre, lider kartı, talimat satırı, harita, HÜCUM çubuğu, çağrı ve hediye şeridi.');
       }
       for (const f of g.fields) buildField(fs, f);
     }
@@ -169,7 +248,7 @@ export function initSettings({ api }) {
     const row = el('div', 'set-field' + (f.kind === 'strip' || f.kind === 'curve' ? ' wide' : ''), parent);
     const head = el('div', 'set-head', row);
     const label = el('label', 'set-label', head);
-    const id = 'set-' + f.key.replace(/\W/g, '-');
+    const id = 'set-' + f.key.replace(/\W/g, '-') + (peers.has(f.key) ? '-2' : '');
     label.htmlFor = id;
     label.textContent = f.label;
     if (f.nextRound) el('span', 'tag', head, 'sonraki turdan itibaren');
@@ -198,8 +277,13 @@ export function initSettings({ api }) {
         const i = el('input', '', lab); i.type = 'checkbox'; i.id = id;
         const txt = el('span', '', lab);
         const show = () => { txt.textContent = i.checked ? 'Açık' : 'Kapalı'; };
-        i.onchange = () => { show(); markDirty(); };
         api_ = { get: () => i.checked, set: (v) => { i.checked = !!v; show(); } };
+        const self = api_;
+        i.onchange = () => {
+          show(); markDirty();
+          for (const p of peers.get(f.key) || []) if (p !== self) p.set(i.checked); // same key elsewhere
+          if (f.key === 'gifts.showTroops') stripPreview?.();
+        };
         break;
       }
       case 'text': {
@@ -233,23 +317,94 @@ export function initSettings({ api }) {
         break;
       }
       case 'strip': {
-        const tbl = el('table', 'set-table strip', ctl);
-        const hr = el('tr', '', el('thead', '', tbl));
-        for (const h of ['', 'Hediye adı', 'Jeton', 'Etki yazısı']) el('th', '', hr, h);
-        const tb = el('tbody', '', tbl);
-        const cells = [];
-        for (let n = 0; n < s.count; n++) {
-          const tr = el('tr', '', tb);
-          el('td', 'muted', tr, `${n + 1}.`);
-          const name = el('input', '', el('td', '', tr)); name.type = 'text'; name.maxLength = s.nameMax; name.placeholder = '(jeton değeri yazsın)';
-          const coins = el('input', '', el('td', '', tr)); coins.type = 'number'; coins.min = s.coinsMin; coins.max = s.coinsMax; coins.step = 1;
-          const effect = el('input', '', el('td', '', tr)); effect.type = 'text'; effect.maxLength = s.effectMax;
-          for (const i of [name, coins, effect]) i.oninput = markDirty;
-          cells.push({ name, coins, effect });
-        }
+        // Gift ladder: 1..maxCount rows (add / remove / reorder). A row picked from TikTok's
+        // gift list keeps its id (the game then shows the real gift picture).
+        const note = el('p', 'hint gift-cat-note', ctl);
+        catalogNote = note;
+        const tb = el('div', 'strip-rows', ctl);
+        const addBtn = el('button', '', ctl, '+ Hediye ekle');
+        addBtn.type = 'button';
+        let rows = [];
+        const preview = () => {
+          for (const r of rows) {
+            const c = Number(r.coins.value);
+            const t = c >= 1 ? previewTroops(c) : 0;
+            const showN = inputs.get('gifts.showTroops')?.get() !== false;
+            r.out.textContent = c >= 1 ? `${showN ? `+${t.toLocaleString('tr-TR')} asker` : ''}${showN && r.effect.value.trim() ? ', ' : ''}${r.effect.value.trim()}` : '–';
+            r.idTag.textContent = r.id ? `#${r.id}` : '';
+            r.idTag.title = r.id ? 'TikTok hediye kimliği (listeden seçildi). Resim buna göre bulunur.' : '';
+            r.img.style.display = r.id && catalogIcon(r.id) ? '' : 'none';
+            if (r.id && catalogIcon(r.id)) r.img.src = catalogIcon(r.id);
+          }
+          addBtn.disabled = rows.length >= s.maxCount;
+        };
+        stripPreview = preview;
+        const renumber = () => rows.forEach((r, n) => { r.num.textContent = `${n + 1}.`; r.up.disabled = n === 0; r.down.disabled = n === rows.length - 1; r.del.disabled = rows.length <= s.minCount; });
+        const addRow = (g = {}) => {
+          const tr = el('div', 'strip-row', tb);
+          const r = { tr, id: Number(g.id) > 0 ? Number(g.id) : 0 };
+          const l1 = el('div', 'strip-l1', tr);
+          r.num = el('span', 'muted strip-num', l1);
+          const nameTd = el('span', 'gift-name-td', l1);
+          r.img = el('img', 'gift-pick-img', nameTd); r.img.alt = ''; r.img.referrerPolicy = 'no-referrer'; r.img.style.display = 'none';
+          r.img.onerror = () => { r.img.style.display = 'none'; };
+          r.name = el('input', '', nameTd); r.name.type = 'text'; r.name.maxLength = s.nameMax; r.name.placeholder = '(jeton değeri yazsın)';
+          r.idTag = el('span', 'muted gift-id', nameTd);
+          const pick = el('button', 'small', nameTd, 'Listeden seç'); pick.type = 'button';
+          pick.onclick = () => openPicker(pick, (it) => {
+            r.id = it.id; r.name.value = it.name.slice(0, s.nameMax); r.coins.value = it.coins; r.plus.checked = false;
+            markDirty(); preview();
+          });
+          r.pick = pick;
+          const l2 = el('div', 'strip-l2', tr);
+          const cl = el('label', 'strip-coins', l2, 'Jeton ');
+          r.coins = el('input', '', cl); r.coins.type = 'number'; r.coins.min = s.coinsMin; r.coins.max = s.coinsMax; r.coins.step = 1;
+          const pl = el('label', 'strip-plus', l2);
+          r.plus = el('input', '', pl); r.plus.type = 'checkbox'; pl.append(' ve üstü'); r.plus.title = 'Bu değer ve üstü (ör. "1.000+ jeton")';
+          const el_ = el('label', 'strip-effect', l2, 'Etki ');
+          r.effect = el('input', '', el_); r.effect.type = 'text'; r.effect.maxLength = s.effectMax; r.effect.placeholder = 'ör. şövalye birliği';
+          r.out = el('span', 'gift-out', l2);
+          r.out.title = 'Ekranda böyle yazar';
+          const act = el('span', 'row-act', l1);
+          r.up = el('button', 'small', act, '↑'); r.down = el('button', 'small', act, '↓'); r.del = el('button', 'small danger', act, '✕');
+          for (const b of [r.up, r.down, r.del]) b.type = 'button';
+          r.up.title = 'Yukarı'; r.down.title = 'Aşağı'; r.del.title = 'Sil';
+          const move = (d) => {
+            const i = rows.indexOf(r); const j = i + d;
+            if (j < 0 || j >= rows.length) return;
+            rows.splice(i, 1); rows.splice(j, 0, r);
+            tb.replaceChildren(...rows.map((x) => x.tr));
+            renumber(); markDirty();
+          };
+          r.up.onclick = () => move(-1); r.down.onclick = () => move(1);
+          r.del.onclick = () => { if (rows.length <= s.minCount) return; rows = rows.filter((x) => x !== r); tr.remove(); renumber(); preview(); markDirty(); };
+          // Typing a different name drops the TikTok id (it no longer names the same gift).
+          r.name.oninput = () => { r.id = 0; markDirty(); preview(); };
+          r.coins.oninput = () => { markDirty(); preview(); };
+          r.effect.oninput = () => { markDirty(); preview(); };
+          r.plus.onchange = markDirty;
+          r.name.value = g.name ?? ''; r.coins.value = g.coins ?? ''; r.effect.value = g.effect ?? ''; r.plus.checked = g.plus === true;
+          rows.push(r);
+          return r;
+        };
+        addBtn.onclick = () => {
+          if (rows.length >= s.maxCount) return;
+          const last = rows[rows.length - 1];
+          addRow({ coins: last ? Math.min(s.coinsMax, Number(last.coins.value) * 2 || 1) : 1, effect: last ? last.effect.value : '' });
+          renumber(); preview(); markDirty();
+        };
         api_ = {
-          get: () => cells.map((c) => ({ name: c.name.value.trim(), coins: c.coins.value.trim() === '' ? '' : Number(c.coins.value), effect: c.effect.value.trim() })),
-          set: (v) => cells.forEach((c, n) => { c.name.value = v[n]?.name ?? ''; c.coins.value = v[n]?.coins ?? ''; c.effect.value = v[n]?.effect ?? ''; }),
+          get: () => rows.map((r) => {
+            const o = { name: r.name.value.trim(), coins: r.coins.value.trim() === '' ? '' : Number(r.coins.value), effect: r.effect.value.trim() };
+            if (r.id) o.id = r.id;
+            if (r.plus.checked) o.plus = true;
+            return o;
+          }),
+          set: (v) => {
+            tb.replaceChildren(); rows = [];
+            for (const g of Array.isArray(v) ? v : []) addRow(g);
+            renumber(); preview();
+          },
         };
         break;
       }
@@ -258,7 +413,7 @@ export function initSettings({ api }) {
         const cells = (s.coins || CURVE_COINS).map((c) => {
           const lab = el('label', '', wrap, `${c.toLocaleString('tr-TR')} jeton`);
           const i = el('input', '', lab); i.type = 'number'; i.min = s.min; i.max = s.max; i.step = 1;
-          i.oninput = markDirty;
+          i.oninput = () => { markDirty(); stripPreview?.(); };
           return i;
         });
         el('span', 'unit', wrap, 'asker');
@@ -268,7 +423,10 @@ export function initSettings({ api }) {
       default: return;
     }
     el('p', 'hint', row, `${f.hint} Varsayılan: ${describeDefault(f, def)}.`);
-    inputs.set(f.key, api_);
+    const list = peers.get(f.key) || [];
+    list.push(api_);
+    peers.set(f.key, list);
+    inputs.set(f.key, list.length === 1 ? api_ : { get: api_.get, set: (v) => list.forEach((p) => p.set(v)) });
   }
 
   function describeDefault(f, v) {
@@ -277,7 +435,7 @@ export function initSettings({ api }) {
       case 'pace': return PACE_LABEL[v] || v;
       case 'range': return `%${v}`;
       case 'text': return `"${v}"`;
-      case 'strip': return v.map((g) => `${g.name || '(ad yok)'} ${g.coins} jeton`).join(', ');
+      case 'strip': return v.map((g) => `${g.name || '(ad yok)'} ${g.coins}${g.plus ? '+' : ''} jeton`).join(', ');
       case 'curve': return v.map((n, i) => `${CURVE_COINS[i]}→${n}`).join(', ');
       default: return `${fmt(v)}${f.unit ? ' ' + f.unit : ''}`;
     }
@@ -286,6 +444,7 @@ export function initSettings({ api }) {
   // ---------------------------------------------------------------- data
   function fill() {
     for (const [key, ctl] of inputs) ctl.set(key in current ? current[key] : defaults[key]);
+    stripPreview?.(); // after the curve and the troop toggle are filled
     dirty = false;
   }
 
@@ -329,6 +488,8 @@ export function initSettings({ api }) {
     const r = await api('settings');
     schema = r.schema; defaults = r.defaults; paces = r.paces; current = r.values || {};
     build(); fill(); renderPages(r.pages);
+    renderCatalogNote();
+    loadCatalog();
   }
 
   $('set-save').onclick = () => save();
@@ -345,6 +506,8 @@ export function initSettings({ api }) {
       current = msg.values || {};
       if (!dirty) fill();
     },
+    /** TikTok gift list pushed by the bridge ({ type: "gifts", ts, items }). */
+    onGifts(msg) { setCatalog(msg); },
     /** Periodic /api/state result: refresh the connected-pages line. */
     onState(s) {
       if (!loaded) tryLoad();

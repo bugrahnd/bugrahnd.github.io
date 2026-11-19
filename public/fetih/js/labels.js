@@ -331,6 +331,7 @@ export class Floaters {
     let el = this.pool.pop();
     if (!el) { el = document.createElement('div'); el.className = 'floater'; this.root.append(el); }
     el.classList.toggle('tiny', size === 'tiny');
+    el.classList.toggle('like', size === 'like');
     _v.copy(worldPos).project(camera);
     const x = (_v.x * 0.5 + 0.5) * w + (Math.random() - 0.5) * 24;
     const y = (-_v.y * 0.5 + 0.5) * h - 14;
@@ -469,7 +470,9 @@ export class WorldTags {
         // Name tags never leave the map band (anchor: bottom centre of the tag).
         const m = 4;
         x = Math.min(Math.max(x, b.x + it.hw + m), b.x + b.w - it.hw - m);
-        y = Math.min(Math.max(y, b.y + it.hh + m), b.y + b.h - m);
+        // Vertically inside the fitted map area: clear of the instruction line and HÜCUM bar.
+        const f = b.fit || b;
+        y = Math.min(Math.max(y, f.y + it.hh + m), f.y + f.h - m);
       }
       it.r.el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translate(-50%, -100%)`;
     }

@@ -48,55 +48,130 @@
     "paradeDistance": 26,
     "conquerorSec": 20,
     "imperativeSec": 6,
-    "fewPlayers": 6
+    "fewPlayers": 6,
+    "_likes": "Likes are troops too: every likesPerTroop likes from a member = +1 troop at their province (finale and comeback multiply), shown as one floater per likeBatchSec per viewer. likeMilestone = name pop at the province every N likes in the round (likeNameGapSec between pops, stream-wide). Likes from viewers who have not joined are held (up to pendingLikesMax) and credited on join; they get a hint (likeHintGapSec stream-wide, likeHintPerUserSec per viewer).",
+    "likesPerTroop": 10,
+    "likeBatchSec": 1,
+    "likeMilestone": 50,
+    "likeNameGapSec": 2.5,
+    "likeCreditGapSec": 4,
+    "pendingLikesMax": 500,
+    "likeHintGapSec": 12,
+    "likeHintPerUserSec": 30
   },
   "gifts": {
-    "_note": "Tiers by the coin value of ONE gift (highest matching minCoins wins). Troops per gift come from troops.giftCurve; the tier sets the spectacle (units, siege, announce, camera).",
+    "_note": "Gift ladder by the coin value of ONE gift (highest matching minCoins wins; unlisted gifts fall to the nearest lower step). Troops per gift come from troops.giftCurve; the step sets the spectacle (units, figures, siege, announce, camera). rank 0-4 = spectacle class (sound, credit length, callouts, camera). legend = short effect word for the gift strip.",
     "tiers": [
       {
         "id": "piyade",
         "minCoins": 1,
-        "label": "Piyade",
+        "rank": 0,
+        "label": "Tek Piyade",
         "mode": "garrison",
         "unit": "infantry",
+        "paradeFigures": 1,
         "sfx": "sfx_gift_small",
-        "legend": "+5 asker"
+        "legend": "tek piyade"
+      },
+      {
+        "id": "manga",
+        "minCoins": 5,
+        "rank": 0,
+        "label": "Piyade Mangası",
+        "mode": "garrison",
+        "unit": "infantry",
+        "paradeFigures": 4,
+        "sfx": "sfx_gift_small",
+        "legend": "piyade mangası"
+      },
+      {
+        "id": "sovalye",
+        "minCoins": 10,
+        "rank": 1,
+        "label": "Şövalye",
+        "mode": "army",
+        "unit": "knight",
+        "minFigures": 2,
+        "maxFigures": 3,
+        "sfx": ["sfx_gift_medium", "sfx_march"],
+        "legend": "şövalye"
       },
       {
         "id": "atli",
-        "minCoins": 10,
+        "minCoins": 20,
+        "rank": 1,
         "label": "Şövalye Birliği",
         "mode": "army",
         "unit": "knight",
-        "cavalryFromCoins": 30,
-        "maxFigures": 10,
+        "minFigures": 6,
+        "maxFigures": 8,
         "sfx": ["sfx_gift_medium", "sfx_march"],
-        "legend": "Şövalye akını"
+        "legend": "şövalye birliği"
+      },
+      {
+        "id": "suvari",
+        "minCoins": 30,
+        "rank": 1,
+        "label": "Süvari",
+        "mode": "army",
+        "unit": "cavalry",
+        "minFigures": 5,
+        "maxFigures": 8,
+        "sfx": ["sfx_gift_medium", "sfx_march"],
+        "legend": "süvari"
+      },
+      {
+        "id": "akin",
+        "minCoins": 99,
+        "rank": 1,
+        "label": "Süvari Akını",
+        "mode": "army",
+        "units": ["cavalry", "cavalry", "knight"],
+        "minFigures": 10,
+        "maxFigures": 12,
+        "sfx": ["sfx_gift_medium", "sfx_march"],
+        "legend": "süvari akını"
       },
       {
         "id": "kusatma",
         "minCoins": 100,
+        "rank": 2,
         "label": "Kuşatma Topları",
         "mode": "army",
         "unit": "cavalry",
+        "minFigures": 10,
         "maxFigures": 14,
         "siege": "cannon",
         "siegeEngines": 1,
         "siegeShots": 4,
         "siegeTroopShare": 0.35,
         "sfx": ["sfx_explosion_big", "sfx_hit_metal"],
-        "legend": "Top ateşi"
+        "legend": "top ateşi"
+      },
+      {
+        "id": "mancinik",
+        "minCoins": 199,
+        "rank": 2,
+        "label": "Mancınık",
+        "mode": "army",
+        "units": ["cavalry", "knight"],
+        "minFigures": 12,
+        "maxFigures": 16,
+        "siege": "catapult",
+        "siegeEngines": 1,
+        "siegeShots": 5,
+        "siegeTroopShare": 0.35,
+        "sfx": ["sfx_explosion_big", "sfx_hit_metal"],
+        "legend": "mancınık"
       },
       {
         "id": "ordu",
         "minCoins": 1000,
+        "rank": 3,
         "label": "Büyük Ordu",
         "mode": "army",
-        "units": [
-          "cavalry",
-          "knight",
-          "infantry"
-        ],
+        "units": ["cavalry", "knight", "infantry"],
+        "minFigures": 16,
         "maxFigures": 28,
         "siege": "catapult",
         "siegeEngines": 2,
@@ -107,20 +182,16 @@
         "horn": "sfx_horn",
         "camera": true,
         "sfx": "sfx_gift_big",
-        "legend": "Büyük ordu"
+        "legend": "büyük ordu"
       },
       {
         "id": "sultan",
         "minCoins": 5000,
+        "rank": 4,
         "label": "Sultan Ordusu",
         "mode": "multi",
         "maxTargets": 4,
-        "units": [
-          "cavalry",
-          "knight",
-          "cavalry",
-          "infantry"
-        ],
+        "units": ["cavalry", "knight", "cavalry", "infantry"],
         "maxFigures": 30,
         "siege": "trebuchet",
         "siegeEngines": 3,
@@ -132,7 +203,7 @@
         "camera": true,
         "shake": true,
         "sfx": ["sfx_gift_big", "sfx_victory"],
-        "legend": "4 cepheye saldırı"
+        "legend": "sultan ordusu"
       }
     ],
     "mergeSameUserArmySec": 4
@@ -170,19 +241,8 @@
     "rebalanceFraction": 0.6,
     "rebellionIntervalSec": 8,
     "rebellionMin": 5,
-    "speed": {
-      "infantry": 10,
-      "knight": 13,
-      "cavalry": 17,
-      "mixed": 13,
-      "ship": 22
-    },
-    "power": {
-      "infantry": 1,
-      "knight": 1.3,
-      "cavalry": 1.4,
-      "mixed": 1.35
-    }
+    "speed": { "infantry": 10, "knight": 13, "cavalry": 17, "mixed": 13, "ship": 22 },
+    "power": { "infantry": 1, "knight": 1.3, "cavalry": 1.4, "mixed": 1.35 }
   },
   "visual": {
     "unitScale": 3.6,
@@ -246,12 +306,19 @@
     "topCities": 5,
     "topGifters": 3,
     "topLikers": 2,
-    "_giftStrip": "Up to four gifts shown under the map: name as viewers see it in the TikTok app (may be empty: the tile then shows the coin value, plus=true adds +), coins, effect text. Effects come from the coin value (gifts.tiers), never from the name.",
+    "_giftStrip": "Gift ladder under the map (cheapest first; up to 12): name as viewers see it in the TikTok app (may be empty: the tile shows the coin value, plus=true adds +), coins, effect word. Each tile reads name · coins -> +N asker (N from troops.giftCurve, live) + effect. Effects come from the coin value (gifts.tiers), never from the name. giftStripPageSec = seconds per page; giftStripTroops=false hides the +N.",
     "giftStrip": [
-      { "name": "Gül", "coins": 1, "effect": "Asker", "icon": "icon_knight" },
-      { "name": "Donat", "coins": 30, "effect": "Şövalye akını", "icon": "icon_sword" },
-      { "name": "Elle Kalp", "coins": 100, "effect": "Top ateşi", "icon": "icon_fire" },
-      { "name": "", "coins": 1000, "plus": true, "effect": "Büyük ordu", "icon": "icon_crown" }
+      { "name": "TikTok", "coins": 1, "effect": "tek piyade", "icon": "icon_knight" },
+      { "name": "Gül", "coins": 1, "effect": "tek piyade", "icon": "icon_knight" },
+      { "name": "Finger Heart", "coins": 5, "effect": "piyade mangası", "icon": "icon_knight" },
+      { "name": "Dostluk Kolyesi", "coins": 10, "effect": "şövalye", "icon": "icon_sword" },
+      { "name": "Parfüm", "coins": 20, "effect": "şövalye birliği", "icon": "icon_sword" },
+      { "name": "Donat", "coins": 30, "effect": "süvari", "icon": "icon_sword" },
+      { "name": "Şapka ve Bıyık", "coins": 99, "effect": "süvari akını", "icon": "icon_sword" },
+      { "name": "Elle Kalp", "coins": 100, "effect": "top ateşi", "icon": "icon_fire" },
+      { "name": "Kalpler", "coins": 199, "effect": "mancınık", "icon": "icon_fire" },
+      { "name": "", "coins": 1000, "plus": true, "effect": "büyük ordu", "icon": "icon_crown" },
+      { "name": "", "coins": 5000, "plus": true, "effect": "sultan ordusu", "icon": "icon_crown" }
     ],
     "floaterMax": 24,
     "maxTags": 6,
@@ -273,6 +340,10 @@
     "busyEventsPerSec": 14,
     "busyArmyMinTroops": 300,
     "commanderBadges": 3,
-    "commanderNames": 5
+    "commanderNames": 5,
+    "giftStripPageSec": 4,
+    "giftStripPageSize": 4,
+    "giftStripTroops": true,
+    "giftPulseSec": 3.5
   }
 }

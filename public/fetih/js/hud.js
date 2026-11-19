@@ -50,6 +50,29 @@ function iconEl(assets, key, parent, cls = 'icon') {
   return i;
 }
 
+/**
+ * A gift picture from TikTok's CDN (plain <img>, no referrer). Hidden while empty or when
+ * the URL fails; `fallback` (a game icon path) is shown instead when given.
+ */
+function giftImg(parent, cls, fallback = '') {
+  const i = el('img', 'gift-img ' + cls, parent);
+  i.alt = ''; i.decoding = 'async'; i.referrerPolicy = 'no-referrer'; i.draggable = false;
+  let fb = fallback;
+  const show = (src) => { if (src) { i.src = src; i.style.display = ''; } else { i.removeAttribute('src'); i.style.display = 'none'; } };
+  i.onerror = () => { if (fb && i.getAttribute('src') !== fb) { i.classList.add('fb'); show(fb); } else show(''); };
+  show(fallback);
+  return {
+    img: i,
+    set(url, fallbackSrc = fb) {
+      fb = fallbackSrc;
+      const safe = safeImageUrl(url);
+      i.classList.toggle('fb', !safe);
+      const want = safe || fb;
+      if (i.getAttribute('src') !== want) show(want);
+    },
+  };
+}
+
 /** Name + badge, only rewritten when something changed. */
 function setName(node, nick, badge) {
   const k = `${nick}|${badgeKey(badge)}`;
@@ -96,13 +119,23 @@ const STREAM_GIFTS_H = 84;
 const STREAM_CTA_H = 58;
 const STREAM_MAP_INSET = 62; // imperative line over the top of the band
 
-const CTA_LINES = [
-  ['34', 'yaz → İstanbul’a katıl'],
-  ['ankara', 'şehir adı da olur'],
-  ['❤️ ekrana bas', 'moral → HÜCUM!'],
-  ['💬 her mesaj', '+1 asker'],
-  ['🎁 hediye', 'adınla asker yürür'],
-];
+const STREAM_HUCUM_INSET = 52; // HÜCUM bar over the bottom of the band (map fitted above it)
+
+/** How-to lines in the tips slot; the like line uses the live likes-per-troop number. */
+function ctaLines(cfg) {
+  const per = cfg.engage?.likesPerTroop ?? 10;
+  return [
+    ['34', 'yaz → İstanbul’a katıl'],
+    ['ankara', 'şehir adı da olur'],
+    ['❤️ ekrana bas', per > 0 ? `${per} beğeni = 1 asker` : 'moral → HÜCUM!'],
+    ['❤️ beğeni', 'moral dolar → HÜCUM!'],
+    ['💬 her mesaj', '+1 asker'],
+    ['🎁 hediye', 'adınla asker yürür'],
+  ];
+}
+
+/** Normalised gift name for matching strip entries to TikTok's catalogue. */
+const giftKey = (s) => String(s || '').toLocaleLowerCase('tr').replace(/[^\p{L}\p{N}]+/gu, '');
 
 export class Hud {
   /** opts.variant: default portrait variant, 'stream' (TikTok safe zones) or 'full'. */
@@ -172,7 +205,10 @@ export class Hud {
     const ct = el('div', 'credit-text', cr);
     this.cred.nick = el('div', 'credit-nick', ct);
     this.cred.msg = el('div', 'credit-msg', ct);
-    this.cred.troops = el('div', 'credit-troops', cr);
+    this.cred.troopsBox = el('div', 'credit-troops', cr);
+    // The sent gift's picture (TikTok CDN URL from the live bridge), hidden when missing.
+    this.cred.gift = giftImg(this.cred.troopsBox, 'credit-gift');
+    this.cred.troops = el('span', '', this.cred.troopsBox);
 
     // Top bar
     const top = el('div', 'topbar panel-dark', r);
@@ -287,14 +323,31 @@ export class Hud {
     this.ctaMainChip = el('span', 'cta-chip', ctaMain, '34');
     this.ctaSub2 = el('div', 'cta-sub2', cta, 'İstersen emoji ekle, rozetin olur: 34 🔥');
     const ctaLine = el('div', 'cta-line', cta);
-    this.ctaChip = el('span', 'cta-chip small', ctaLine, CTA_LINES[0][0]);
-    this.ctaText = el('span', 'cta-text', ctaLine, CTA_LINES[0][1]);
+    const cl = ctaLines(this.cfg);
+    this.ctaChip = el('span', 'cta-chip small', ctaLine, cl[0][0]);
+    this.ctaText = el('span', 'cta-text', ctaLine, cl[0][1]);
     this.ctaLine = ctaLine;
 
     // Gift strip: four gifts by name, coin value and a two-word effect (hud.giftStrip in
     // the config; the game's own icons, not TikTok artwork). Other gifts work by coin value.
+    // Gift ladder: every tile reads "gift · price → +N asker, effect" (N live from
+    // troops.giftCurve via this.troopsFor). Shown as auto-advancing pages that fit the strip.
     this.tiersEl = el('div', 'tiers panel-dark', r);
+    this.tierTrack = el('div', 'tier-track', this.tiersEl);
+    this.tierMeasure = el('div', 'tier-measure', this.tiersEl);
+    this.tierDots = el('div', 'tier-dots', this.tiersEl);
+    this.giftIcons = { byId: new Map(), byName: new Map(), v: 0 };
+    this.troopsFor = null; // (coins) => troops for ONE gift (set by main.js from the game)
+    this.stripTroops = this.cfg.hud.giftStripTroops !== false;
+    this.stripPage = 0; this.stripT = 0; this.pulseUntil = 0; this.pulseCoins = 0; this.pulseAt = -1e9;
+    this.tiles = []; this.pages = [];
     this.setGiftStrip(this.cfg.hud.giftStrip);
+
+    // HÜCUM bar: the city closest to (or in) HÜCUM, labelled, over the bottom of the map.
+    this.hbEl = el('div', 'hucum-bar', r);
+    this.hbEl.style.display = 'none';
+    this.hbFill = el('div', 'hb-fill', this.hbEl);
+    this.hbText = el('div', 'hb-text', this.hbEl);
 
     // Feed
     this.feedEl = el('div', 'feed', r);
@@ -324,7 +377,9 @@ export class Hud {
     this.ann.av = makeAvatar(who, 'big');
     const whoText = el('div', 'announce-who-text', who);
     this.ann.nick = el('div', 'announce-nick', whoText);
-    this.ann.gift = el('div', 'announce-gift', whoText);
+    const ag = el('div', 'announce-gift', whoText);
+    this.ann.giftImg = giftImg(ag, 'announce-gift-img');
+    this.ann.gift = el('span', '', ag);
     this.ann.troops = el('div', 'announce-troops', card);
     this.ann.effect = el('div', 'announce-effect', card);
 
@@ -370,32 +425,175 @@ export class Hud {
     this.debugEl.style.display = 'none';
   }
 
-  /** (Re)builds the four-gift strip. Entries: { name, coins, effect, icon?, plus? }. */
-  setGiftStrip(list) {
-    const a = this.assets;
-    const tiers = this.tiersEl;
-    const strip = Array.isArray(list) && list.length ? list : this.cfg.gifts.tiers.map((t) => ({ name: t.label, coins: t.minCoins, effect: t.legend }));
-    const key = JSON.stringify(strip.slice(0, 4));
+  /**
+   * (Re)builds the gift ladder. Entries: { name, coins, effect, id?, icon?, plus? }, cheapest
+   * first. Each tile reads "gift · price → +N asker, effect"; N comes live from the gift
+   * curve (this.troopsFor) unless the streamer hid the number (troopsOn = false).
+   */
+  setGiftStrip(list, troopsOn) {
+    if (troopsOn !== undefined) this.stripTroops = troopsOn !== false;
+    const strip = (Array.isArray(list) && list.length ? list : this.cfg.gifts.tiers.map((t) => ({ name: '', coins: t.minCoins, plus: true, effect: t.legend })))
+      .slice(0, 12);
+    this._stripList = strip;
+    const troops = strip.map((g) => (this.troopsFor ? Math.round(this.troopsFor(Math.max(1, Number(g.coins) || 1))) : 0));
+    const key = JSON.stringify([strip, troops, this.stripTroops]);
     if (key === this._stripKey) return;
     this._stripKey = key;
-    tiers.replaceChildren();
-    // An entry without a name shows its coin value instead ("1.000+ jeton"); `plus`
-    // marks "this value or more". Effects follow coin value, never the name.
-    strip.slice(0, 4).forEach((g, i) => {
-      const s = el('div', `tier gs${i}`, tiers);
+    const a = this.assets;
+    this.tiles = strip.map((g, i) => {
       const name = String(g.name || '').trim();
-      const coinText = `${fmt(Number(g.coins) || 0)}${g.plus ? '+' : ''}${name ? '' : ' jeton'}`;
-      s.classList.toggle('noname', !name);
-      if (name) {
-        const top = el('span', 'tier-name', s);
-        iconEl(a, g.icon || 'icon_gem', top, 'icon tiny');
-        el('span', '', top, name);
-      }
-      const c = el('span', 'tier-coins', s);
+      const coins = Math.max(1, Number(g.coins) || 1);
+      const t = el('div', `tier r${this._rankFor(coins)}`);
+      t.classList.toggle('noname', !name);
+      const head = el('div', 'tier-head', t);
+      const fb = a.uiPath(g.icon || 'icon_gem');
+      const img = giftImg(head, 'tier-img', fb);
+      if (name) el('span', 'tier-name', head, name);
+      const c = el('span', 'tier-coins', head);
       iconEl(a, 'icon_coin', c, 'icon tiny');
-      el('span', '', c, coinText);
-      el('span', 'tier-label', s, String(g.effect || ''));
+      el('span', '', c, `${fmt(coins)}${g.plus ? '+' : ''}${name ? '' : ' jeton'}`);
+      const res = el('div', 'tier-res', t);
+      if (this.stripTroops && troops[i] > 0) el('span', 'tier-troops', res, `+${fmt(troops[i])} asker`);
+      if (String(g.effect || '').trim()) el('span', 'tier-label', res, String(g.effect).trim());
+      el('div', 'tier-hot', t, 'AZ ÖNCE!');
+      const tile = { el: t, g: { ...g, name, coins }, img, fb };
+      img.set(this._iconForEntry(tile.g), fb);
+      return tile;
     });
+    this._paginate();
+  }
+
+  /** Spectacle class (gifts.tiers[].rank) for a coin value: colours the ladder steps. */
+  _rankFor(coins) {
+    let r = 0;
+    for (const t of this.cfg.gifts.tiers || []) if (coins >= t.minCoins) r = t.rank ?? r;
+    return Math.min(4, r);
+  }
+
+  _iconForEntry(g) {
+    const I = this.giftIcons;
+    if (g.id && I.byId.has(g.id)) return I.byId.get(g.id);
+    return g.name ? I.byName.get(giftKey(g.name)) || '' : '';
+  }
+
+  /** Room gift catalogue from the bridge ({ type: "gifts", items: [{ id, name, coins, icon }] }). */
+  setGiftCatalog(items) {
+    if (!Array.isArray(items)) return;
+    for (const it of items) {
+      const icon = safeImageUrl(it?.icon);
+      if (!icon || !/^https:/i.test(icon)) continue;
+      const id = Math.floor(Number(it.id));
+      if (id > 0) this.giftIcons.byId.set(id, icon);
+      const k = giftKey(it.name);
+      if (k && !this.giftIcons.byName.has(k)) this.giftIcons.byName.set(k, icon);
+    }
+    for (const t of this.tiles) t.img.set(this._iconForEntry(t.g), t.fb);
+  }
+
+  /** A gift event carried its picture: remember it (by id and name) for tiles and credits. */
+  noteGiftIcon(id, name, icon) {
+    const safe = safeImageUrl(icon);
+    if (!safe) return;
+    const k = giftKey(name);
+    if ((id && this.giftIcons.byId.get(id) === safe) || (!id && k && this.giftIcons.byName.get(k) === safe)) return;
+    if (id) this.giftIcons.byId.set(id, safe);
+    if (k) this.giftIcons.byName.set(k, safe);
+    for (const t of this.tiles) if ((id && t.g.id === id) || (k && giftKey(t.g.name) === k)) t.img.set(safe, t.fb);
+  }
+
+  giftIconFor(id, name) {
+    return (id && this.giftIcons.byId.get(id)) || this.giftIcons.byName.get(giftKey(name)) || '';
+  }
+
+  /** Packs the tiles into pages that fit the strip (measured, so the type never shrinks). */
+  _paginate() {
+    const u = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--u')) || 0;
+    const W = u ? this.tiersEl.clientWidth / u : 0;
+    if (!u || W < 50 || !this.tiles.length) { this.pages = this.tiles.length ? [[this.tiles.map((_, i) => i)]] : []; this._showPage(0); return; }
+    this.tierMeasure.replaceChildren(...this.tiles.map((t) => t.el));
+    const widths = this.tiles.map((t) => t.el.getBoundingClientRect().width / u);
+    const stream = this.variant === 'stream';
+    const avail = W - 34; // border + padding + page dots
+    const gap = 6;
+    const maxPer = this.cfg.hud.giftStripPageSize ?? 4;
+    const rows = [];
+    let row = []; let w = 0;
+    widths.forEach((tw, i) => {
+      if (row.length && (w + gap + tw > avail || row.length >= maxPer)) { rows.push(row); row = []; w = 0; }
+      w += (row.length ? gap : 0) + tw; row.push(i);
+    });
+    if (row.length) rows.push(row);
+    const per = stream ? 1 : 2; // the full layout has room for two rows
+    this.pages = [];
+    for (let i = 0; i < rows.length; i += per) this.pages.push(rows.slice(i, i + per));
+    this.tierMeasure.replaceChildren();
+    this.tierDots.replaceChildren(...this.pages.map(() => el('i')));
+    this.tierDots.style.display = this.pages.length > 1 ? '' : 'none';
+    this._showPage(Math.min(this.stripPage, this.pages.length - 1));
+  }
+
+  _showPage(n, animate = false) {
+    if (!this.pages.length) { this.tierTrack.replaceChildren(); return; }
+    this.stripPage = (n + this.pages.length) % this.pages.length;
+    this.stripT = 0;
+    const rows = this.pages[this.stripPage].map((r) => {
+      const d = el('div', 'tier-row');
+      for (const i of r) d.append(this.tiles[i].el);
+      return d;
+    });
+    this.tierTrack.replaceChildren(...rows);
+    [...this.tierDots.children].forEach((d, i) => d.classList.toggle('on', i === this.stripPage));
+    if (animate) this.tierTrack.animate([{ opacity: 0, transform: 'translateX(4%)' }, { opacity: 1, transform: 'none' }], { duration: 320, easing: 'ease-out' });
+  }
+
+  /** A gift arrived: jump to its ladder step and mark it for a moment ("AZ ÖNCE!"). */
+  giftPulse(coins, id = 0, name = '') {
+    if (!this.tiles.length || !this._vis('giftStrip')) return;
+    // Chaos-level traffic: a smaller gift does not steal a fresh pulse.
+    if (this.timeNow - this.pulseAt < 1.2 && coins < this.pulseCoins) return;
+    const T = this.tiles;
+    let idx = id ? T.findIndex((t) => t.g.id === id) : -1;
+    const k = giftKey(name);
+    if (idx < 0 && k) idx = T.findIndex((t) => t.g.name && giftKey(t.g.name) === k);
+    if (idx < 0) {
+      let best = -1;
+      T.forEach((t, i) => { if (t.g.coins <= coins && (best < 0 || t.g.coins > T[best].g.coins)) best = i; });
+      idx = best < 0 ? 0 : best;
+    }
+    this.pulseAt = this.timeNow; this.pulseCoins = coins;
+    this.pulseUntil = this.timeNow + (this.cfg.hud.giftPulseSec ?? 3.5);
+    const page = this.pages.findIndex((p) => p.some((r) => r.includes(idx)));
+    if (page >= 0 && page !== this.stripPage) this._showPage(page, true);
+    this.stripT = 0;
+    for (const t of T) t.el.classList.remove('hot');
+    const tile = T[idx].el;
+    tile.classList.add('hot');
+    tile.animate([{ transform: 'scale(1.1)' }, { transform: 'scale(1)' }], { duration: 420, easing: 'ease-out' });
+  }
+
+  _stepStrip(dt) {
+    if (this.pulseUntil && this.timeNow > this.pulseUntil) {
+      this.pulseUntil = 0;
+      for (const t of this.tiles) t.el.classList.remove('hot');
+    }
+    if (this.pulseUntil || this.pages.length < 2) return;
+    this.stripT += dt;
+    if (this.stripT >= (this.cfg.hud.giftStripPageSec ?? 4)) this._showPage(this.stripPage + 1, true);
+  }
+
+  /** The labelled morale bar: "İSTANBUL HÜCUM %80"; full = "İSTANBUL HÜCUMDA! 12 sn". */
+  _updateHucumBar(h) {
+    const E = this.hbEl;
+    if (!h || !this._vis('hucumBar')) { if (E.style.display !== 'none') E.style.display = 'none'; return; }
+    if (E.style.display === 'none') E.style.display = '';
+    E.style.setProperty('--c', hexCss(h.colorHex));
+    E.classList.toggle('on', h.hucum);
+    const up = h.name.toLocaleUpperCase('tr');
+    const t = h.hucum ? `🔥 ${up} HÜCUMDA! ${Math.max(0, Math.ceil(h.left))} sn` : `❤ ${up} HÜCUM %${Math.floor(h.frac * 100)}`;
+    if (this.hbText.textContent !== t) this.hbText.textContent = t;
+    this.hbFill.style.transform = `scaleX(${h.frac.toFixed(3)})`;
+    if (h.hucum && !this._hbWas) E.animate([{ transform: 'scale(1.08)' }, { transform: 'scale(1)' }], { duration: 500, easing: 'ease-out' });
+    this._hbWas = h.hucum;
   }
 
   /** Call-to-action text ("PLAKANI YAZ:") and its example chip ("34"). */
@@ -488,7 +686,11 @@ export class Hud {
     this.bandEl.style.height = `${rect.h}px`;
     // The map itself is fitted below the leader spot and credit strip.
     const inset = (stream ? (this._vis('imperative') ? STREAM_MAP_INSET : 0) : MAP_TOP_INSET) * u;
-    rect.fit = { x: rect.x, y: rect.y + inset, w: rect.w, h: Math.max(rect.h * 0.5, rect.h - inset) };
+    // The HÜCUM bar sits over the bottom of the band (stream layout): fit the map above it.
+    const insetB = (stream && this._vis('hucumBar') ? STREAM_HUCUM_INSET : 0) * u;
+    rect.fit = { x: rect.x, y: rect.y + inset, w: rect.w, h: Math.max(rect.h * 0.5, rect.h - inset - insetB) };
+    // Ladder pages depend on the strip width at this scale.
+    this._paginate();
     return rect;
   }
 
@@ -660,14 +862,17 @@ export class Hud {
     this.ctaT += dt;
     if (this.timeNow > this.hintUntil && this.ctaT > 3.2) {
       this.ctaT = 0;
-      this.ctaI = (this.ctaI + 1) % CTA_LINES.length;
+      const cl = ctaLines(this.cfg);
+      this.ctaI = (this.ctaI + 1) % cl.length;
       this.ctaLine.classList.remove('hint');
       this.root.classList.remove('hinting');
-      this.ctaChip.textContent = CTA_LINES[this.ctaI][0];
-      this.ctaText.textContent = CTA_LINES[this.ctaI][1];
+      this.ctaChip.textContent = cl[this.ctaI][0];
+      this.ctaText.textContent = cl[this.ctaI][1];
       this.ctaLine.animate([{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'none' }], { duration: 300 });
     }
 
+    this._stepStrip(dt);
+    this._updateHucumBar(sum.hucumBar);
     this._pumpFeed();
     this._pumpCallout();
     this._pumpCredit();
@@ -741,10 +946,17 @@ export class Hud {
     while (this.feedLines.length > this.cfg.hud.feedLines) this.feedLines.pop().remove();
   }
 
-  nudge(name, nick, avatar, coins, cooldownSec) {
+  /**
+   * A viewer who has not joined sent gifts (coins) and/or likes: show them what to type.
+   * likes > 0 without coins = "Beğenilerin boşa gidiyor: plakanı yaz" (the game rate-limits it).
+   */
+  nudge(name, nick, avatar, coins, cooldownSec, likes = 0) {
+    const what = coins > 0 ? `${fmt(coins)} jeton bekliyor` : `❤ ${fmt(likes)} beğeni`;
+    const msg = coins > 0 ? 'Plakanı yaz: ' : 'Beğenilerin boşa gidiyor: plakanı yaz ';
     const existing = this.nudges.get(name);
     if (existing) {
-      existing.coins.textContent = `${fmt(coins)} jeton bekliyor`;
+      existing.coins.textContent = what;
+      existing.msg.textContent = msg;
       existing.until = this.timeNow + 8;
       return;
     }
@@ -761,13 +973,15 @@ export class Hud {
     const txt = el('div', 'nudge-text', n);
     const l1 = el('div', 'nudge-l1', txt);
     el('span', 'nudge-nick', l1, nick);
-    const c = el('span', 'nudge-coins', l1, `${fmt(coins)} jeton bekliyor`);
+    const c = el('span', 'nudge-coins', l1, what);
     const l2 = el('div', 'nudge-msg', txt);
-    el('span', '', l2, 'Plakanı yaz: ');
-    el('span', 'cta-chip tiny', l2, '34 🔥');
+    const m = el('span', '', l2, msg);
+    const ex = this.ctaMainChip.textContent || '34';
+    el('span', 'cta-chip tiny', l2, coins > 0 ? `${ex} 🔥` : ex);
+    n.classList.toggle('likes', !(coins > 0));
     this.nudgeEl.append(n);
     n.animate([{ opacity: 0, transform: 'translateX(40px)' }, { opacity: 1, transform: 'none' }], { duration: 300 });
-    this.nudges.set(name, { el: n, until: this.timeNow + 8, coins: c });
+    this.nudges.set(name, { el: n, until: this.timeNow + (coins > 0 ? 8 : 6), coins: c, msg: m });
   }
 
   dismissNudge(name) {
@@ -917,6 +1131,7 @@ export class Hud {
     A.tier.textContent = o.tier.toLocaleUpperCase('tr') + '!';
     A.av.set(o.avatar, o.nick, o.colorHex);
     setName(A.nick, o.nick, o.badge);
+    A.giftImg.set(o.giftIcon || '');
     A.gift.textContent = `${o.giftName}${o.count > 1 ? ' ×' + o.count : ''} gönderdi`;
     A.troops.textContent = `${fmtShort(o.troops)} asker → ${o.team}`;
     A.effect.textContent = o.effect || '';
@@ -1031,6 +1246,8 @@ export class Hud {
       if (into.giftName === o.giftName) into.count += o.count; else { into.giftName = 'hediye'; into.count = 0; }
       into.tierIndex = Math.max(into.tierIndex, o.tierIndex);
       into.x2 = into.x2 || o.x2;
+      if (o.troopsText) { into.troopsText = o.troopsText; into.troops = o.troops; }
+      if (o.giftIcon && into.giftName === o.giftName) into.giftIcon = o.giftIcon; else if (into.giftName !== o.giftName) into.giftIcon = '';
     };
     const cur = this.crediting;
     if (cur && cur.key === o.key && this.timeNow - cur.shownAt < mergeSec + this._creditSec(cur)) {
@@ -1084,15 +1301,31 @@ export class Hud {
     ], { duration: 360, easing: 'ease-out' });
   }
 
+  /**
+   * A short like credit in the credit strip, only when it is idle (no gift credit showing or
+   * queued): "Ahmet ❤ 50 beğeni · +5 asker". Returns true when shown.
+   */
+  likeCredit(o) {
+    if (!this._vis('credit') || this.crediting || this.creditQueue.length) return false;
+    if (this.timeNow - this.lastCreditEnd < 1) return false;
+    this.credit({
+      ...o, coins: 0, giftName: '', count: 0, tierIndex: 0, like: true,
+      msg: `ekrana bastı: ${fmt(o.likes)} beğeni`,
+      troopsText: `❤ ${fmt(o.likes)} beğeni${o.troops > 0 ? ` · +${fmtShort(o.troops)} asker` : ''}`,
+    });
+    return true;
+  }
+
   _renderCredit(o, bump) {
     const C = this.cred;
-    C.root.className = `credit tier${Math.min(4, o.tierIndex || 0)}`;
+    C.root.className = `credit tier${Math.min(4, o.tierIndex || 0)}${o.like ? ' like' : ''}`;
     C.root.style.setProperty('--c', hexCss(o.colorHex));
     C.av.set(o.avatar, o.nick, o.colorHex);
     setName(C.nick, o.nick, o.badge);
     C.msg.textContent = o.msg || `${o.giftName}${o.count > 1 ? ' ×' + o.count : ''} gönderdi · ${fmt(o.coins)} jeton`;
-    C.troops.textContent = `+${fmtShort(o.troops)} asker → ${o.team}${o.x2 ? ' (2 KAT!)' : ''}`;
-    if (bump) C.troops.animate([{ transform: 'scale(1.25)' }, { transform: 'scale(1)' }], { duration: 350, easing: 'ease-out' });
+    C.gift.set(o.giftIcon || '');
+    C.troops.textContent = o.troopsText || `+${fmtShort(o.troops)} asker → ${o.team}${o.x2 ? ' (2 KAT!)' : ''}`;
+    if (bump) C.troopsBox.animate([{ transform: 'scale(1.25)' }, { transform: 'scale(1)' }], { duration: 350, easing: 'ease-out' });
   }
 
   // ---------- end screen ----------

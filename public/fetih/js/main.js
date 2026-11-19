@@ -112,6 +112,9 @@ async function main() {
   };
   const game = new Game({ provinces, aliases, colors, config, view });
   director.fallback = () => game.leaderFront();
+  // Gift ladder tiles show "+N asker" from the live gift curve.
+  hud.troopsFor = (coins) => game.giftTroops(coins);
+  hud.setGiftStrip(config.hud.giftStrip, config.hud.giftStripTroops !== false);
   window.__game = game; // handy for debugging from the console
   window.__director = director;
   window.__scene = scene; window.__renderer = renderer;
@@ -122,7 +125,7 @@ async function main() {
   const onSettings = (values) => {
     const s = applySettings(config, baseConfig, values);
     window.__settings = { values, applied: s };
-    hud.setGiftStrip(s.giftStrip);
+    hud.setGiftStrip(s.giftStrip, s.giftStripTroops);
     hud.setCta(s.cta.text, s.cta.example);
     if (hud.setVisibility(s.show)) resize();
     audio.applyVolumes(urlOpts.mute || s.mute);
@@ -139,6 +142,7 @@ async function main() {
   const onBridgeMessage = (msg) => {
     if (msg.type === 'settings') { onSettings(msg.values); return; }
     if (msg.type === 'command') { onCommand(String(msg.name || '')); return; }
+    if (msg.type === 'gifts') { hud.setGiftCatalog(msg.items); return; }
     if (msg.type === 'status' && (msg.mode === 'sim' || msg.mode === 'live')) {
       if (lastMode && msg.mode !== lastMode) game.clearMap();
       lastMode = msg.mode;

@@ -223,6 +223,7 @@ function connectWs() {
       renderStatus();
     }
     if (e.type === 'settings') settingsUi?.onRemote(e);
+    if (e.type === 'gifts') { settingsUi?.onGifts(e); return; } // catalogue: not an event for the log
     queueLog(e);
   };
   ws.onclose = () => {

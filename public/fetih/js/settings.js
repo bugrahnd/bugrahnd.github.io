@@ -28,6 +28,7 @@ export const SHOW_KEYS = {
   'show.giftStrip': 'giftStrip',
   'show.session': 'session',
   'show.minimap': 'minimap',
+  'show.hucumBar': 'hucumBar',
 };
 
 const isNum = (v, a, b) => typeof v === 'number' && Number.isFinite(v) && v >= a && v <= b;
@@ -60,14 +61,18 @@ export function applySettings(config, base, values = {}) {
   // ---- Hediyeler ----
   const strip = v['gifts.strip'];
   const baseStrip = B.hud.giftStrip || [];
-  if (Array.isArray(strip) && strip.length === 4) {
-    // Name / coins / effect from the panel; icon and the "+" mark stay from the config.
-    C.hud.giftStrip = strip.map((g, i) => ({
-      ...(baseStrip[i] || {}),
-      name: String(g?.name ?? '').slice(0, 40),
-      coins: Math.max(1, Math.floor(Number(g?.coins) || 1)),
-      effect: String(g?.effect ?? '').slice(0, 40),
-    }));
+  if (Array.isArray(strip) && strip.length >= 1 && strip.length <= 12) {
+    // Gift ladder from the panel (variable length). The game's own fallback icon comes from
+    // the config entry with the same (or the nearest lower) coin value; id / plus from the panel.
+    C.hud.giftStrip = strip.map((g) => {
+      const coins = Math.max(1, Math.floor(Number(g?.coins) || 1));
+      const like = baseStrip.find((b) => b.coins === coins) || [...baseStrip].reverse().find((b) => b.coins <= coins) || baseStrip[0] || {};
+      const o = { icon: like.icon, name: String(g?.name ?? '').slice(0, 40), coins, effect: String(g?.effect ?? '').slice(0, 40) };
+      const id = Math.floor(Number(g?.id));
+      if (id > 0) o.id = id;
+      if (g?.plus === true) o.plus = true;
+      return o;
+    });
   } else {
     C.hud.giftStrip = clone(baseStrip);
   }
@@ -88,6 +93,10 @@ export function applySettings(config, base, values = {}) {
   C.engage.chatCooldownSec = isNum(v['engage.chatCooldownSec'], 0, 60) ? v['engage.chatCooldownSec'] : B.engage.chatCooldownSec;
   C.troops.followBonus = isNum(v['troops.followBonus'], 0, 1000) ? v['troops.followBonus'] : B.troops.followBonus;
   C.troops.shareBonus = isNum(v['troops.shareBonus'], 0, 1000) ? v['troops.shareBonus'] : B.troops.shareBonus;
+  C.engage.likesPerTroop = isNum(v['engage.likesPerTroop'], 0, 1000) ? v['engage.likesPerTroop'] : B.engage.likesPerTroop;
+  C.engage.likeMilestone = isNum(v['engage.likeMilestone'], 10, 10000) ? v['engage.likeMilestone'] : B.engage.likeMilestone;
+  C.engage.pendingLikesMax = isNum(v['engage.pendingLikesMax'], 0, 100000) ? v['engage.pendingLikesMax'] : B.engage.pendingLikesMax;
+  C.hud.giftStripTroops = isBool(v['gifts.showTroops']) ? v['gifts.showTroops'] : B.hud.giftStripTroops !== false;
   // "How fast likes fill morale": a multiplier on morale per like.
   C.morale.perLike = B.morale.perLike * (isNum(v['morale.likeSpeed'], 0.25, 4) ? v['morale.likeSpeed'] : 1);
 
@@ -106,6 +115,7 @@ export function applySettings(config, base, values = {}) {
       example: isStr(v['cta.example'], 12) ? v['cta.example'].trim() : '34',
     },
     giftStrip: C.hud.giftStrip,
+    giftStripTroops: C.hud.giftStripTroops,
     mute: v['audio.mute'] === true,
     director: C.visual.cameraAttention,
   };
