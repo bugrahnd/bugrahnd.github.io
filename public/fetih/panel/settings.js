@@ -14,7 +14,7 @@ const GROUPS = [
     fields: [
       { key: 'round.durationMin', kind: 'num', label: 'Tur süresi', unit: 'dakika', hint: 'Bir turun uzunluğu.', nextRound: true },
       { key: 'round.endScreenSec', kind: 'num', label: 'Bitiş ekranı', unit: 'saniye', hint: 'Tur bitince kazananın gösterildiği süre.' },
-      { key: 'round.finaleSec', kind: 'num', label: '"2 kat" süresi', unit: 'saniye', hint: 'Turun son kaç saniyesinde her şey 2 kat sayılsın (0 = kapalı).' },
+      { key: 'round.finaleSec', kind: 'num', label: '"2 kat" süresi', unit: 'saniye', hint: 'Turun son kaç saniyesinde hediyeler (ve açıksa etkileşim ödülleri) 2 kat sayılsın. 0 = kapalı; açıkken ekranda "2 kat" rozeti çıkar.' },
       { key: 'round.earlyWinPct', kind: 'num', label: 'Erken zafer', unit: '% il', hint: 'Bir şehir illerin bu kadarını alırsa tur hemen biter (100 = erken bitiş yok).' },
       { key: 'round.keepTeams', kind: 'toggle', label: 'Takımlar turlar arası kalsın', hint: 'Açıksa izleyiciler yeni turda yeniden plaka yazmadan aynı şehirde kalır.', nextRound: true },
     ],
@@ -29,25 +29,32 @@ const GROUPS = [
     id: 'hediye', title: 'Hediyeler',
     fields: [
       { key: 'gifts.strip', kind: 'strip', label: 'Hediye merdiveni (haritanın altı)', hint: 'En ucuzdan pahalıya 1-12 hediye; ekranda sayfa sayfa döner. Hediye adı izleyicinin TikTok\'ta gördüğü ad olmalı (boş bırakılırsa jeton değeri yazar). "+N asker" kısmı asker eğrisinden otomatik gelir; etki yazısını siz yazarsınız. Etkiyi jeton değeri belirler, ad değil. "Listeden seç" yayında görülen hediyeleri gösterir: resim, ad ve fiyat hazır gelir.' },
-      { key: 'gifts.heading', kind: 'text', label: 'Merdiven başlığı', hint: 'Yayın görünümünde hediye merdiveninin üstündeki sarı sekme (ör. HEDİYE AT, ORDU KUR).' },
+      { key: 'gifts.heading', kind: 'text', label: 'Merdiven başlığı', hint: 'Yayın görünümünde hediye merdiveninin üstündeki sarı sekme. Açıklayıcı tutun (ör. HEDİYELER VE ORDULAR); "hediye at" gibi emir kipleri TikTok\'ta kısıtlamaya yol açabilir.' },
       { key: 'gifts.showTroops', kind: 'toggle', label: 'Kutularda asker sayısı', hint: 'Açıksa her hediye kutusunda "+N asker" yazar (sayı asker eğrisinden gelir).' },
       { key: 'gifts.curve', kind: 'curve', label: 'Hediye başına asker', hint: 'Tek bir hediyenin jeton değerine göre kaç asker verdiği. Aradaki değerler bu noktalardan hesaplanır; sayılar artan sırada olmalı.' },
     ],
   },
   {
-    id: 'bedava', title: 'Bedava hareketler',
+    id: 'moral', title: 'Beğeni ve moral',
+    intro: 'Beğeniler şehrin HÜCUM moralini doldurur; asker vermez (aşağıdaki ödüller kapalıyken).',
     fields: [
-      { key: 'engage.chatTroops', kind: 'num', label: 'Mesaj başına asker', unit: 'asker', hint: 'Takımdaki bir izleyici her yorum yazdığında şehrine giden asker.' },
-      { key: 'engage.chatCooldownSec', kind: 'num', label: 'Mesaj bekleme süresi', unit: 'saniye', hint: 'Aynı izleyicinin mesajı en fazla bu sıklıkla asker verir.' },
-      { key: 'engage.chatTroopCap', kind: 'num', label: 'Mesajdan en çok asker', unit: 'asker / tur', hint: 'Bir izleyicinin bir turda yorumlardan alabileceği en çok asker (son 30 sn ve isyan katları dahil). Dolunca izleyiciye bir kez "bedava hakkın doldu" notu çıkar. 0 = sınırsız.' },
-      { key: 'troops.followBonus', kind: 'num', label: 'Takip bonusu', unit: 'asker', hint: 'Takip eden izleyicinin şehrine giden asker.' },
-      { key: 'troops.shareBonus', kind: 'num', label: 'Paylaşım bonusu', unit: 'asker', hint: 'Yayını paylaşan izleyicinin şehrine giden asker. 0 = paylaşım asker vermez ve ekranda hiçbir şey göstermez.' },
-      { key: 'engage.likesPerTroop', kind: 'num', label: 'Kaç beğeni = 1 asker', unit: 'beğeni', hint: 'Takımdaki izleyicinin her bu kadar beğenisi şehrine 1 asker verir; haritada "❤ +N" olarak çıkar (0 = beğeni asker vermez, yalnızca moral). Ekrandaki "1 GÜL = N BEĞENİ" satırı bundan hesaplanır.' },
-      { key: 'engage.likeTroopCap', kind: 'num', label: 'Beğeniden en çok asker', unit: 'asker / tur', hint: 'Bir izleyicinin bir turda beğenilerden alabileceği en çok asker. Sınırdan sonra beğeniler yalnızca HÜCUM barını doldurur (o sınırsızdır). 0 = sınırsız.' },
-      { key: 'engage.likeMilestone', kind: 'num', label: 'Beğeni isim aralığı', unit: 'beğeni', hint: 'İzleyici turda her bu kadar beğeniye ulaşınca adı şehrinde çıkar (ör. "Ahmet · 50 beğeni").' },
-      { key: 'engage.pendingLikesMax', kind: 'num', label: 'Katılmadan önceki beğeniler', unit: 'beğeni', hint: 'Plaka yazmadan beğenen izleyicinin beğenileri, katılınca en fazla bu kadarı sayılır (0 = sayılmaz).' },
       { key: 'show.hucumBar', kind: 'toggle', label: 'HÜCUM çubuğu', hint: 'Haritanın altında HÜCUM\'a en yakın şehrin moral çubuğu (ör. "İSTANBUL HÜCUM %80"). Ekran bölümündeki ile aynı ayar.' },
       { key: 'morale.likeSpeed', kind: 'num', label: 'Beğeni moral hızı', unit: 'kat', hint: 'Beğenilerin HÜCUM moralini ne kadar hızlı doldurduğu (1 = normal, 2 = iki kat hızlı).' },
+      { key: 'engage.likeMilestone', kind: 'num', label: 'Beğeni isim aralığı', unit: 'beğeni', hint: 'İzleyicinin adı şehrinde ara ara "hücumu dolduruyor" olarak çıkar (sayı göstermez, sıklığı sınırlıdır); bu, kaç beğenide bir çıkabileceğidir.' },
+    ],
+  },
+  {
+    id: 'odul', title: 'Etkileşim ödülleri (TikTok kısıtlayabilir)', collapsed: true,
+    warn: 'TikTok, beğeni, yorum, takip veya paylaşım karşılığı ödül veren yayınların görünürlüğünü kısıtlayabilir. Varsayılan hepsi 0 (kapalı); açarsanız ekrandaki ilgili yazılar da geri gelir.',
+    fields: [
+      { key: 'engage.chatTroops', kind: 'num', label: 'Mesaj başına asker', unit: 'asker', hint: 'Takımdaki bir izleyici her yorum yazdığında şehrine giden asker; haritada "+N" ve durum satırında "HER MESAJ +N ASKER" çıkar. 0 = mesaj asker vermez, ekranda hiçbir şey göstermez.' },
+      { key: 'engage.chatCooldownSec', kind: 'num', label: 'Mesaj bekleme süresi', unit: 'saniye', hint: 'Aynı izleyicinin mesajı en fazla bu sıklıkla asker verir.' },
+      { key: 'engage.chatTroopCap', kind: 'num', label: 'Mesajdan en çok asker', unit: 'asker / tur', hint: 'Bir izleyicinin bir turda yorumlardan alabileceği en çok asker ("2 kat" ve isyan katları dahil). Dolunca izleyiciye bir kez "bedava hakkın doldu" notu çıkar. 0 = sınırsız.' },
+      { key: 'troops.followBonus', kind: 'num', label: 'Takip bonusu', unit: 'asker', hint: 'Takip eden izleyicinin şehrine giden asker; ekranda teşekkür şeridi çıkar. 0 = takip ekranda hiçbir şey göstermez.' },
+      { key: 'troops.shareBonus', kind: 'num', label: 'Paylaşım bonusu', unit: 'asker', hint: 'Yayını paylaşan izleyicinin şehrine giden asker. 0 = paylaşım asker vermez ve ekranda hiçbir şey göstermez.' },
+      { key: 'engage.likesPerTroop', kind: 'num', label: 'Kaç beğeni = 1 asker', unit: 'beğeni', hint: 'Takımdaki izleyicinin her bu kadar beğenisi şehrine 1 asker verir; haritada "❤ +N", durum satırında "1 GÜL = N BEĞENİ" çıkar. 0 = beğeni asker vermez, yalnızca HÜCUM moralini doldurur.' },
+      { key: 'engage.likeTroopCap', kind: 'num', label: 'Beğeniden en çok asker', unit: 'asker / tur', hint: 'Bir izleyicinin bir turda beğenilerden alabileceği en çok asker. Sınırdan sonra beğeniler yalnızca HÜCUM barını doldurur (o sınırsızdır). 0 = sınırsız.' },
+      { key: 'engage.pendingLikesMax', kind: 'num', label: 'Katılmadan önceki beğeniler', unit: 'beğeni', hint: 'Beğeni asker verirken: plaka yazmadan beğenen izleyicinin beğenileri, katılınca en fazla bu kadarı sayılır (0 = sayılmaz).' },
     ],
   },
   {
@@ -60,14 +67,14 @@ const GROUPS = [
       { key: 'show.session', kind: 'toggle', label: 'Günlük skor', hint: 'Sürenin solundaki kupa sayıları (kaç tur kazanıldı).' },
       { key: 'show.leader', kind: 'toggle', label: 'Lider kartı', hint: 'Turun en çok hediye gönderen izleyicisi.' },
       { key: 'show.credit', kind: 'toggle', label: 'Hediye teşekkür şeridi', hint: 'Hediye gelince "+asker" teşekkür kutusu ve ipuçları.' },
-      { key: 'show.imperative', kind: 'toggle', label: 'Talimat satırı', hint: 'Haritanın üstündeki büyük yazı (ör. "BEĞEN, MORAL DOLSUN!").' },
+      { key: 'show.imperative', kind: 'toggle', label: 'Durum satırı', hint: 'Haritanın üstündeki oyun durumu yazısı (ör. "İstanbul sınırda baskı altında", "Son 30 saniye").' },
       { key: 'show.giftStrip', kind: 'toggle', label: 'Hediye şeridi', hint: 'En alttaki hediye merdiveni (sayfa sayfa döner).' },
       { key: 'show.hucumBar', kind: 'toggle', label: 'HÜCUM çubuğu', hint: 'Haritanın altındaki "İSTANBUL HÜCUM %80" çubuğu.' },
       { key: 'show.minimap', kind: 'toggle', label: 'Küçük harita', hint: 'Kamera yakınlaşınca köşede çıkan Türkiye haritası.' },
-      { key: 'layout.chatTop', kind: 'num', label: 'Sohbet çizgisi', unit: 'birim (1920 üzerinden)', hint: 'Yayın görünümünde her şey bu çizginin üstünde kalır; altı TikTok sohbetine ayrılır. Telefonda sohbet hediye merdivenini ya da "PLAKANI YAZ" satırını kapatıyorsa küçültün, boşluk kalıyorsa büyütün (1150-1500). Kontrol: oyun adresine ?zones=1 ekleyin.' },
+      { key: 'layout.chatTop', kind: 'num', label: 'Sohbet çizgisi', unit: 'birim (1920 üzerinden)', hint: 'Yayın görünümünde her şey bu çizginin üstünde kalır; altı TikTok sohbetine ayrılır. Telefonda sohbet hediye merdivenini ya da katılım satırını kapatıyorsa küçültün, boşluk kalıyorsa büyütün (1150-1500). Kontrol: oyun adresine ?zones=1 ekleyin.' },
       { key: 'layout.side', kind: 'num', label: 'Yan boşluk', unit: 'birim', hint: 'Uzun ekranlı telefonlarda yayının sağı ve solu kırpılır; kutular kenardan bu kadar içeride durur (0-120).' },
-      { key: 'cta.text', kind: 'text', label: 'Çağrı yazısı', hint: 'Haritanın altındaki kırmızı çağrının yazısı.' },
-      { key: 'cta.example', kind: 'text', label: 'Çağrı örneği', hint: 'Çağrının yanındaki örnek kutu (ör. plaka).' },
+      { key: 'cta.text', kind: 'text', label: 'Katılım yazısı', hint: 'Haritanın altındaki tek, sakin katılım satırı. Bağırmayan, açıklayıcı tutun.' },
+      { key: 'cta.example', kind: 'text', label: 'Katılım örneği', hint: 'Katılım yazısının yanındaki örnek kutu (ör. plaka).' },
       { key: 'title.text', kind: 'text', label: 'Başlık yazısı', hint: 'En üstteki logo. İlk kelime plakanın içinde, gerisi yanında yazar (ör. "PLAKA SAVAŞLARI"). TikTok\'un üst çubuğu çoğunu kapatır; süs içindir.' },
     ],
   },
@@ -82,7 +89,7 @@ const GROUPS = [
   },
 ];
 
-// "Sade görünüm": only timer, leader card, imperative line, map, call to action and gift strip.
+// "Sade görünüm": only timer, leader card, status line, map, join line and gift strip.
 const PLAIN = {
   'show.cityBoard': false, 'show.gifterBoard': false, 'show.likers': false, 'show.session': false,
   'show.credit': false, 'show.minimap': false, 'show.leader': true, 'show.imperative': true, 'show.giftStrip': true,
@@ -234,20 +241,28 @@ export function initSettings({ api }) {
     root.replaceChildren();
     peers.clear(); inputs.clear();
     for (const g of GROUPS) {
-      const fs = el('fieldset', 'set-group', root);
-      el('legend', '', fs, g.title);
+      let fs;
+      if (g.collapsed) {
+        // A closed block with its own warning line (engagement rewards: off by default).
+        fs = el('details', 'set-group set-collapsed', root);
+        el('summary', '', fs, g.title);
+      } else {
+        fs = el('fieldset', 'set-group', root);
+        el('legend', '', fs, g.title);
+      }
+      if (g.warn) el('p', 'set-warn', fs, `⚠ ${g.warn}`);
       if (g.intro) el('p', 'hint', fs, g.intro);
       if (g.id === 'tur') buildCommands(fs);
       if (g.id === 'ekran') {
         const row = el('div', 'row wrap', fs);
         const b = el('button', '', row, 'Sade görünüm');
         b.type = 'button';
-        b.title = 'Yalnızca süre, lider kartı, talimat satırı, harita, HÜCUM çubuğu, çağrı ve hediye şeridi kalır.';
+        b.title = 'Yalnızca süre, lider kartı, durum satırı, harita, HÜCUM çubuğu, katılım satırı ve hediye şeridi kalır.';
         b.onclick = () => { for (const [k, v] of Object.entries(PLAIN)) inputs.get(k)?.set(v); save('Sade görünüm uygulandı'); };
         const all = el('button', '', row, 'Hepsini göster');
         all.type = 'button';
         all.onclick = () => { for (const k of Object.keys(PLAIN)) inputs.get(k)?.set(true); save('Bütün kutular açıldı'); };
-        el('span', 'muted', row, 'Sade: süre, lider kartı, talimat satırı, harita, HÜCUM çubuğu, çağrı ve hediye şeridi.');
+        el('span', 'muted', row, 'Sade: süre, lider kartı, durum satırı, harita, HÜCUM çubuğu, katılım satırı ve hediye şeridi.');
       }
       for (const f of g.fields) buildField(fs, f);
     }

@@ -155,7 +155,7 @@ html, body {
   font-family: var(--font-display); font-size: calc(var(--u) * 54); color: #fff; white-space: nowrap;
   background: linear-gradient(180deg, #ff5a4f, #8a1408); border: calc(var(--u) * 5) solid #ffd166; border-radius: calc(var(--u) * 22);
   padding: calc(var(--u) * 2) calc(var(--u) * 30); text-shadow: 0 calc(var(--u) * 4) 0 #3a0a04;
-  box-shadow: 0 0 calc(var(--u) * 36) rgba(255, 90, 60, 0.9); animation: pulse 0.8s infinite;
+  box-shadow: 0 0 calc(var(--u) * 24) rgba(255, 90, 60, 0.6);
 }
 .session {
   position: absolute; right: calc(var(--u) * 14); top: calc(var(--u) * (1112 + var(--ex, 0))); z-index: 4;
@@ -289,21 +289,13 @@ html, body {
   position: absolute; left: calc(var(--u) * 10); right: calc(var(--u) * 10); top: calc(var(--u) * (1170 + var(--ex, 0)));
   height: calc(var(--u) * 150);
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(var(--u) * 2);
-  background: linear-gradient(180deg, #c0392b, #7a1a10);
-  border: calc(var(--u) * 5) solid var(--gold); border-radius: calc(var(--u) * 22);
-  box-shadow: 0 0 calc(var(--u) * 24) rgba(255, 120, 60, 0.6), inset 0 calc(var(--u) * 4) 0 rgba(255, 255, 255, 0.2);
+  /* The one how-to-join line: a calm, static panel (no pulse, glow sweep or flashing). */
+  background: rgba(14, 9, 4, 0.84);
+  border: calc(var(--u) * 4) solid rgba(255, 209, 102, 0.7); border-radius: calc(var(--u) * 22);
   overflow: hidden;
-  animation: ctaPulse 2.4s ease-in-out infinite;
 }
-.cta::after {
-  content: ''; position: absolute; top: 0; bottom: 0; width: 30%; left: -40%;
-  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.35), transparent);
-  animation: shine 3.2s ease-in-out infinite;
-}
-@keyframes ctaPulse { 50% { transform: scale(1.02); box-shadow: 0 0 calc(var(--u) * 40) rgba(255, 160, 60, 0.9), inset 0 calc(var(--u) * 4) 0 rgba(255, 255, 255, 0.2); } }
-@keyframes shine { 0% { left: -40%; } 60%, 100% { left: 120%; } }
 .cta-main { display: flex; align-items: center; gap: calc(var(--u) * 14); white-space: nowrap; }
-.cta-a { font-family: var(--font-display); font-size: calc(var(--u) * 50); color: #fff; text-shadow: 0 calc(var(--u) * 4) 0 #4a0e0a; }
+.cta-a { font-size: calc(var(--u) * 40); font-weight: 800; color: #fff; text-shadow: 0 calc(var(--u) * 2) 0 #000; }
 .cta-chip {
   display: inline-block; font-family: var(--font-display); font-size: calc(var(--u) * 48); line-height: 1.1;
   color: var(--ink); background: #fff4dc; border-radius: calc(var(--u) * 14);
@@ -313,7 +305,6 @@ html, body {
 }
 .cta-chip.small { font-size: calc(var(--u) * 28); padding: 0 calc(var(--u) * 10); border-width: calc(var(--u) * 3); }
 .cta-chip.tiny { font-size: calc(var(--u) * 20); padding: 0 calc(var(--u) * 6); border-width: calc(var(--u) * 2); }
-.cta-sub2 { font-family: var(--font-display); font-size: calc(var(--u) * 26); color: var(--gold); text-shadow: 0 calc(var(--u) * 2) 0 #000; letter-spacing: 0.02em; }
 .cta-line { display: flex; align-items: center; gap: calc(var(--u) * 10); font-size: calc(var(--u) * 26); font-weight: 900; white-space: nowrap; max-width: 100%; }
 .cta-line.hint { color: #fff; }
 .cta-line.hint .cta-chip { border-color: var(--c, var(--gold)); background: #fff; box-shadow: 0 0 calc(var(--u) * 16) var(--c, var(--gold)); }
@@ -350,13 +341,7 @@ html, body {
 .tier.r2 .tier-label { color: #ffb347; }
 .tier.r3, .tier.r4 { background: linear-gradient(180deg, rgba(160, 40, 140, 0.6), rgba(60, 10, 60, 0.4)); }
 .tier.r3 .tier-label, .tier.r4 .tier-label { color: #ff9be6; }
-.tier-hot {
-  display: none; position: absolute; right: calc(var(--u) * 4); top: calc(var(--u) * -14); z-index: 2;
-  font-size: calc(var(--u) * 20); font-weight: 900; color: #fff; background: #ff3d6e; border-radius: 999px; padding: 0 calc(var(--u) * 10);
-  box-shadow: 0 0 calc(var(--u) * 10) #ff3d6e; white-space: nowrap;
-}
 .tier.hot { box-shadow: inset 0 0 0 calc(var(--u) * 3) var(--gold), 0 0 calc(var(--u) * 18) var(--gold); }
-.tier.hot .tier-hot { display: block; }
 .tier-dots { display: flex; flex-direction: column; justify-content: center; gap: calc(var(--u) * 5); flex: none; }
 .tier-dots i { display: block; width: calc(var(--u) * 9); height: calc(var(--u) * 9); border-radius: 50%; background: rgba(255, 255, 255, 0.28); }
 .tier-dots i.on { background: var(--gold); }
@@ -688,7 +673,6 @@ html, body {
 .landscape .cta-main { flex-direction: column; gap: 0; }
 .landscape .cta-a { font-size: calc(var(--u) * 34); }
 .landscape .cta-chip { font-size: calc(var(--u) * 40); }
-.landscape .cta-sub2 { display: none; }
 .landscape .cta-line { font-size: calc(var(--u) * 20); }
 .landscape .tiers { left: calc(var(--u) * 450); right: calc(var(--u) * 450); top: calc(var(--u) * 950); height: calc(var(--u) * 118); }
 .landscape .hucum-bar { left: calc(var(--u) * 610); width: calc(var(--u) * 700); top: calc(var(--u) * 884); }
@@ -892,17 +876,14 @@ html:not(.dbg) .wait-pill.on { display: block; }
 
 /* Bottom unit, under the map and above TikTok's chat, left of the hearts column:
    [ call to action | HÜCUM bar ] over the gift ladder, same left and right edges. */
-@keyframes ctaGlow { 50% { box-shadow: 0 0 calc(var(--u) * 34) rgba(255, 160, 60, 0.9), inset 0 calc(var(--u) * 4) 0 rgba(255, 255, 255, 0.2); } }
 .stream .cta {
   left: calc(var(--u) * var(--sx)); right: auto; width: calc(var(--u) * var(--bw)); top: calc(var(--u) * (var(--sb) - var(--s-cta, 166))); height: calc(var(--u) * 60);
   border-width: calc(var(--u) * 4); border-radius: calc(var(--u) * 18); padding: 0 calc(var(--u) * 10);
-  animation: ctaGlow 2.4s ease-in-out infinite; /* no scale pulse: the edges stay put */
 }
 .stream #hud.hb-on .cta { width: calc(var(--u) * (var(--bw) * 0.53 - 4)); }
-.stream .cta-sub2 { display: none; }
 .stream .cta-main { gap: calc(var(--u) * 10); max-width: 100%; }
-.stream .cta-a { font-size: calc(var(--u) * 38); overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.stream .cta-main .cta-chip { font-size: calc(var(--u) * 38); padding: 0 calc(var(--u) * 12); border-width: calc(var(--u) * 3); }
+.stream .cta-a { font-size: calc(var(--u) * 30); overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.stream .cta-main .cta-chip { font-size: calc(var(--u) * 34); padding: 0 calc(var(--u) * 12); border-width: calc(var(--u) * 3); }
 .stream .hucum-bar {
   left: calc(var(--u) * (var(--sx) + var(--bw) * 0.53 + 4)); width: calc(var(--u) * (var(--bw) * 0.47 - 4));
   top: calc(var(--u) * (var(--sb) - var(--s-cta, 166))); height: calc(var(--u) * 60); border-radius: calc(var(--u) * 18);
@@ -947,13 +928,11 @@ html:not(.dbg) .wait-pill.on { display: block; }
 .stream .tier.noname .tier-coins { grid-row: 1 / span 2; }
 .stream .tier .icon.tiny { width: calc(var(--u) * 30); height: calc(var(--u) * 30); }
 .stream .tier-jeton { display: none; }
-.stream .tier-res, .stream .tier-hot { grid-column: 1 / span 2; grid-row: 3; justify-self: stretch; text-align: center; font-size: calc(var(--u) * 38); overflow: hidden; text-overflow: ellipsis; }
+.stream .tier-res { grid-column: 1 / span 2; grid-row: 3; justify-self: stretch; text-align: center; font-size: calc(var(--u) * 38); overflow: hidden; text-overflow: ellipsis; }
 .stream .tier-troops { color: #7dff7d; text-shadow: 0 calc(var(--u) * 2) 0 #000; }
 /* "+N asker" on the tile; the effect word only when the number is hidden. */
 .stream .tier-troops + .tier-label { display: none; }
-/* "AZ ÖNCE!" replaces the result line inside the tile; the tile glows inside its own frame. */
-.stream .tier-hot { position: static; padding: 0 calc(var(--u) * 8); box-shadow: none; line-height: 1.04; }
-.stream .tier.hot .tier-res { display: none; }
+/* A gift that just arrived: the tile glows inside its own frame (plain highlight, no badge text). */
 .stream .tier.hot { border-color: var(--gold); box-shadow: inset 0 0 0 calc(var(--u) * 3) var(--gold), inset 0 0 calc(var(--u) * 30) rgba(255, 209, 102, 0.75); background: rgba(70, 45, 0, 0.78); }
 .stream .tier-dots i { width: calc(var(--u) * 12); height: calc(var(--u) * 12); }
 .stream .tier-dots { gap: calc(var(--u) * 6); }

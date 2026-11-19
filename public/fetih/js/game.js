@@ -223,7 +223,10 @@ export class Game {
     this.view.hud.reply(player.nick, text, team.colorHex);
   }
 
-  /** Any message from a member does something: votes, badge, or +1 troop. */
+  /**
+   * A message from a member: votes and badge changes; troops only when the streamer turned
+   * engage.chatTroops on (default 0: chat after joining adds and shows nothing).
+   */
   memberChat(player, n, badge) {
     const tokens = n ? n.split(' ') : [];
     if (tokens.length && ATTACK_WORDS.has(tokens[0])) {
@@ -239,6 +242,8 @@ export class Game {
     }
     if (this.round.phase !== 'play') return;
     const e = this.cfg.engage || {};
+    // Chat reward off (default): no troops, no floater, no "free troops used up" note.
+    if (!((e.chatTroops ?? 0) > 0)) return;
     if (this.time - (player.lastChatTroop ?? -1e9) < (e.chatCooldownSec ?? 10)) return;
     player.lastChatTroop = this.time;
     const team = this.team(player.team);
@@ -246,7 +251,7 @@ export class Game {
     const mult = this.actionMult(team);
     // engage.chatTroopCap: troops from chat per viewer per round (after multipliers; 0 = no cap).
     const cap = e.chatTroopCap ?? 10;
-    let add = (e.chatTroops ?? 1) * mult;
+    let add = e.chatTroops * mult;
     if (cap > 0) add = Math.min(add, Math.max(0, cap - (player.chatTroopsRound || 0)));
     if (add <= 0) { this.freeCapReached(player); return; }
     player.chatTroopsRound = (player.chatTroopsRound || 0) + add;
@@ -255,10 +260,15 @@ export class Game {
     if (cap > 0 && player.chatTroopsRound >= cap) this.freeCapReached(player);
   }
 
-  /** Likes this many = what one 1-coin gift (a Rose) gives: "1 GÜL = 1.000 BEĞENİ". */
+  /**
+   * Likes this many = what one 1-coin gift (a Rose) gives. 0 when likes give no troops
+   * (engage.likesPerTroop 0, the default) or the curve gives nothing: callers then show no
+   * exchange-rate text at all.
+   */
   likesPerRose() {
-    const per = this.cfg.engage?.likesPerTroop ?? 100;
-    return per > 0 ? Math.round(this.giftTroops(1)) * per : 0;
+    const per = Number(this.cfg.engage?.likesPerTroop) || 0;
+    const rose = Math.round(this.giftTroops(1) || 0);
+    return per > 0 && rose > 0 ? rose * per : 0;
   }
 
   /**
@@ -281,7 +291,8 @@ export class Game {
     this.lastFreeCapNudge = this.time;
     const team = this.team(p.team);
     const rate = this.likesPerRose();
-    const text = rate > 0 ? `bedava hakkın doldu · 1 Gül = ${fmt(rate)} beğeni` : 'bedava hakkın doldu · Gül at, asker kazan';
+    // Only reachable when a chat/like reward is switched on in the panel.
+    const text = rate > 0 ? `bedava hakkın doldu · 1 Gül = ${fmt(rate)} beğeni` : 'bedava hakkın doldu';
     const pv = this.prov.get(team.provinces ? (team.rally || team.plate) : team.plate);
     this.view.tags.spawn({ x: pv.wx, z: pv.wz, nick: p.nick, badge: p.badge, avatar: p.avatar, colorHex: 0xffd166, size: 'm', sec: 3.4, text });
     this.view.hud.credit?.({
@@ -297,9 +308,11 @@ export class Game {
     return this.finaleMult() * (this.isComeback(team) ? (this.cfg.engage?.comebackMult ?? 2) : 1);
   }
 
+  /** round.finaleSec 0 (default) = no finale multiplier at all. */
   finaleMult() {
     const r = this.round;
-    return r.phase === 'play' && r.left <= (this.cfg.round.finaleSec ?? 30) ? (this.cfg.round.finaleMult ?? 2) : 1;
+    const fin = this.cfg.round.finaleSec ?? 0;
+    return fin > 0 && r.phase === 'play' && r.left <= fin ? (this.cfg.round.finaleMult ?? 2) : 1;
   }
 
   /** Behind: no province, or far behind the leader. */
@@ -424,7 +437,7 @@ export class Game {
    */
   likeTroops(player, team, count) {
     const e = this.cfg.engage || {};
-    const per = e.likesPerTroop ?? 100;
+    const per = e.likesPerTroop ?? 0;
     if (per > 0) {
       player.likeRem = (player.likeRem || 0) + count;
       const n = Math.floor(player.likeRem / per);
@@ -462,7 +475,9 @@ export class Game {
   /** Called every frame: rate-limited name pops / credits, then batched like floaters. */
   stepLikes() {
     const e = this.cfg.engage || {};
-    if (this.likePops.size && this.round.phase === 'play' && this.time - this.lastLikePop >= (e.likeNameGapSec ?? 2.5)) this.likePop(e);
+    // Likes without troops: the neutral "hücumu dolduruyor" pop is spaced out more.
+    const gap = Math.max(e.likeNameGapSec ?? 2.5, (e.likesPerTroop ?? 0) > 0 ? 0 : (e.likeNameGapNoRewardSec ?? 4));
+    if (this.likePops.size && this.round.phase === 'play' && this.time - this.lastLikePop >= gap) this.likePop(e);
     this.stepFreeCap();
     const batchSec = e.likeBatchSec ?? 1;
     for (const p of this.likeBatches) {
@@ -495,11 +510,17 @@ export class Game {
     const b = p.likeBatch;
     if (b) { p.likeBatch = null; this.likeBatches.delete(p); }
     const pv = this.prov.get(b ? b.plate : (team.provinces ? (team.rally || team.plate) : team.plate));
-    const per = e.likesPerTroop ?? 100;
+    const per = e.likesPerTroop ?? 0;
+    if (!(per > 0)) {
+      // Likes give no troops (default): only neutral participation feedback tied to the
+      // charge ("Ahmet · hücumu dolduruyor"), no counts, no credit strip.
+      this.view.tags.spawn({ x: pv.wx, z: pv.wz, nick: p.nick, badge: p.badge, avatar: p.avatar, colorHex: 0xff5a8a, size: 's', sec: 2.4, text: 'hücumu dolduruyor' });
+      return;
+    }
     const got = b ? ` · +${fmt(b.troops)} asker${b.x2 ? ' ×2' : ''}` : '';
     let text;
     if (p.likeCapped && !b) text = `❤ ${fmt(best.likes)} beğeni · HÜCUM doluyor!`;
-    else if (best.first) text = b ? `❤ +${fmt(b.troops)} asker${b.x2 ? ' ×2' : ''} · ${per} beğeni = 1` : (per > 0 ? `❤ ${per} beğeni = 1 asker` : '❤ moral doluyor');
+    else if (best.first) text = b ? `❤ +${fmt(b.troops)} asker${b.x2 ? ' ×2' : ''} · ${per} beğeni = 1` : `❤ ${per} beğeni = 1 asker`;
     else text = `❤ ${fmt(best.likes)} beğeni${got}`;
     this.view.tags.spawn({ x: pv.wx, z: pv.wz, nick: p.nick, badge: p.badge, avatar: p.avatar, colorHex: 0xff5a8a, size: 'm', sec: 2.8, text });
     // The credit strip shows a short like credit when it is idle.
@@ -522,6 +543,8 @@ export class Game {
     pend.nick = cleanNick(u.nick || u.name);
     pend.avatar = safeImageUrl(u.avatar);
     if (this.round.phase !== 'play') return;
+    // The "your likes are wasted, type your plate" hint only makes sense when likes give troops.
+    if (!((e.likesPerTroop ?? 0) > 0)) return;
     if (this.time - this.lastLikeHint < (e.likeHintGapSec ?? 12)) return;
     if (this.time - (pend.likeHintAt ?? -1e9) < (e.likeHintPerUserSec ?? 30)) return;
     pend.likeHintAt = this.time;
@@ -530,9 +553,14 @@ export class Game {
     this.view.hud.nudge(u.name, pend.nick, pend.avatar, coins, 0, pend.likes);
   }
 
+  /** Troops for a follow / share (both 0 by default = the event does nothing at all). */
+  bonusTroops(kind) {
+    return Number(kind === 'follow' ? this.cfg.troops.followBonus : this.cfg.troops.shareBonus) || 0;
+  }
+
   onBonus(u, kind) {
-    // Share bonus 0 (default): a share does nothing at all (no troops, floater, credit or held count).
-    if (kind === 'share' && !(this.cfg.troops.shareBonus > 0)) return;
+    // Bonus 0 (default): a follow / share does nothing at all (no troops, floater, credit or held count).
+    if (!(this.bonusTroops(kind) > 0)) return;
     const player = this.touchPlayer(u);
     if (!player) {
       const pend = this.pending.get(u.name);
@@ -544,9 +572,9 @@ export class Game {
   }
 
   applyBonus(player, kind) {
-    if (kind === 'share' && !(this.cfg.troops.shareBonus > 0)) return; // held shares after the bonus was switched off
+    if (!(this.bonusTroops(kind) > 0)) return; // held follows / shares after the bonus was switched off
     const team = this.team(player.team);
-    const n = (kind === 'follow' ? this.cfg.troops.followBonus : this.cfg.troops.shareBonus) * this.finaleMult();
+    const n = this.bonusTroops(kind) * this.finaleMult();
     const plate = this.addTroops(team, n);
     const pv = this.prov.get(plate);
     this.view.floater(pv, `+${n} ${kind === 'follow' ? 'takip' : 'paylaşım'}`, team.colorHex, true);
@@ -571,7 +599,7 @@ export class Game {
     team.hucumUntil = this.time + m.hucumSec;
     team.nextAttackAt = this.time;
     this.view.hud.feed(`${team.name} HÜCUM! Moral doldu, ${m.hucumSec} sn boyunca ordular daha hızlı ve güçlü!`, team.colorHex, 'fire');
-    this.view.hud.callout({ title: `${team.name.toLocaleUpperCase('tr')} HÜCUMDA!`, sub: 'Beğeniler moral doldurdu!', colorHex: team.colorHex, prio: 2, sec: 2.6, kind: 'hucum' });
+    this.view.hud.callout({ title: `${team.name.toLocaleUpperCase('tr')} HÜCUMDA!`, sub: 'Moral doldu, ordular hızlandı', colorHex: team.colorHex, prio: 2, sec: 2.6, kind: 'hucum' });
     this.view.plates.setMorale(team.plate, 1, false, true);
     // Its own sound (a low sword sweep), not the round-start hit.
     this.view.audio.play('sfx_swing_b', { vol: 0.85, rate: 0.82, minGap: 0.5, cat: 'hucum' });
@@ -1141,15 +1169,17 @@ export class Game {
     const lead = st[0];
     if (r.left <= 60 && !d.said60) {
       d.said60 = true;
-      hud.callout({ title: 'SON 60 SANİYE!', sub: lead ? `Lider: ${lead.name} · ${lead.provinces} il` : 'Plakanı + emoji yaz, katıl!', colorHex: 0xff4a3a, prio: 4, sec: 3, kind: 'alarm' });
+      hud.callout({ title: 'SON 60 SANİYE!', sub: lead ? `Lider: ${lead.name} · ${lead.provinces} il` : 'Tur bitmek üzere', colorHex: 0xff4a3a, prio: 4, sec: 3, kind: 'alarm' });
       this.view.audio.play('sfx_horn', { vol: 0.7, minGap: 1 });
       return;
     }
-    const fin = this.cfg.round.finaleSec ?? 30;
+    // Last-seconds alarm: at the finale start when the finale multiplier is on, else at 30 s.
+    const finOn = (this.cfg.round.finaleSec ?? 0) > 0;
+    const fin = finOn ? this.cfg.round.finaleSec : 30;
     if (r.left <= fin && !d.said30) {
       d.said30 = true;
       const m = this.cfg.round.finaleMult ?? 2;
-      hud.callout({ title: `SON ${fin} SANİYE!`, sub: m > 1 ? `HER ŞEY ${m} KAT! Gül at, beğen, yaz!` : (lead ? `${lead.name} kazanmak üzere!` : ''), colorHex: 0xff4a3a, prio: 4, sec: 3.2, kind: 'alarm' });
+      hud.callout({ title: `SON ${fin} SANİYE!`, sub: finOn && m > 1 ? `Her şey ${m} kat sayılıyor` : (lead ? `${lead.name} kazanmak üzere` : ''), colorHex: 0xff4a3a, prio: 4, sec: 3.2, kind: 'alarm' });
       this.view.audio.play('sfx_horn_long', { vol: 0.8, minGap: 1 });
       hud.flash(0.5, 0xff4a3a);
       return;
@@ -1187,53 +1217,79 @@ export class Game {
     }
   }
 
-  /** One short, situation-driven instruction for the viewers (rotates, never repeats twice). */
+  /**
+   * The status line over the map: one short, situation-driven line of game narration
+   * ("İstanbul sınırda baskı altında", "Ankara hücuma hazırlanıyor", "Son 30 saniye").
+   * It describes what is happening; it never tells viewers to tap, comment, follow or gift.
+   * Rotates and never repeats the same line twice in a row.
+   */
   imperative() {
     const r = this.round;
     if (r.phase !== 'play') return null;
-    const up = (s) => s.toLocaleUpperCase('tr');
     const cands = [];
-    const fin = this.cfg.round.finaleSec ?? 30;
     const st = this.standings();
-    if (r.left <= fin) {
-      cands.push({ k: 'fin', p: 9, text: `SON SANİYELER! HER ŞEY ${this.cfg.round.finaleMult ?? 2} KAT!`, colorHex: 0xff4a3a });
+    const finSec = this.cfg.round.finaleSec ?? 0;
+    const finMult = this.cfg.round.finaleMult ?? 2;
+    if (finSec > 0 && finMult > 1 && r.left <= finSec) {
+      cands.push({ k: 'fin', p: 9, text: `Son saniyeler · her şey ${finMult} kat`, colorHex: 0xff4a3a });
+    } else if (r.left <= 30) {
+      cands.push({ k: 'last30', p: 9, text: 'Son 30 saniye', colorHex: 0xff4a3a });
     }
-    if (this.players.size < (this.cfg.engage?.fewPlayers ?? 6) || st.length < 3) {
-      cands.push({ k: 'join', p: 8, text: 'PLAKANI YAZ, ŞEHRİNİ SEÇ!', colorHex: 0xffd166 });
+    if (st.length < 2) {
+      cands.push({ k: 'quiet', p: 8, text: 'Harita sakin, şehirler uyanmayı bekliyor', colorHex: 0xffd166 });
     }
-    // A capital under attack: an enemy army is heading for a team's home province.
-    let danger = null;
+    // Enemy armies on the way: a capital in danger, or a border province under pressure.
+    let danger = null; let border = null;
     for (const a of this.armies) {
       if (a.state === 'done' || a.kind === 'move' || a.kind === 'parade') continue;
       const pv = this.prov.get(a.dest);
-      if (!pv || pv.owner !== pv.plate || pv.owner === a.team) continue;
-      const t = this.teams.get(pv.plate);
-      if (!t.memberCount) continue;
-      if (!danger || a.troops > danger.troops) danger = { t, troops: a.troops };
+      if (!pv || !pv.owner || pv.owner === a.team) continue;
+      const t = this.teams.get(pv.owner);
+      if (!t || !t.memberCount) continue;
+      if (pv.owner === pv.plate) { if (!danger || a.troops > danger.troops) danger = { t, troops: a.troops }; } else if (!border || a.troops > border.troops) border = { t, troops: a.troops };
     }
-    if (danger) cands.push({ k: 'danger' + danger.t.plate, p: 7, text: `${up(danger.t.name)} TEHLİKEDE! EKRANA BAS!`, colorHex: danger.t.colorHex });
+    if (danger) cands.push({ k: 'danger' + danger.t.plate, p: 7, text: `${danger.t.name} başkenti saldırı altında`, colorHex: danger.t.colorHex });
+    if (border) cands.push({ k: 'border' + border.t.plate, p: 6, text: `${border.t.name} sınırda baskı altında`, colorHex: border.t.colorHex });
     // Close to taking the lead.
     if (st.length >= 2 && st[0].provinces - st[1].provinces <= 1 && st[1].provinces >= 2) {
-      cands.push({ k: 'close' + st[1].plate, p: 6, text: `${up(st[1].name)} LİDERLİĞE ÇOK YAKIN, GÜL AT!`, colorHex: st[1].colorHex });
+      cands.push({ k: 'close' + st[1].plate, p: 6, text: `${st[1].name} liderliğe çok yakın`, colorHex: st[1].colorHex });
     }
+    // HÜCUM: a city charging now, or the one whose morale bar is closest to full.
+    let charging = null; let ready = null; let readyFrac = 0.6;
+    for (const t of this.teams.values()) {
+      if (!t.awake || !t.memberCount) continue;
+      if (this.isHucum(t)) { charging = t; continue; }
+      const f = t.morale / this.moraleNeed(t);
+      if (f >= readyFrac) { ready = t; readyFrac = f; }
+    }
+    if (charging) cands.push({ k: 'hucum' + charging.plate, p: 6, text: `${charging.name} hücumda`, colorHex: charging.colorHex });
+    else if (ready) cands.push({ k: 'ready' + ready.plate, p: 5, text: `${ready.name} hücuma hazırlanıyor`, colorHex: ready.colorHex });
     // The strongest marching attack.
     let atk = null;
     for (const a of this.armies) {
       if (a.state !== 'march' || a.kind === 'move' || a.kind === 'parade') continue;
       if (!atk || a.troops > atk.troops) atk = a;
     }
-    if (atk) { const t = this.teams.get(atk.team); cands.push({ k: 'atk' + t.plate, p: 5, text: `${up(t.name)} SALDIRIYOR, GÜL AT!`, colorHex: t.colorHex }); }
+    if (atk) {
+      const t = this.teams.get(atk.team); const to = this.prov.get(atk.dest);
+      cands.push({ k: 'atk' + t.plate, p: 5, text: to ? `${t.name} ordusu ${to.p.name} yolunda` : `${t.name} saldırıya geçti`, colorHex: t.colorHex });
+    }
     const behind = st.find((t) => this.isComeback(t) && t.memberCount > 0);
-    if (behind) cands.push({ k: 'reb' + behind.plate, p: 5, text: `${up(behind.name)} İSYANDA! BEĞEN, YAZ: ${this.cfg.engage?.comebackMult ?? 2} KAT!`, colorHex: behind.colorHex });
-    cands.push({ k: 'tap', p: 1, text: 'EKRANA BAS, HÜCUMU DOLDUR!', colorHex: 0xff5a8a });
+    if (behind) cands.push({ k: 'reb' + behind.plate, p: 5, text: `${behind.name} isyanda, geri dönüş arıyor`, colorHex: behind.colorHex });
+    // General lines (every third pick comes from these).
+    if (st[0]) cands.push({ k: 'lead', p: 1, text: `${st[0].name} önde · ${st[0].provinces} il`, colorHex: st[0].colorHex });
+    if (st.length >= 2) cands.push({ k: 'count', p: 1, text: `${st.length} şehir sahada`, colorHex: 0xffd166 });
+    cands.push({ k: 'rule', p: 1, text: 'Morali dolan şehir HÜCUM’a geçer', colorHex: 0xff5a8a });
+    // Opt-in rewards (panel "Etkileşim ödülleri", off by default): their old lines come back
+    // only while the matching reward is switched on.
     const rose = this.likesPerRose();
     if (rose > 0) cands.push({ k: 'rose', p: 1, text: `1 GÜL = ${fmt(rose)} BEĞENİ!`, colorHex: 0xffd166 });
-    cands.push({ k: 'chat', p: 1, text: 'YAZ: HER MESAJ +1 ASKER!', colorHex: 0x9bf09b });
-    if (st[0]) cands.push({ k: 'lead', p: 1, text: `${up(st[0].name)} ÖNDE! DURDUR ONU!`, colorHex: st[0].colorHex });
+    const chatN = Number(this.cfg.engage?.chatTroops) || 0;
+    if (chatN > 0) cands.push({ k: 'chat', p: 1, text: `YAZ: HER MESAJ +${fmt(chatN)} ASKER!`, colorHex: 0x9bf09b });
     // Highest priority that was not just shown; urgent lines may repeat after one other.
     cands.sort((a, b) => b.p - a.p);
     this.impN = (this.impN || 0) + 1;
-    // Every third line is a general "how to play" one, unless something urgent runs.
+    // Every third line is a general one, unless something urgent runs.
     let pool = cands;
     if (this.impN % 3 === 0 && cands[0].p < 8) pool = cands.filter((c) => c.p <= 1).sort(() => Math.random() - 0.5);
     const pick = pool.find((c) => c.k !== this.lastImp) || pool[0];
@@ -1627,8 +1683,8 @@ export class Game {
 
     this.view.hud.hideEnd();
     if (!first) {
-      this.view.hud.banner(`${r.n}. TUR BAŞLADI!`, woke ? `${woke} şehir savaşa hazır` : 'Plakanı yaz, şehrini uyandır!');
-      this.view.hud.feed(`${r.n}. tur başladı! ${woke ? `${woke} şehir sahada.` : 'Plakanı yaz ve katıl!'}`, 0xffd166, 'hourglass', true);
+      this.view.hud.banner(`${r.n}. TUR BAŞLADI!`, woke ? `${woke} şehir savaşa hazır` : 'Şehirler uyanmayı bekliyor');
+      this.view.hud.feed(`${r.n}. tur başladı! ${woke ? `${woke} şehir sahada.` : 'Harita boş.'}`, 0xffd166, 'hourglass', true);
       this.view.audio.play('sfx_round_start', { vol: 0.8, minGap: 0.5 });
       this.view.audio.play('sfx_horn', { vol: 0.6, minGap: 1 });
     }

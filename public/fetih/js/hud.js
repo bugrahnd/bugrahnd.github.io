@@ -5,6 +5,10 @@
 import { fmt, fmtShort, fmtTime, safeImageUrl, setNameBadge, badgeKey } from './util.js';
 import { hexCss } from './colors.js';
 import { giftKey, resolveEntry, trName, enName } from './gift-names.js';
+import { DEFAULT_CTA } from './settings.js';
+
+// Descriptive tab over the gift ladder (streamer setting gifts.heading).
+const GIFT_HEADING = 'HEDİYELER VE ORDULAR';
 
 function el(tag, cls, parent, text) {
   const e = document.createElement(tag);
@@ -110,9 +114,9 @@ const MAP_TOP_INSET = 206;
 //   boards   st+70   h 181  "EN GÜÇLÜ ŞEHİRLER" (3 rows) | "EN CÖMERTLER" (3 rows)
 //   lead     st+255  h 92   round leader (left) | credit / held-gift hint / tips (right)
 //   band     st+351 … sb-224   map; the imperative line overlays its top STREAM_MAP_INSET
-//   tab      sb-232  h 40   "HEDİYE AT, ORDU KUR" tab, overlapping the ladder's top edge
+//   tab      sb-232  h 40   "HEDİYELER VE ORDULAR" tab, overlapping the ladder's top edge
 //   gifts    sb-212  h 140  gift ladder, 3 tiles per page    } one unit, x sx … 1080 - sx
-//   cta row  sb-66   h 60   "PLAKANI YAZ: 34" | HÜCUM bar     } (full width: the owner chose to ignore the hearts column)
+//   cta row  sb-66   h 60   "Katılmak için plakanı yaz: 34" | HÜCUM bar    } (full width: the owner chose to ignore the hearts column)
 // safeBottom (zones.chatTop) defaults to 1340 and is a streamer setting (layout.chatTop), as is
 // the side inset (layout.side): both are tuned against a real phone.
 export const DEFAULT_ZONES = { top: 230, chatTop: 1340, chatRight: 720, bottomBar: 130, rightColLeft: 900, rightColTop: 1000, side: 60 };
@@ -126,24 +130,32 @@ const STREAM_CTA_H = 66; // cta row height + gap (the lowest row)
 const STREAM_TAB_H = 12; // reserved for the ladder's heading tab above the ladder frame (it overlaps the band by 10 more)
 const STREAM_MAP_INSET = 58; // imperative line over the top of the band
 
-/** How-to lines in the tips slot; the like line uses the live likes-per-troop number. */
+/**
+ * Lines in the tips slot: they describe how the game works, they never tell viewers to tap,
+ * comment, follow or share. Engagement rewards (off by default, panel "Etkileşim ödülleri")
+ * add their own line back only while switched on; the exchange-rate maths is guarded so a
+ * zero setting never produces "= 0 beğeni".
+ */
 function ctaLines(cfg) {
-  const per = cfg.engage?.likesPerTroop ?? 100;
-  // Exchange rate from the config: troops for one 1-coin gift x likes per troop.
-  const g1 = (cfg.troops?.giftCurve || []).find((p) => p[0] === 1)?.[1] ?? 10;
-  const rose = per > 0 ? Math.round(g1) * per : 0;
+  const e = cfg.engage || {};
+  const per = Number(e.likesPerTroop) || 0;
+  const chat = Number(e.chatTroops) || 0;
+  // Exchange rate: troops for one 1-coin gift x likes per troop (only when likes give troops).
+  const g1 = Math.round(Number((cfg.troops?.giftCurve || []).find((p) => p[0] === 1)?.[1]) || 0);
+  const rose = per > 0 && g1 > 0 ? g1 * per : 0;
+  const min = Math.round((cfg.round?.durationSec ?? 240) / 60);
   return [
-    ['34', 'yaz → İstanbul’a katıl'],
-    ['ankara', 'şehir adı da olur'],
-    ['❤️ ekrana bas', 'HÜCUM barını doldur!'],
+    ['🏰', 'Şehirler komşu illeri fethederek büyür'],
+    ['🔥', 'Morali dolan şehir HÜCUM’a geçer'],
+    ['🎁', 'Hediyeler gönderenin şehrine asker olur'],
+    ['⏳', `Tur ${min} dakika, en çok il alan kazanır`],
+    ...(per > 0 ? [['❤️ beğeni', `${fmt(per)} beğeni = 1 asker`]] : []),
     ...(rose > 0 ? [['🌹 1 Gül', `= ${fmt(rose)} beğeni`]] : []),
-    ['❤️ beğeni', 'moral dolar → HÜCUM!'],
-    ['💬 her mesaj', '+1 asker'],
-    ['🎁 hediye', 'adınla asker yürür'],
+    ...(chat > 0 ? [['💬 her mesaj', `+${fmt(chat)} asker`]] : []),
   ];
 }
 
-const LEADER_EMPTY = 'Hediye gönder, lider sen ol!';
+const LEADER_EMPTY = 'Bu turun lideri henüz yok';
 export const DEFAULT_TITLE = 'PLAKA SAVAŞLARI';
 
 
@@ -279,7 +291,7 @@ export class Hud {
       const cmdName = el('span', 'cmd-name', cmdText);
       this.cityRows.push({ row, rank, plate, name, flag, prov, troops, fill, cmd, av, cmdName, key: '' });
     }
-    this.boardEmpty = el('div', 'board-empty', list, 'Plakanı yaz, şehrini uyandır!');
+    this.boardEmpty = el('div', 'board-empty', list, 'Şehirler uyanmayı bekliyor');
 
     // Top gifters
     const gift = el('div', 'gifters panel-dark', r);
@@ -299,7 +311,7 @@ export class Hud {
       const coins = el('div', 'gifter-coins', l2);
       this.gifterRows.push({ row, av, nick, sub, coins });
     }
-    this.gifterEmpty = el('div', 'board-empty', glist, 'İlk hediyeyi sen gönder!');
+    this.gifterEmpty = el('div', 'board-empty', glist, 'Bu tur henüz hediye yok');
     // Top likers: recognition for viewers who only tap.
     this.giftersEl = gift;
     this.likerBox = el('div', 'likers', gift);
@@ -314,9 +326,9 @@ export class Hud {
       const n = el('span', 'liker-n', row);
       this.likerRows.push({ row, nick, n });
     }
-    this.likerEmpty = el('div', 'liker-empty', llist, 'Ekrana bas, adın burada çıksın!');
+    this.likerEmpty = el('div', 'liker-empty', llist, 'Henüz yok');
 
-    // Big situation-driven instruction (middle-upper part of the frame).
+    // Status line: situation-driven game narration (middle-upper part of the frame).
     this.impEl = el('div', 'imperative', r);
     this.impEl.style.display = 'none';
     this.impText = el('span', 'imp-text', this.impEl);
@@ -327,13 +339,12 @@ export class Hud {
     this.sessEl = el('div', 'session', r);
     this.sessEl.style.display = 'none';
 
-    // Call to action
+    // The one calm how-to-join line ("Katılmak için plakanı yaz: 34"; no pulse, no flash).
     const cta = el('div', 'cta', r);
     this.ctaEl = cta;
     const ctaMain = el('div', 'cta-main', cta);
-    this.ctaA = el('span', 'cta-a', ctaMain, 'PLAKANI YAZ:');
+    this.ctaA = el('span', 'cta-a', ctaMain, DEFAULT_CTA);
     this.ctaMainChip = el('span', 'cta-chip', ctaMain, '34');
-    this.ctaSub2 = el('div', 'cta-sub2', cta, 'İstersen emoji ekle, rozetin olur: 34 🔥');
     const ctaLine = el('div', 'cta-line', cta);
     const cl = ctaLines(this.cfg);
     this.ctaChip = el('span', 'cta-chip small', ctaLine, cl[0][0]);
@@ -348,7 +359,7 @@ export class Hud {
     // Stream layout: a heading tab on the ladder so its purpose is obvious (gifts.heading).
     this.tierTab = el('div', 'tiers-tab', r);
     iconEl(this.assets, 'icon_gem', this.tierTab, 'icon');
-    this.tierTabText = el('span', '', this.tierTab, this.cfg.hud.giftHeading || 'HEDİYE AT, ORDU KUR');
+    this.tierTabText = el('span', '', this.tierTab, this.cfg.hud.giftHeading || GIFT_HEADING);
     this.tierTrack = el('div', 'tier-track', this.tiersEl);
     this.tierMeasure = el('div', 'tier-measure', this.tiersEl);
     this.tierDots = el('div', 'tier-dots', this.tiersEl);
@@ -433,7 +444,7 @@ export class Hud {
     this.end.likers = el('div', 'end-gifters', c2);
     this.end.cities = document.createElement('ol'); // kept for data, not shown
     this.end.countdown = el('div', 'end-countdown', ec);
-    el('div', 'end-cta', ec, 'Yeni turda katıl: plakanı yaz (ör. 34)');
+    el('div', 'end-cta', ec, 'Yeni tur birazdan başlıyor');
 
     // Audio unlock
     this.audioBtn = el('button', 'audio-unlock', r, 'Sesi açmak için tıkla');
@@ -480,7 +491,7 @@ export class Hud {
       const res = el('div', 'tier-res', t);
       if (this.stripTroops && troops[i] > 0) el('span', 'tier-troops', res, `+${fmt(troops[i])} asker`);
       if (String(g.effect || '').trim()) el('span', 'tier-label', res, String(g.effect).trim());
-      el('div', 'tier-hot', t, 'AZ ÖNCE!');
+      // A gift that just arrived only highlights its tile (.tier.hot), no urgency wording.
       const tile = { el: t, g: { ...g, name, coins }, img, fb };
       img.set(this._iconForEntry(tile.g), fb);
       return tile;
@@ -629,7 +640,7 @@ export class Hud {
     if (animate) this.tierTrack.animate([{ opacity: 0, transform: 'translateX(4%)' }, { opacity: 1, transform: 'none' }], { duration: 320, easing: 'ease-out' });
   }
 
-  /** A gift arrived: jump to its ladder step and mark it for a moment ("AZ ÖNCE!"). */
+  /** A gift arrived: jump to its ladder step and highlight it for a moment. */
   giftPulse(coins, id = 0, name = '') {
     if (!this.tiles.length || !this._vis('giftStrip')) return;
     // Chaos-level traffic: a smaller gift does not steal a fresh pulse.
@@ -702,7 +713,7 @@ export class Hud {
     this.titleB.style.display = b ? '' : 'none';
   }
 
-  /** Call-to-action text ("PLAKANI YAZ:") and its example chip ("34"). */
+  /** Join line text ("Katılmak için plakanı yaz:") and its example chip ("34"). */
   /**
    * Streamer settings layout.chatTop / layout.side: the stream layout's lower limit (where
    * TikTok's chat starts) and the side inset. Returns true when the layout must be redone.
@@ -720,14 +731,12 @@ export class Hud {
 
   /** Ladder heading tab text (streamer setting gifts.heading). */
   setGiftHeading(text) {
-    this.tierTabText.textContent = String(text || '').trim() || 'HEDİYE AT, ORDU KUR';
+    this.tierTabText.textContent = String(text || '').trim() || GIFT_HEADING;
   }
 
   setCta(text, example) {
     if (this.ctaA.textContent !== text) this.ctaA.textContent = text;
     if (this.ctaMainChip.textContent !== example) this.ctaMainChip.textContent = example;
-    const sub = `İstersen emoji ekle, rozetin olur: ${example} 🔥`;
-    if (this.ctaSub2.textContent !== sub) this.ctaSub2.textContent = sub;
   }
 
   /**
@@ -1034,7 +1043,7 @@ export class Hud {
     this.root.classList.add('hinting');
     this.ctaLine.style.setProperty('--c', hexCss(colorHex));
     this.ctaChip.textContent = example;
-    this.ctaText.textContent = `${nick}, emoji ekle! Böyle yaz`;
+    this.ctaText.textContent = `${nick}, emoji eklenince rozet olur`;
     this.ctaLine.animate([{ transform: 'scale(0.8)' }, { transform: 'scale(1.06)', offset: 0.5 }, { transform: 'scale(1)' }], { duration: 400 });
   }
 
@@ -1092,7 +1101,8 @@ export class Hud {
 
   /**
    * A viewer who has not joined sent gifts (coins) and/or likes: show them what to type.
-   * likes > 0 without coins = "Beğenilerin boşa gidiyor: plakanı yaz" (the game rate-limits it).
+   * likes > 0 without coins = "Beğenilerin boşa gidiyor: plakanı yaz" (the game rate-limits it,
+   * and sends it only while likes give troops: engage.likesPerTroop > 0, off by default).
    */
   nudge(name, nick, avatar, coins, cooldownSec, likes = 0) {
     const what = coins > 0 ? `${fmt(coins)} jeton bekliyor` : `❤ ${fmt(likes)} beğeni`;
@@ -1315,11 +1325,8 @@ export class Hud {
     if (this.impText.textContent === text) return;
     this.impText.textContent = text;
     E.style.setProperty('--c', hexCss(colorHex));
-    E.animate([
-      { opacity: 0, transform: 'translateX(-50%) scale(0.7)' },
-      { opacity: 1, transform: 'translateX(-50%) scale(1.08)', offset: 0.6 },
-      { opacity: 1, transform: 'translateX(-50%) scale(1)' },
-    ], { duration: 380, easing: 'ease-out' });
+    // A calm fade between status lines (no pop, no flash).
+    E.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 400, easing: 'ease-out' });
   }
 
   /** left < 0 hides the finale badge. */
@@ -1330,7 +1337,7 @@ export class Hud {
       F.style.display = '';
       F.animate([{ transform: 'scale(2)', opacity: 0 }, { transform: 'scale(1)', opacity: 1 }], { duration: 500, easing: 'ease-out' });
     }
-    const t = `${mult} KAT! · ${Math.max(0, Math.ceil(left))}`;
+    const t = `${mult} kat · ${Math.max(0, Math.ceil(left))}`;
     if (F.textContent !== t) F.textContent = t;
   }
 

@@ -17,6 +17,9 @@ export const PACE_PRESETS = {
 
 const CURVE_COINS = [1, 10, 100, 1000, 5000];
 
+// The one calm how-to-join line (streamer setting cta.text; keep in sync with server/settings.js).
+export const DEFAULT_CTA = 'Katılmak için plakanı yaz:';
+
 // HUD blocks that can be hidden (setting key -> Hud block id).
 export const SHOW_KEYS = {
   'show.cityBoard': 'cityBoard',
@@ -88,7 +91,7 @@ export function applySettings(config, base, values = {}) {
     C.troops.giftCurve = clone(B.troops.giftCurve);
   }
 
-  // ---- Bedava hareketler ----
+  // ---- Beğeni ve moral; etkileşim ödülleri (varsayılan 0) ----
   C.engage.chatTroops = isNum(v['engage.chatTroops'], 0, 50) ? v['engage.chatTroops'] : B.engage.chatTroops;
   C.engage.chatCooldownSec = isNum(v['engage.chatCooldownSec'], 0, 60) ? v['engage.chatCooldownSec'] : B.engage.chatCooldownSec;
   C.engage.chatTroopCap = isNum(v['engage.chatTroopCap'], 0, 1000) ? v['engage.chatTroopCap'] : B.engage.chatTroopCap;
@@ -113,7 +116,7 @@ export function applySettings(config, base, values = {}) {
   return {
     show,
     cta: {
-      text: isStr(v['cta.text'], 24) ? v['cta.text'].trim() : 'PLAKANI YAZ:',
+      text: isStr(v['cta.text'], 30) ? v['cta.text'].trim() : DEFAULT_CTA,
       example: isStr(v['cta.example'], 12) ? v['cta.example'].trim() : '34',
     },
     title: isStr(v['title.text'], 20) ? v['title.text'].trim() : 'PLAKA SAVAŞLARI',
@@ -121,7 +124,7 @@ export function applySettings(config, base, values = {}) {
       chatTop: isNum(v['layout.chatTop'], 1150, 1500) ? v['layout.chatTop'] : undefined,
       side: isNum(v['layout.side'], 0, 120) ? v['layout.side'] : undefined,
     },
-    giftHeading: isStr(v['gifts.heading'], 24) ? v['gifts.heading'].trim() : (B.hud.giftHeading || 'HEDİYE AT, ORDU KUR'),
+    giftHeading: isStr(v['gifts.heading'], 24) ? v['gifts.heading'].trim() : (B.hud.giftHeading || 'HEDİYELER VE ORDULAR'),
     giftStrip: C.hud.giftStrip,
     giftStripTroops: C.hud.giftStripTroops,
     mute: v['audio.mute'] === true,

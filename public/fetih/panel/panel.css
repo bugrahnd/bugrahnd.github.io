@@ -122,6 +122,9 @@ button:disabled { opacity: .5; cursor: default; }
 .settings-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 12px; }
 .set-group { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px 4px; margin: 0; min-width: 0; }
 .set-group legend { font-weight: 700; font-size: 14px; padding: 0 6px; color: var(--text); }
+.set-collapsed > summary { cursor: pointer; font-weight: 700; font-size: 14px; color: var(--warn); padding: 0 0 6px; }
+.set-collapsed:not([open]) { padding-bottom: 4px; }
+.set-warn { margin: 0 0 8px; font-size: 13px; color: var(--warn); }
 .set-field { padding: 6px 0; border-top: 1px solid #222733; }
 .set-field:first-of-type { border-top: 0; }
 .set-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
