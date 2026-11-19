@@ -1,0 +1,211 @@
+{
+  "_note": "All gameplay and presentation numbers. Edit and reload the page (F5) to apply. Coins = TikTok coin value of a gift.",
+  "round": {
+    "durationSec": 600,
+    "endScreenSec": 20,
+    "earlyWinShare": 0.55,
+    "keepTeamsBetweenRounds": true,
+    "forgetIdlePlayersMin": 45
+  },
+  "teams": {
+    "wakeGarrison": 40,
+    "neutralGarrisonBase": 10,
+    "neutralGarrisonPer1000Area": 2.5,
+    "neutralGarrisonMax": 50,
+    "castleMediumMembers": 5,
+    "castleLargeMembers": 25,
+    "nudgeCooldownSec": 25,
+    "pendingGiftMaxAgeMin": 30,
+    "bareJoinWindowSec": 10
+  },
+  "troops": {
+    "perCoin": 5,
+    "followBonus": 10,
+    "shareBonus": 15,
+    "passivePerTeamPerSec": 0.4,
+    "passivePerProvincePerSec": 0.12,
+    "passiveRebelShare": 0.5
+  },
+  "gifts": {
+    "_note": "Tiers by the coin value of ONE gift (highest matching minCoins wins). Troops = total coins * troops.perCoin * troopBonus.",
+    "tiers": [
+      {
+        "id": "piyade",
+        "minCoins": 1,
+        "label": "Piyade",
+        "troopBonus": 1,
+        "mode": "garrison",
+        "unit": "infantry",
+        "sfx": "sfx_gift_small",
+        "legend": "+5 asker"
+      },
+      {
+        "id": "atli",
+        "minCoins": 10,
+        "label": "Şövalye Birliği",
+        "troopBonus": 1.1,
+        "mode": "army",
+        "unit": "knight",
+        "cavalryFromCoins": 30,
+        "maxFigures": 10,
+        "sfx": "sfx_gift_medium",
+        "legend": "Şövalye akını"
+      },
+      {
+        "id": "kusatma",
+        "minCoins": 100,
+        "label": "Kuşatma Topları",
+        "troopBonus": 1.25,
+        "mode": "army",
+        "unit": "cavalry",
+        "maxFigures": 14,
+        "siege": "cannon",
+        "siegeEngines": 1,
+        "siegeShots": 4,
+        "siegeDamagePerCoin": 2,
+        "sfx": "sfx_gift_big",
+        "legend": "Top ateşi"
+      },
+      {
+        "id": "ordu",
+        "minCoins": 1000,
+        "label": "Büyük Ordu",
+        "troopBonus": 1.5,
+        "mode": "army",
+        "units": [
+          "cavalry",
+          "knight",
+          "infantry"
+        ],
+        "maxFigures": 28,
+        "siege": "catapult",
+        "siegeEngines": 2,
+        "siegeShots": 6,
+        "siegeDamagePerCoin": 2,
+        "announce": true,
+        "announceSec": 5,
+        "horn": "sfx_horn",
+        "camera": true,
+        "sfx": "sfx_gift_big",
+        "legend": "Büyük ordu"
+      },
+      {
+        "id": "sultan",
+        "minCoins": 5000,
+        "label": "Sultan Ordusu",
+        "troopBonus": 2,
+        "mode": "multi",
+        "maxTargets": 4,
+        "units": [
+          "cavalry",
+          "knight",
+          "cavalry",
+          "infantry"
+        ],
+        "maxFigures": 30,
+        "siege": "trebuchet",
+        "siegeEngines": 3,
+        "siegeShots": 8,
+        "siegeDamagePerCoin": 2.5,
+        "announce": true,
+        "announceSec": 7,
+        "horn": "sfx_horn_long",
+        "camera": true,
+        "shake": true,
+        "sfx": "sfx_gift_big",
+        "legend": "4 cepheye saldırı"
+      }
+    ],
+    "mergeSameUserArmySec": 2
+  },
+  "morale": {
+    "perLike": 1,
+    "needBase": 60,
+    "needPerMember": 12,
+    "hucumSec": 15,
+    "speedMult": 1.6,
+    "powerMult": 1.5,
+    "attackIntervalMult": 0.5
+  },
+  "war": {
+    "attackIntervalSec": 5,
+    "attackJitterSec": 2,
+    "minArmy": 8,
+    "sendFraction": 0.65,
+    "keepAtHome": 5,
+    "attackIfRatio": 0.6,
+    "defenderBonus": 1.2,
+    "capitalBonus": 1.5,
+    "battleSec": 1.4,
+    "voteWindowSec": 40,
+    "rebalanceIntervalSec": 7,
+    "rebalanceMin": 25,
+    "rebalanceFraction": 0.6,
+    "rebellionIntervalSec": 3,
+    "rebellionMin": 5,
+    "speed": {
+      "infantry": 20,
+      "knight": 26,
+      "cavalry": 36,
+      "mixed": 26,
+      "ship": 42
+    },
+    "power": {
+      "infantry": 1,
+      "knight": 1.3,
+      "cavalry": 1.4,
+      "mixed": 1.35
+    }
+  },
+  "visual": {
+    "unitScale": 3.6,
+    "castleScale": 2.7,
+    "troopsPerFigure": 12,
+    "maxFiguresPerArmy": 8,
+    "maxFiguresTotal": 700,
+    "animPhases": 2,
+    "maxSiegeEngines": 18,
+    "maxParticles": 2600,
+    "tiltDeg": 30,
+    "fovDeg": 24,
+    "cameraAttention": true,
+    "decorations": true,
+    "showGarrisonOnPlates": true,
+    "labelSizePx": 30,
+    "unitZoomShrink": 0.4,
+    "unitTallness": 1.25,
+    "mapStretch": 1.42,
+    "fxScale": 1.6,
+    "maxArrows": 40,
+    "director": {
+      "overviewSec": 6,
+      "holdSec": 4.5,
+      "zoom": 2.4,
+      "maxZoom": 3,
+      "minHeat": 30,
+      "clusterRadius": 90,
+      "heatHalfLifeSec": 4,
+      "idleShotSec": 16
+    },
+    "castleZoomShrink": 0.5,
+    "fxZoomShrink": 0.85
+  },
+  "audio": {
+    "master": 0.9,
+    "music": 0.32,
+    "sfx": 0.75,
+    "maxVoices": 24
+  },
+  "hud": {
+    "feedLines": 5,
+    "topCities": 5,
+    "topGifters": 3,
+    "floaterMax": 40,
+    "maxTags": 8,
+    "joinTagGapSec": 0.9,
+    "captureCalloutGapSec": 6,
+    "rivalryEverySec": 35,
+    "rivalryMinHeat": 120,
+    "maxTagsOverview": 4
+  }
+}

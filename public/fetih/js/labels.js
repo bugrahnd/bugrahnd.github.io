@@ -1,0 +1,407 @@
+// DOM overlays anchored to the 3D map: plate badges (always visible), army counters,
+// floating "+N" texts, viewer name tags (joins, gifts) and komutan badges.
+// All untrusted text goes through textContent.
+import * as THREE from 'three';
+import { TILE_H, wzOf } from './map.js';
+import { fmt, cleanNick, safeImageUrl, setNameBadge, badgeKey } from './util.js';
+import { hexCss } from './colors.js';
+
+const _v = new THREE.Vector3();
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+export const provCode = (p) => (typeof p.code === 'string' && p.code ? p.code : String(p.plate).padStart(2, '0'));
+
+/** Project a world point to viewport px; returns false when behind the camera. */
+function toScreen(x, y, z, camera, w, h, out) {
+  _v.set(x, y, z).project(camera);
+  if (_v.z > 1) return false;
+  out.x = (_v.x * 0.5 + 0.5) * w;
+  out.y = (-_v.y * 0.5 + 0.5) * h;
+  return true;
+}
+
+export class PlateLabels {
+  constructor(container, provinces, config) {
+    this.cfg = config.visual;
+    this.root = document.createElement('div');
+    this.root.className = 'plates';
+    this.svg = document.createElementNS(SVG_NS, 'svg');
+    this.svg.setAttribute('class', 'plate-leaders');
+    container.append(this.svg, this.root);
+    this.items = new Map();
+    for (const p of provinces) {
+      const el = document.createElement('div');
+      el.className = 'plate neutral';
+      const code = provCode(p);
+      if (code.length > 2) el.classList.add('wide');
+      const num = document.createElement('span');
+      num.className = 'num';
+      num.textContent = code;
+      const gar = document.createElement('span');
+      gar.className = 'gar';
+      el.append(num);
+      if (this.cfg.showGarrisonOnPlates) el.append(gar);
+      this.root.append(el);
+      const line = document.createElementNS(SVG_NS, 'line');
+      line.setAttribute('class', 'leader');
+      const dot = document.createElementNS(SVG_NS, 'circle');
+      dot.setAttribute('r', '3');
+      dot.setAttribute('class', 'leader-dot');
+      this.svg.append(line, dot);
+      this.items.set(p.plate, {
+        p, el, num, gar, line, dot, chars: code.length,
+        // Anchored a little north of the label point; the castle stands just south of it.
+        anchor: new THREE.Vector3(p.labelPoint[0], TILE_H, wzOf(p.labelPoint[1] + 3)),
+        ox: 0, oy: 0, w: 0, h: 0, lastGar: -1, color: null, cls: 'neutral',
+      });
+    }
+    this.lastVersion = -1;
+    this.pt = { x: 0, y: 0 };
+  }
+
+  setOwner(plate, hex, kind) {
+    const it = this.items.get(plate);
+    if (!it) return;
+    const css = hexCss(hex);
+    if (it.color !== css) { it.el.style.setProperty('--c', css); it.color = css; }
+    if (it.cls !== kind) {
+      it.el.classList.remove(it.cls);
+      it.el.classList.add(kind);
+      it.cls = kind;
+    }
+  }
+
+  pulse(plate) {
+    const it = this.items.get(plate);
+    if (!it) return;
+    it.el.animate([{ scale: 1.9 }, { scale: 1 }], { duration: 650, easing: 'ease-out' });
+  }
+
+  setGarrison(plate, n) {
+    const it = this.items.get(plate);
+    const r = Math.round(n);
+    if (r === it.lastGar) return;
+    it.lastGar = r;
+    it.gar.textContent = fmt(r);
+  }
+
+  /** Overlap relaxation in screen space, run on resize (overview camera). */
+  layout(camera, w, h, sizePx) {
+    this.root.style.setProperty('--plate-size', `${sizePx}px`);
+    const list = [...this.items.values()];
+    for (const it of list) {
+      _v.copy(it.anchor).project(camera);
+      it.ax = (_v.x * 0.5 + 0.5) * w;
+      it.ay = (-_v.y * 0.5 + 0.5) * h;
+      it.w = sizePx * (it.chars > 2 ? 0.62 * it.chars + 0.4 : 1.5);
+      it.h = sizePx * (this.cfg.showGarrisonOnPlates ? 1.62 : 1.15);
+      it.x = it.ax; it.y = it.ay;
+    }
+    const pad = sizePx * 0.04;
+    for (let iter = 0; iter < 160; iter++) {
+      let moved = false;
+      for (let i = 0; i < list.length; i++) {
+        const a = list[i];
+        for (let j = i + 1; j < list.length; j++) {
+          const b = list[j];
+          const ox = (a.w + b.w) / 2 + pad - Math.abs(a.x - b.x);
+          const oy = (a.h + b.h) / 2 + pad - Math.abs(a.y - b.y);
+          if (ox <= 0 || oy <= 0) continue;
+          moved = true;
+          if (ox < oy * 1.3) {
+            const s = (a.x < b.x ? -1 : 1) * ox * 0.5;
+            a.x += s; b.x -= s;
+          } else {
+            const s = (a.y < b.y ? -1 : 1) * oy * 0.5;
+            a.y += s; b.y -= s;
+          }
+        }
+      }
+      for (const it of list) { it.x += (it.ax - it.x) * 0.02; it.y += (it.ay - it.y) * 0.02; }
+      if (!moved) break;
+    }
+    for (const it of list) { it.ox = it.x - it.ax; it.oy = it.y - it.ay; }
+    this.lastVersion = -1;
+  }
+
+  update(camera, w, h, version, zoom = 1) {
+    if (version === this.lastVersion) return;
+    this.lastVersion = version;
+    this.svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+    // Overview de-overlap offsets shrink as the camera zooms in (natural spacing grows).
+    const k = 1 / Math.max(1, zoom * zoom);
+    const pt = this.pt;
+    for (const it of this.items.values()) {
+      if (!toScreen(it.anchor.x, it.anchor.y, it.anchor.z, camera, w, h, pt)) continue;
+      const ax = pt.x; const ay = pt.y;
+      const x = ax + it.ox * k; const y = ay + it.oy * k;
+      it.el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translate(-50%, -50%)`;
+      const far = Math.hypot(it.ox * k, it.oy * k) > it.h * 0.5;
+      if (far) {
+        it.line.setAttribute('x1', ax.toFixed(1)); it.line.setAttribute('y1', ay.toFixed(1));
+        it.line.setAttribute('x2', x.toFixed(1)); it.line.setAttribute('y2', y.toFixed(1));
+        it.dot.setAttribute('cx', ax.toFixed(1)); it.dot.setAttribute('cy', ay.toFixed(1));
+      }
+      if (far !== it.far) {
+        it.far = far;
+        it.line.style.display = far ? '' : 'none';
+        it.dot.style.display = far ? '' : 'none';
+      }
+    }
+  }
+}
+
+/** Pooled army counters ("1.250" + optional gifter name). */
+export class ArmyLabels {
+  constructor(container) {
+    this.root = document.createElement('div');
+    this.root.className = 'army-labels';
+    container.append(this.root);
+    this.pool = [];
+    this.live = new Map(); // army -> el record
+    this.pt = { x: 0, y: 0 };
+  }
+
+  _get() {
+    let r = this.pool.pop();
+    if (!r) {
+      const el = document.createElement('div');
+      el.className = 'army-label';
+      const n = document.createElement('span'); n.className = 'n';
+      const who = document.createElement('span'); who.className = 'who';
+      el.append(n, who);
+      r = { el, n, who, lastN: -1, lastWho: null };
+      this.root.append(el);
+    }
+    r.el.style.display = '';
+    return r;
+  }
+
+  update(armies, camera, w, h, zoom = 1, unitK = 1) {
+    const seen = new Set();
+    // In the overview only sizeable or named armies get a counter (less clutter).
+    const minTroops = zoom > 1.3 ? 0 : 40;
+    for (const a of armies) {
+      if (a.appear < 0.2 || a.kind === 'move') continue;
+      if (a.troops < minTroops && !a.nick) continue;
+      let r = this.live.get(a);
+      if (!r) {
+        r = this._get();
+        this.live.set(a, r);
+        r.el.style.setProperty('--c', hexCss(a.colorHex));
+        r.el.classList.toggle('big', !!a.big);
+        r.el.classList.toggle('rebel', a.kind === 'rebel');
+      }
+      seen.add(a);
+      const n = Math.round(a.troops);
+      if (n !== r.lastN) { r.lastN = n; r.n.textContent = fmt(n); }
+      const who = a.nick || '';
+      if (who !== r.lastWho) {
+        r.lastWho = who;
+        r.who.textContent = who ? cleanNick(who, 18) : '';
+        r.who.style.display = who ? '' : 'none';
+      }
+      if (!toScreen(a.x, TILE_H + 14 * unitK, a.z, camera, w, h, this.pt)) continue;
+      r.el.style.transform = `translate(${this.pt.x.toFixed(1)}px, ${this.pt.y.toFixed(1)}px) translate(-50%, -100%)`;
+    }
+    for (const [a, r] of this.live) {
+      if (seen.has(a)) continue;
+      this.live.delete(a);
+      r.el.style.display = 'none';
+      this.pool.push(r);
+    }
+  }
+}
+
+/** Floating texts (+N troops, hearts...) using the Web Animations API. */
+export class Floaters {
+  constructor(container, max) {
+    this.root = document.createElement('div');
+    this.root.className = 'floaters';
+    container.append(this.root);
+    this.max = max;
+    this.pool = [];
+    this.active = 0;
+  }
+
+  spawn(worldPos, text, cssColor, camera, w, h, big = false) {
+    if (this.active >= this.max) return;
+    let el = this.pool.pop();
+    if (!el) { el = document.createElement('div'); el.className = 'floater'; this.root.append(el); }
+    _v.copy(worldPos).project(camera);
+    const x = (_v.x * 0.5 + 0.5) * w + (Math.random() - 0.5) * 24;
+    const y = (-_v.y * 0.5 + 0.5) * h - 14;
+    el.textContent = text;
+    el.style.color = cssColor;
+    el.classList.toggle('big', big);
+    el.style.display = '';
+    this.active++;
+    const anim = el.animate([
+      { transform: `translate(${x}px, ${y}px) translate(-50%, -50%) scale(0.5)`, opacity: 0 },
+      { transform: `translate(${x}px, ${y - 22}px) translate(-50%, -50%) scale(1.15)`, opacity: 1, offset: 0.15 },
+      { transform: `translate(${x}px, ${y - 40}px) translate(-50%, -50%) scale(1)`, opacity: 1, offset: 0.6 },
+      { transform: `translate(${x}px, ${y - 80}px) translate(-50%, -50%) scale(0.95)`, opacity: 0 },
+    ], { duration: big ? 2400 : 1600, easing: 'ease-out' });
+    anim.onfinish = () => { el.style.display = 'none'; this.pool.push(el); this.active--; };
+  }
+}
+
+function avatarInto(wrap, url, nick, colorCss) {
+  // Letter fallback underneath, image on top once loaded.
+  wrap.style.setProperty('--c', colorCss);
+  const fb = wrap.firstChild; const img = wrap.lastChild;
+  fb.textContent = (Array.from((nick || '?').trim())[0] || '?').toLocaleUpperCase('tr');
+  const safe = safeImageUrl(url);
+  img.style.display = 'none';
+  if (safe) { img.onload = () => { img.style.display = ''; }; img.src = safe; } else img.removeAttribute('src');
+}
+
+function makeAvatarEl(cls) {
+  const wrap = document.createElement('div');
+  wrap.className = 'avatar ' + cls;
+  const fb = document.createElement('span'); fb.className = 'avatar-fb';
+  const img = document.createElement('img'); img.alt = ''; img.referrerPolicy = 'no-referrer'; img.decoding = 'async';
+  img.onerror = () => { img.style.display = 'none'; };
+  wrap.append(fb, img);
+  return wrap;
+}
+
+/**
+ * Viewer name tags that pop up at a province (joins, gifts), tracking the map as the
+ * camera moves. Sizes: s (join), m (small gift), l (medium gift), xl (big gift).
+ */
+export class WorldTags {
+  constructor(container, max = 8) {
+    this.root = document.createElement('div');
+    this.root.className = 'world-tags';
+    container.append(this.root);
+    this.max = max;
+    this.pool = [];
+    this.live = []; // { el, x, z, until, born, size, rank }
+    this.pt = { x: 0, y: 0 };
+    this.t = 0;
+  }
+
+  _get() {
+    let r = this.pool.pop();
+    if (!r) {
+      const el = document.createElement('div');
+      el.className = 'wtag';
+      const av = makeAvatarEl('tag');
+      const txt = document.createElement('div'); txt.className = 'wtag-text';
+      const nick = document.createElement('div'); nick.className = 'wtag-nick';
+      const msg = document.createElement('div'); msg.className = 'wtag-msg';
+      txt.append(nick, msg);
+      el.append(av, txt);
+      this.root.append(el);
+      r = { el, av, nick, msg };
+    }
+    return r;
+  }
+
+  /** o: { x, z, nick, badge, avatar, text, colorHex, size, sec } */
+  spawn(o) {
+    const rank = { s: 0, m: 1, l: 2, xl: 3 }[o.size] ?? 0;
+    // Small tags never take the last slots (kept for big gifts), fewer in the overview.
+    const cap = Math.min(this.max, this.maxNow ?? this.max);
+    if (rank <= 1 && this.live.length >= cap - 1) {
+      if (this.live.some((t) => t.rank > rank)) return;
+    }
+    if (this.live.length >= cap) {
+      // Replace the oldest tag of the lowest rank, if the new one is at least as important.
+      let worst = -1;
+      for (let i = 0; i < this.live.length; i++) {
+        if (worst < 0 || this.live[i].rank < this.live[worst].rank || (this.live[i].rank === this.live[worst].rank && this.live[i].born < this.live[worst].born)) worst = i;
+      }
+      if (this.live[worst].rank > rank) return;
+      this._release(worst);
+    }
+    const r = this._get();
+    r.el.className = `wtag size-${o.size || 's'}`;
+    r.el.style.setProperty('--c', hexCss(o.colorHex));
+    avatarInto(r.av, o.avatar, o.nick, hexCss(o.colorHex));
+    setNameBadge(r.nick, o.nick, o.badge);
+    r.msg.textContent = o.text || '';
+    r.msg.style.display = o.text ? '' : 'none';
+    r.el.style.display = '';
+    const sec = o.sec || 2.4;
+    r.el.animate([
+      { opacity: 0, scale: 0.4 }, { opacity: 1, scale: 1.12, offset: 0.1 }, { opacity: 1, scale: 1, offset: 0.18 },
+      { opacity: 1, scale: 1, offset: 0.85 }, { opacity: 0, scale: 0.9 },
+    ], { duration: sec * 1000, easing: 'ease-out' });
+    // Stack: older tags at the same spot move up out of the way.
+    const push = [44, 54, 70, 96][rank] * (this.k || 1);
+    for (const it of this.live) if ((it.x - o.x) ** 2 + (it.z - o.z) ** 2 < 40 * 40) it.lift += push;
+    this.live.push({ r, x: o.x, z: o.z, born: this.t, until: this.t + sec, rank, lift: 0 });
+  }
+
+  _release(i) {
+    const it = this.live[i];
+    it.r.el.style.display = 'none';
+    this.pool.push(it.r);
+    this.live.splice(i, 1);
+  }
+
+  update(dt, camera, w, h) {
+    this.t += dt;
+    for (let i = this.live.length - 1; i >= 0; i--) {
+      const it = this.live[i];
+      if (this.t >= it.until) { this._release(i); continue; }
+      it.lift += dt * 14;
+      if (!toScreen(it.x, TILE_H + 10, it.z, camera, w, h, this.pt)) continue;
+      it.r.el.style.transform = `translate(${this.pt.x.toFixed(1)}px, ${(this.pt.y - it.lift).toFixed(1)}px) translate(-50%, -100%)`;
+    }
+  }
+
+  clear() { while (this.live.length) this._release(0); }
+}
+
+/** Komutan badges (avatar + crown) standing at the capitals of the leading teams. */
+export class CommanderBadges {
+  constructor(container, assets, n = 3) {
+    this.root = document.createElement('div');
+    this.root.className = 'cmd-badges';
+    container.append(this.root);
+    this.items = [];
+    for (let i = 0; i < n; i++) {
+      const el = document.createElement('div');
+      el.className = 'cmd-badge rank' + (i + 1);
+      const crown = document.createElement('img'); crown.className = 'cmd-crown'; crown.src = assets.uiPath('icon_crown'); crown.alt = '';
+      const av = makeAvatarEl('cmd');
+      const name = document.createElement('div'); name.className = 'cmd-badge-name';
+      el.append(crown, av, name);
+      el.style.display = 'none';
+      this.root.append(el);
+      this.items.push({ el, av, name, key: '', x: 0, z: 0, on: false });
+    }
+    this.pt = { x: 0, y: 0 };
+  }
+
+  /** list: [{ x, z, nick, badge, avatar, colorHex }] (leaders first) */
+  set(list) {
+    this.items.forEach((it, i) => {
+      const d = list[i];
+      if (!d) { if (it.on) { it.el.style.display = 'none'; it.on = false; it.key = ''; } return; }
+      const key = `${d.nick}|${d.avatar}|${d.colorHex}|${badgeKey(d.badge)}`;
+      if (key !== it.key) {
+        it.key = key;
+        avatarInto(it.av, d.avatar, d.nick, hexCss(d.colorHex));
+        setNameBadge(it.name, d.nick, d.badge);
+        it.el.style.setProperty('--c', hexCss(d.colorHex));
+        it.el.animate([{ scale: 0.3, opacity: 0 }, { scale: 1, opacity: 1 }], { duration: 400, easing: 'ease-out' });
+      }
+      it.x = d.x; it.z = d.z;
+      if (!it.on) { it.el.style.display = ''; it.on = true; }
+    });
+  }
+
+  update(camera, w, h, unitK = 1, zoom = 1, plateH = 40) {
+    // Smaller in the overview; always above the plate badge.
+    const s = Math.min(1, 0.62 + (zoom - 1) * 0.3);
+    for (const it of this.items) {
+      if (!it.on) continue;
+      if (!toScreen(it.x, TILE_H + 26 * unitK, it.z, camera, w, h, this.pt)) continue;
+      it.el.style.transform = `translate(${this.pt.x.toFixed(1)}px, ${(this.pt.y - plateH * 0.6).toFixed(1)}px) translate(-50%, -100%) scale(${s.toFixed(2)})`;
+    }
+  }
+}

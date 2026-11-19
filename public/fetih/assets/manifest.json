@@ -1,0 +1,1502 @@
+{
+  "meta": {
+    "note": "Paths are relative to game/. All GLBs are self-contained (embedded textures), +Y up, characters face +Z. \"scale\" makes the model roughly \"targetSize\" map units (provinces.json map width = 1000) along the given axis; tweak to taste. \"size\" is the bounding box [x,y,z] at scale 1.",
+    "teamTint": "Models with tint != \"none\" contain material(s) named \"team...\" -> see each model's tint text.",
+    "credits": "assets/CREDITS.md"
+  },
+  "models": {
+    "unit_infantry": {
+      "path": "assets/models/unit_infantry.glb",
+      "scale": 13.245,
+      "upAxis": "y",
+      "targetSize": 10,
+      "targetAxis": "y",
+      "size": [
+        0.767,
+        0.755,
+        0.615
+      ],
+      "triangles": 1187,
+      "animations": [
+        "static",
+        "idle",
+        "walk",
+        "sprint",
+        "die",
+        "pick-up",
+        "emote-yes",
+        "holding-right",
+        "holding-both",
+        "attack-melee-right",
+        "attack-melee-left"
+      ],
+      "skinned": true,
+      "tint": "Material named \"team\": its texture is grayscale, so set material.color to the team colour (three.js: mesh.traverse(o => { if (o.material?.name === \"team\") { o.material = o.material.clone(); o.material.color.set(teamHex); } })). Clone the material per team, not per unit.",
+      "teamMaterials": [
+        "team",
+        "team"
+      ],
+      "note": "Kenney Mini Characters \"character-soldier\" + sword (right arm) + round shield (left arm, team-coloured face). Skinned; clone with SkeletonUtils.clone(). Faces +Z."
+    },
+    "unit_knight": {
+      "path": "assets/models/unit_knight.glb",
+      "scale": 12.899,
+      "upAxis": "y",
+      "targetSize": 10.5,
+      "targetAxis": "y",
+      "size": [
+        0.767,
+        0.814,
+        0.593
+      ],
+      "triangles": 1020,
+      "animations": [
+        "static",
+        "idle",
+        "walk",
+        "sprint",
+        "die",
+        "pick-up",
+        "emote-yes",
+        "holding-right",
+        "holding-both",
+        "attack-melee-right",
+        "attack-melee-left"
+      ],
+      "skinned": true,
+      "tint": "Material named \"team\": its texture is grayscale, so set material.color to the team colour (three.js: mesh.traverse(o => { if (o.material?.name === \"team\") { o.material = o.material.clone(); o.material.color.set(teamHex); } })). Clone the material per team, not per unit.",
+      "teamMaterials": [
+        "team",
+        "team"
+      ],
+      "note": "Kenney Mini Characters \"character-knight\" (armour is the team material) + sword + shield. Heavier infantry / hero / alternative unit. Faces +Z."
+    },
+    "unit_cavalry": {
+      "path": "assets/models/unit_cavalry.glb",
+      "scale": 10.078,
+      "upAxis": "y",
+      "targetSize": 13,
+      "targetAxis": "y",
+      "size": [
+        0.767,
+        1.29,
+        1.224
+      ],
+      "triangles": 3490,
+      "animations": [
+        "horse-death",
+        "horse-headbutt",
+        "horse-idle",
+        "horse-idle-eating",
+        "horse-jump-loop",
+        "horse-jump-start",
+        "horse-run",
+        "horse-walk",
+        "rider-static",
+        "rider-sit",
+        "rider-drive",
+        "rider-die",
+        "rider-holding-right",
+        "rider-attack-melee-right"
+      ],
+      "skinned": true,
+      "tint": "Material named \"team\": its texture is grayscale, so set material.color to the team colour (three.js: mesh.traverse(o => { if (o.material?.name === \"team\") { o.material = o.material.clone(); o.material.color.set(teamHex); } })). Clone the material per team, not per unit.",
+      "teamMaterials": [
+        "team"
+      ],
+      "note": "Composite: Quaternius animated Horse (CC0, via Poly Pizza) + Kenney \"character-knight\" rider with spear. Play TWO clips on the same AnimationMixer: one \"horse-*\" clip (walk/gallop) and \"rider-drive\" (or rider-sit) to keep the rider seated; \"rider-attack-melee-right\" for attacks. Skinned; clone with SkeletonUtils.clone(). Faces +Z."
+    },
+    "unit_siege": {
+      "path": "assets/models/unit_siege.glb",
+      "scale": 6.34,
+      "upAxis": "y",
+      "targetSize": 11,
+      "targetAxis": "max(x,z)",
+      "size": [
+        1.735,
+        1.33,
+        1.21
+      ],
+      "triangles": 928,
+      "animations": [],
+      "skinned": false,
+      "tint": "Material named \"team\": its texture is grayscale, so set material.color to the team colour (three.js: mesh.traverse(o => { if (o.material?.name === \"team\") { o.material = o.material.clone(); o.material.color.set(teamHex); } })). Clone the material per team, not per unit.",
+      "teamMaterials": [
+        "team"
+      ],
+      "note": "Kenney Castle Kit catapult (static, no rig). Blue cloth/trim = team material. Long axis is X; rotate -90deg around Y so it faces +Z like the characters (verify in game)."
+    },
+    "unit_siege_trebuchet": {
+      "path": "assets/models/unit_siege_trebuchet.glb",
+      "scale": 6.483,
+      "upAxis": "y",
+      "targetSize": 12,
+      "targetAxis": "max(x,z)",
+      "size": [
+        1.851,
+        1.959,
+        1.258
+      ],
+      "triangles": 1518,
+      "animations": [],
+      "skinned": false,
+      "tint": "Material named \"team\": its texture is grayscale, so set material.color to the team colour (three.js: mesh.traverse(o => { if (o.material?.name === \"team\") { o.material = o.material.clone(); o.material.color.set(teamHex); } })). Clone the material per team, not per unit.",
+      "teamMaterials": [
+        "team"
+      ],
+      "note": "Kenney Castle Kit trebuchet (static). Bigger siege option."
+    },
+    "unit_cannon": {
+      "path": "assets/models/unit_cannon.glb",
+      "scale": 4.156,
+      "upAxis": "y",
+      "targetSize": 8,
+      "targetAxis": "max(x,z)",
+      "size": [
+        1.679,
+        1.38,
+        1.925
+      ],
+      "triangles": 472,
+      "animations": [],
+      "skinned": false,
+      "tint": "none (wood + iron only); show team with a flag/ring under it",
+      "teamMaterials": [],
+      "note": "Kenney Pirate Kit wheeled cannon (static). Fits an Ottoman \"top\" (cannon) theme."
+    },
+    "projectile_cannonball": {
+      "path": "assets/models/projectile_cannonball.glb",
+      "scale": 2.09,
+      "upAxis": "y",
+      "targetSize": 1.4,
+      "targetAxis": "y",
+      "size": [
+        0.637,
+        0.67,
+        0.552
+      ],
+      "triangles": 48,
+      "animations": [],
+      "skinned": false,
+      "tint": "none",
+      "teamMaterials": [],
+      "note": "Kenney Pirate Kit cannon ball."
+    },
+    "projectile_arrow": {
+      "path": "assets/models/projectile_arrow.glb",
+      "scale": 6.579,
+      "upAxis": "y",
+      "targetSize": 3,
+      "targetAxis": "max(x,z)",
+      "size": [
+        0.119,
+        0.119,
+        0.456
+      ],
+      "triangles": 58,
+      "animations": [],
+      "skinned": false,
+      "tint": "none",
+      "teamMaterials": [],
+      "note": "Kenney Mini Characters arrow."
+    },
+    "castle_small": {
+      "path": "assets/models/castle_small.glb",
+      "scale": 8.815,
+      "upAxis": "y",
+      "targetSize": 9,
+      "targetAxis": "max(x,z)",
+      "size": [
+        1,
+        4.186,
+        1.021
+      ],
+      "triangles": 666,
+      "animations": [],
+      "skinned": false,
+      "tint": "Material named \"team\": its texture is grayscale, so set material.color to the team colour (three.js: mesh.traverse(o => { if (o.material?.name === \"team\") { o.material = o.material.clone(); o.material.color.set(teamHex); } })). Clone the material per team, not per unit.",
+      "teamMaterials": [
+        "team",
+        "team",
+        "team"
+      ],
+      "note": "Single keep (square tower, high blue roof, pennant). Composite of Kenney Castle Kit pieces. Use for small / unowned provinces."
+    },
+    "castle_medium": {
+      "path": "assets/models/castle_medium.glb",
+      "scale": 4.704,
+      "upAxis": "y",
+      "targetSize": 14,
+      "targetAxis": "max(x,z)",
+      "size": [
+        2.976,
+        5.196,
+        2.021
+      ],
+      "triangles": 2822,
+      "animations": [],
+      "skinned": false,
+      "tint": "Material named \"team\": its texture is grayscale, so set material.color to the team colour (three.js: mesh.traverse(o => { if (o.material?.name === \"team\") { o.material = o.material.clone(); o.material.color.set(teamHex); } })). Clone the material per team, not per unit.",
+      "teamMaterials": [
+        "team",
+        "team",
+        "team",
+        "team"
+      ],
+      "note": "Keep behind a gate wall flanked by two hexagonal towers. Composite of Kenney Castle Kit pieces. Front = +Z."
+    },
+    "castle_large": {
+      "path": "assets/models/castle_large.glb",
+      "scale": 6.667,
+      "upAxis": "y",
+      "targetSize": 20,
+      "targetAxis": "max(x,z)",
+      "size": [
+        3,
+        6.206,
+        3
+      ],
+      "triangles": 4512,
+      "animations": [],
+      "skinned": false,
+      "tint": "Material named \"team\": its texture is grayscale, so set material.color to the team colour (three.js: mesh.traverse(o => { if (o.material?.name === \"team\") { o.material = o.material.clone(); o.material.color.set(teamHex); } })). Clone the material per team, not per unit.",
+      "teamMaterials": [
+        "team",
+        "team",
+        "team",
+        "team"
+      ],
+      "note": "Walled castle: 4 hexagonal corner towers, walls, gate, tall central keep. Composite of Kenney Castle Kit pieces. Use for big cities / capitals. Front = +Z."
+    },
+    "tower": {
+      "path": "assets/models/tower.glb",
+      "scale": 3.462,
+      "upAxis": "y",
+      "targetSize": 9,
+      "targetAxis": "y",
+      "size": [
+        0.976,
+        2.6,
+        0.846
+      ],
+      "triangles": 540,
+      "animations": [],
+      "skinned": false,
+      "tint": "Material named \"team\": its texture is grayscale, so set material.color to the team colour (three.js: mesh.traverse(o => { if (o.material?.name === \"team\") { o.material = o.material.clone(); o.material.color.set(teamHex); } })). Clone the material per team, not per unit.",
+      "teamMaterials": [
+        "team"
+      ],
+      "note": "Hexagonal tower with blue (team) roof, Kenney Castle Kit pieces."
+    },
+    "tower_square": {
+      "path": "assets/models/tower_square.glb",
+      "scale": 4.58,
+      "upAxis": "y",
+      "targetSize": 6,
+      "targetAxis": "y",
+      "size": [
+        1,
+        1.31,
+        1
+      ],
+      "triangles": 176,
+      "animations": [],
+      "skinned": false,
+      "tint": "none",
+      "teamMaterials": [],
+      "note": "Kenney Castle Kit crenellated square tower (no roof)."
+    },
+    "wall": {
+      "path": "assets/models/wall.glb",
+      "scale": 4,
+      "upAxis": "y",
+      "targetSize": 4,
+      "targetAxis": "max(x,z)",
+      "size": [
+        1,
+        1.31,
+        1
+      ],
+      "triangles": 178,
+      "animations": [],
+      "skinned": false,
+      "tint": "none",
+      "teamMaterials": [],
+      "note": "Kenney Castle Kit wall segment (1x1 tile)."
+    },
+    "wall_corner": {
+      "path": "assets/models/wall_corner.glb",
+      "scale": 4,
+      "upAxis": "y",
+      "targetSize": 4,
+      "targetAxis": "max(x,z)",
+      "size": [
+        1,
+        1.31,
+        1
+      ],
+      "triangles": 168,
+      "animations": [],
+      "skinned": false,
+      "tint": "none",
+      "teamMaterials": [],
+      "note": "Kenney Castle Kit wall corner."
+    },
+    "wall_gate": {
+      "path": "assets/models/wall_gate.glb",
+      "scale": 4,
+      "upAxis": "y",
+      "targetSize": 4,
+      "targetAxis": "max(x,z)",
+      "size": [
+        1,
+        1.31,
+        1
+      ],
+      "triangles": 1000,
+      "animations": [],
+      "skinned": false,
+      "tint": "none",
+      "teamMaterials": [],
+      "note": "Two mirrored Kenney Castle Kit doorway halves + wooden gate = a 1-tile gate wall."
+    },
+    "flag": {
+      "path": "assets/models/flag.glb",
+      "scale": 6.928,
+      "upAxis": "y",
+      "targetSize": 6,
+      "targetAxis": "y",
+      "size": [
+        0.106,
+        0.866,
+        0.432
+      ],
+      "triangles": 144,
+      "animations": [],
+      "skinned": false,
+      "tint": "Material named \"team\": its texture is grayscale, so set material.color to the team colour (three.js: mesh.traverse(o => { if (o.material?.name === \"team\") { o.material = o.material.clone(); o.material.color.set(teamHex); } })). Clone the material per team, not per unit.",
+      "teamMaterials": [
+        "team"
+      ],
+      "note": "Kenney Castle Kit flag on pole (cloth = team). Use to mark ownership."
+    },
+    "flag_wide": {
+      "path": "assets/models/flag_wide.glb",
+      "scale": 6.928,
+      "upAxis": "y",
+      "targetSize": 6,
+      "targetAxis": "y",
+      "size": [
+        0.106,
+        0.866,
+        0.547
+      ],
+      "triangles": 256,
+      "animations": [],
+      "skinned": false,
+      "tint": "Material named \"team\": its texture is grayscale, so set material.color to the team colour (three.js: mesh.traverse(o => { if (o.material?.name === \"team\") { o.material = o.material.clone(); o.material.color.set(teamHex); } })). Clone the material per team, not per unit.",
+      "teamMaterials": [
+        "team"
+      ],
+      "note": "Kenney Castle Kit wide flag."
+    },
+    "banner": {
+      "path": "assets/models/banner.glb",
+      "scale": 3.687,
+      "upAxis": "y",
+      "targetSize": 8,
+      "targetAxis": "y",
+      "size": [
+        0.04,
+        2.17,
+        0.63
+      ],
+      "triangles": 68,
+      "animations": [],
+      "skinned": false,
+      "tint": "Material named \"team\": its texture is grayscale, so set material.color to the team colour (three.js: mesh.traverse(o => { if (o.material?.name === \"team\") { o.material = o.material.clone(); o.material.color.set(teamHex); } })). Clone the material per team, not per unit.",
+      "teamMaterials": [
+        "team"
+      ],
+      "note": "Kenney Castle Kit long hanging banner (team)."
+    },
+    "tent": {
+      "path": "assets/models/tent.glb",
+      "scale": 5.714,
+      "upAxis": "y",
+      "targetSize": 5,
+      "targetAxis": "max(x,z)",
+      "size": [
+        0.875,
+        0.561,
+        0.636
+      ],
+      "triangles": 228,
+      "animations": [],
+      "skinned": false,
+      "tint": "Materials whose name starts with \"team\" (team, team_1...): set material.color = teamColour * material.userData.teamShade (glTF extras). Clone per team.",
+      "teamMaterials": [
+        "team",
+        "team_1"
+      ],
+      "note": "Kenney Nature Kit tent (canvas = team, factor-coloured, no texture)."
+    },
+    "tent_small": {
+      "path": "assets/models/tent_small.glb",
+      "scale": 5.503,
+      "upAxis": "y",
+      "targetSize": 3.5,
+      "targetAxis": "max(x,z)",
+      "size": [
+        0.548,
+        0.561,
+        0.636
+      ],
+      "triangles": 220,
+      "animations": [],
+      "skinned": false,
+      "tint": "Materials whose name starts with \"team\" (team, team_1...): set material.color = teamColour * material.userData.teamShade (glTF extras). Clone per team.",
+      "teamMaterials": [
+        "team",
+        "team_1"
+      ],
+      "note": "Kenney Nature Kit small tent."
+    },
+    "tree_a": {
+      "path": "assets/models/tree_a.glb",
+      "scale": 3.786,
+      "upAxis": "y",
+      "targetSize": 7,
+      "targetAxis": "y",
+      "size": [
+        0.889,
+        1.849,
+        0.89
+      ],
+      "triangles": 229,
+      "animations": [],
+      "skinned": false,
+      "tint": "none",
+      "teamMaterials": [],
+      "note": "Kenney Castle Kit large pine."
+    },
+    "tree_b": {
+      "path": "assets/models/tree_b.glb",
+      "scale": 3.706,
+      "upAxis": "y",
+      "targetSize": 5,
+      "targetAxis": "y",
+      "size": [
+        0.738,
+        1.349,
+        0.72
+      ],
+      "triangles": 164,
+      "animations": [],
+      "skinned": false,
+      "tint": "none",
+      "teamMaterials": [],
+      "note": "Kenney Castle Kit small pine."
+    },
+    "tree_c": {
+      "path": "assets/models/tree_c.glb",
+      "scale": 2.487,
+      "upAxis": "y",
+      "targetSize": 6,
+      "targetAxis": "y",
+      "size": [
+        1.023,
+        2.413,
+        1.023
+      ],
+      "triangles": 168,
+      "animations": [],
+      "skinned": false,
+      "tint": "none",
+      "teamMaterials": [],
+      "note": "Kenney Fantasy Town Kit round tree."
+    },
+    "tree_d": {
+      "path": "assets/models/tree_d.glb",
+      "scale": 2.545,
+      "upAxis": "y",
+      "targetSize": 7,
+      "targetAxis": "y",
+      "size": [
+        1.019,
+        2.751,
+        1.019
+      ],
+      "triangles": 126,
+      "animations": [],
+      "skinned": false,
+      "tint": "none",
+      "teamMaterials": [],
+      "note": "Kenney Fantasy Town Kit tall round tree."
+    },
+    "tree_e": {
+      "path": "assets/models/tree_e.glb",
+      "scale": 2.487,
+      "upAxis": "y",
+      "targetSize": 6,
+      "targetAxis": "y",
+      "size": [
+        1.023,
+        2.413,
+        1.023
+      ],
+      "triangles": 178,
+      "animations": [],
+      "skinned": false,
+      "tint": "none",
+      "teamMaterials": [],
+      "note": "Kenney Fantasy Town Kit crooked tree."
+    },
+    "rock_a": {
+      "path": "assets/models/rock_a.glb",
+      "scale": 2.967,
+      "upAxis": "y",
+      "targetSize": 4,
+      "targetAxis": "max(x,z)",
+      "size": [
+        1.201,
+        0.5,
+        1.348
+      ],
+      "triangles": 150,
+      "animations": [],
+      "skinned": false,
+      "tint": "none",
+      "teamMaterials": [],
+      "note": "Kenney Castle Kit rock cluster."
+    },
+    "rock_b": {
+      "path": "assets/models/rock_b.glb",
+      "scale": 2.262,
+      "upAxis": "y",
+      "targetSize": 2.5,
+      "targetAxis": "max(x,z)",
+      "size": [
+        1.03,
+        0.5,
+        1.105
+      ],
+      "triangles": 140,
+      "animations": [],
+      "skinned": false,
+      "tint": "none",
+      "teamMaterials": [],
+      "note": "Kenney Castle Kit small rocks."
+    },
+    "rock_c": {
+      "path": "assets/models/rock_c.glb",
+      "scale": 2.395,
+      "upAxis": "y",
+      "targetSize": 4,
+      "targetAxis": "max(x,z)",
+      "size": [
+        1.67,
+        1.163,
+        1.549
+      ],
+      "triangles": 200,
+      "animations": [],
+      "skinned": false,
+      "tint": "none",
+      "teamMaterials": [],
+      "note": "Kenney Fantasy Town Kit large rock."
+    },
+    "mountain_a": {
+      "path": "assets/models/mountain_a.glb",
+      "scale": 19.048,
+      "upAxis": "y",
+      "targetSize": 22,
+      "targetAxis": "max(x,z)",
+      "size": [
+        1,
+        0.886,
+        1.155
+      ],
+      "triangles": 178,
+      "animations": [],
+      "skinned": false,
+      "tint": "none",
+      "teamMaterials": [],
+      "note": "Kenney Hexagon Kit snowy mountain with its hex ground tile removed (open bottom; place on the map surface)."
+    },
+    "forest": {
+      "path": "assets/models/forest.glb",
+      "scale": 14.909,
+      "upAxis": "y",
+      "targetSize": 14,
+      "targetAxis": "max(x,z)",
+      "size": [
+        0.889,
+        0.475,
+        0.939
+      ],
+      "triangles": 400,
+      "animations": [],
+      "skinned": false,
+      "tint": "none",
+      "teamMaterials": [],
+      "note": "Kenney Hexagon Kit forest clump, hex ground tile removed."
+    },
+    "ship": {
+      "path": "assets/models/ship.glb",
+      "scale": 1.679,
+      "upAxis": "y",
+      "targetSize": 22,
+      "targetAxis": "max(x,z)",
+      "size": [
+        4.8,
+        9.964,
+        13.1
+      ],
+      "triangles": 1849,
+      "animations": [],
+      "skinned": false,
+      "tint": "none (white sails)",
+      "teamMaterials": [],
+      "note": "Kenney Pirate Kit large ship (non-pirate flags) for sea decoration."
+    },
+    "ship_small": {
+      "path": "assets/models/ship_small.glb",
+      "scale": 2.805,
+      "upAxis": "y",
+      "targetSize": 8,
+      "targetAxis": "max(x,z)",
+      "size": [
+        2.749,
+        0.848,
+        2.852
+      ],
+      "triangles": 174,
+      "animations": [],
+      "skinned": false,
+      "tint": "none",
+      "teamMaterials": [],
+      "note": "Kenney Pirate Kit rowing boat."
+    },
+    "house": {
+      "path": "assets/models/house.glb",
+      "scale": 13.021,
+      "upAxis": "y",
+      "targetSize": 5,
+      "targetAxis": "max(x,z)",
+      "size": [
+        0.36,
+        0.378,
+        0.384
+      ],
+      "triangles": 80,
+      "animations": [],
+      "skinned": false,
+      "tint": "none",
+      "teamMaterials": [],
+      "note": "Kenney Hexagon Kit small house (village dressing)."
+    }
+  },
+  "sprites": {
+    "fx_smoke": {
+      "path": "assets/sprites/fx_smoke.png",
+      "frames": 1,
+      "size": [
+        256,
+        256
+      ],
+      "blending": "additive or normal; white texture, tint via material colour",
+      "note": "soft smoke puff (white, tint grey)"
+    },
+    "fx_smoke_b": {
+      "path": "assets/sprites/fx_smoke_b.png",
+      "frames": 1,
+      "size": [
+        256,
+        256
+      ],
+      "blending": "additive or normal; white texture, tint via material colour",
+      "note": "smoke puff variant"
+    },
+    "fx_smoke_c": {
+      "path": "assets/sprites/fx_smoke_c.png",
+      "frames": 1,
+      "size": [
+        256,
+        256
+      ],
+      "blending": "additive or normal; white texture, tint via material colour",
+      "note": "dense smoke cloud"
+    },
+    "fx_fire": {
+      "path": "assets/sprites/fx_fire.png",
+      "frames": 1,
+      "size": [
+        256,
+        256
+      ],
+      "blending": "additive or normal; white texture, tint via material colour",
+      "note": "teardrop flame (tint orange/yellow, additive)"
+    },
+    "fx_fire_b": {
+      "path": "assets/sprites/fx_fire_b.png",
+      "frames": 1,
+      "size": [
+        256,
+        256
+      ],
+      "blending": "additive or normal; white texture, tint via material colour",
+      "note": "fiery blob / burning patch"
+    },
+    "fx_wisp": {
+      "path": "assets/sprites/fx_wisp.png",
+      "frames": 1,
+      "size": [
+        256,
+        256
+      ],
+      "blending": "additive or normal; white texture, tint via material colour",
+      "note": "curly smoke/flame wisp"
+    },
+    "fx_spark": {
+      "path": "assets/sprites/fx_spark.png",
+      "frames": 1,
+      "size": [
+        256,
+        256
+      ],
+      "blending": "additive or normal; white texture, tint via material colour",
+      "note": "sparkle burst with rays (hit spark)"
+    },
+    "fx_star": {
+      "path": "assets/sprites/fx_star.png",
+      "frames": 1,
+      "size": [
+        256,
+        256
+      ],
+      "blending": "additive or normal; white texture, tint via material colour",
+      "note": "bright 4-point star twinkle"
+    },
+    "fx_star_b": {
+      "path": "assets/sprites/fx_star_b.png",
+      "frames": 1,
+      "size": [
+        256,
+        256
+      ],
+      "blending": "additive or normal; white texture, tint via material colour",
+      "note": "4-point compass star with ring"
+    },
+    "fx_flare": {
+      "path": "assets/sprites/fx_flare.png",
+      "frames": 1,
+      "size": [
+        256,
+        256
+      ],
+      "blending": "additive or normal; white texture, tint via material colour",
+      "note": "tiny lens flare point with streak"
+    },
+    "fx_glow": {
+      "path": "assets/sprites/fx_glow.png",
+      "frames": 1,
+      "size": [
+        256,
+        256
+      ],
+      "blending": "additive or normal; white texture, tint via material colour",
+      "note": "soft round glow blob"
+    },
+    "fx_glow_b": {
+      "path": "assets/sprites/fx_glow_b.png",
+      "frames": 1,
+      "size": [
+        256,
+        256
+      ],
+      "blending": "additive or normal; white texture, tint via material colour",
+      "note": "soft diamond glow"
+    },
+    "fx_ring": {
+      "path": "assets/sprites/fx_ring.png",
+      "frames": 1,
+      "size": [
+        256,
+        256
+      ],
+      "blending": "additive or normal; white texture, tint via material colour",
+      "note": "clean thin ring / shockwave (scale up + fade)"
+    },
+    "fx_ring_b": {
+      "path": "assets/sprites/fx_ring_b.png",
+      "frames": 1,
+      "size": [
+        256,
+        256
+      ],
+      "blending": "additive or normal; white texture, tint via material colour",
+      "note": "thick double ring"
+    },
+    "fx_ring_soft": {
+      "path": "assets/sprites/fx_ring_soft.png",
+      "frames": 1,
+      "size": [
+        256,
+        256
+      ],
+      "blending": "additive or normal; white texture, tint via material colour",
+      "note": "soft wide ring"
+    },
+    "fx_burst": {
+      "path": "assets/sprites/fx_burst.png",
+      "frames": 1,
+      "size": [
+        256,
+        256
+      ],
+      "blending": "additive or normal; white texture, tint via material colour",
+      "note": "starburst explosion flash"
+    },
+    "fx_lightning": {
+      "path": "assets/sprites/fx_lightning.png",
+      "frames": 1,
+      "size": [
+        256,
+        256
+      ],
+      "blending": "additive or normal; white texture, tint via material colour",
+      "note": "lightning bolt (vertical)"
+    },
+    "fx_dust": {
+      "path": "assets/sprites/fx_dust.png",
+      "frames": 1,
+      "size": [
+        256,
+        256
+      ],
+      "blending": "additive or normal; white texture, tint via material colour",
+      "note": "dust / debris kick-up"
+    },
+    "fx_dust_b": {
+      "path": "assets/sprites/fx_dust_b.png",
+      "frames": 1,
+      "size": [
+        256,
+        256
+      ],
+      "blending": "additive or normal; white texture, tint via material colour",
+      "note": "dense debris cloud"
+    },
+    "fx_magic": {
+      "path": "assets/sprites/fx_magic.png",
+      "frames": 1,
+      "size": [
+        256,
+        256
+      ],
+      "blending": "additive or normal; white texture, tint via material colour",
+      "note": "magic circle (concentric rings)"
+    },
+    "fx_magic_b": {
+      "path": "assets/sprites/fx_magic_b.png",
+      "frames": 1,
+      "size": [
+        256,
+        256
+      ],
+      "blending": "additive or normal; white texture, tint via material colour",
+      "note": "magic bubble ring"
+    },
+    "fx_slash": {
+      "path": "assets/sprites/fx_slash.png",
+      "frames": 1,
+      "size": [
+        256,
+        256
+      ],
+      "blending": "additive or normal; white texture, tint via material colour",
+      "note": "crescent sword slash"
+    },
+    "fx_twirl": {
+      "path": "assets/sprites/fx_twirl.png",
+      "frames": 1,
+      "size": [
+        256,
+        256
+      ],
+      "blending": "additive or normal; white texture, tint via material colour",
+      "note": "swirl arc"
+    },
+    "fx_trace": {
+      "path": "assets/sprites/fx_trace.png",
+      "frames": 1,
+      "size": [
+        256,
+        256
+      ],
+      "blending": "additive or normal; white texture, tint via material colour",
+      "note": "thin vertical streak (projectile trail / rising light)"
+    },
+    "fx_heart": {
+      "path": "assets/sprites/fx_heart.png",
+      "frames": 1,
+      "size": [
+        256,
+        256
+      ],
+      "blending": "additive or normal; white texture, tint via material colour",
+      "note": "heart (likes)"
+    },
+    "fx_explosion": {
+      "path": "assets/sprites/fx_explosion.png",
+      "frames": 9,
+      "frameSize": [
+        128,
+        128
+      ],
+      "columns": 8,
+      "rows": 2,
+      "order": "left-to-right, top-to-bottom",
+      "fps": 20,
+      "note": "explosion, coloured frames (Kenney Smoke Particles)"
+    },
+    "fx_flash": {
+      "path": "assets/sprites/fx_flash.png",
+      "frames": 9,
+      "frameSize": [
+        128,
+        128
+      ],
+      "columns": 8,
+      "rows": 2,
+      "order": "left-to-right, top-to-bottom",
+      "fps": 20,
+      "note": "bright flash/explosion core, coloured frames"
+    },
+    "fx_puff": {
+      "path": "assets/sprites/fx_puff.png",
+      "frames": 19,
+      "frameSize": [
+        128,
+        128
+      ],
+      "columns": 8,
+      "rows": 3,
+      "order": "left-to-right, top-to-bottom",
+      "fps": 20,
+      "note": "white smoke puff animation"
+    },
+    "fx_black_smoke": {
+      "path": "assets/sprites/fx_black_smoke.png",
+      "frames": 25,
+      "frameSize": [
+        128,
+        128
+      ],
+      "columns": 8,
+      "rows": 4,
+      "order": "left-to-right, top-to-bottom",
+      "fps": 20,
+      "note": "black smoke animation (burning province)"
+    }
+  },
+  "ui": {
+    "panel": {
+      "path": "assets/ui/panel.png",
+      "size": [
+        128,
+        128
+      ],
+      "note": "9-slice panel (brown wood)",
+      "nineSlice": [
+        24,
+        24,
+        24,
+        24
+      ]
+    },
+    "panel_dark": {
+      "path": "assets/ui/panel_dark.png",
+      "size": [
+        128,
+        128
+      ],
+      "note": "9-slice panel dark",
+      "nineSlice": [
+        24,
+        24,
+        24,
+        24
+      ]
+    },
+    "panel_light": {
+      "path": "assets/ui/panel_light.png",
+      "size": [
+        128,
+        128
+      ],
+      "note": "9-slice panel cream with brown border",
+      "nineSlice": [
+        24,
+        24,
+        24,
+        24
+      ]
+    },
+    "panel_detail": {
+      "path": "assets/ui/panel_detail.png",
+      "size": [
+        128,
+        128
+      ],
+      "note": "9-slice ornate panel",
+      "nineSlice": [
+        24,
+        24,
+        24,
+        24
+      ]
+    },
+    "panel_grey": {
+      "path": "assets/ui/panel_grey.png",
+      "size": [
+        128,
+        128
+      ],
+      "note": "9-slice metal panel",
+      "nineSlice": [
+        24,
+        24,
+        24,
+        24
+      ]
+    },
+    "banner": {
+      "path": "assets/ui/banner.png",
+      "size": [
+        512,
+        128
+      ],
+      "note": "ribbon banner for titles"
+    },
+    "banner_b": {
+      "path": "assets/ui/banner_b.png",
+      "size": [
+        512,
+        128
+      ],
+      "note": "ribbon banner variant"
+    },
+    "button": {
+      "path": "assets/ui/button.png",
+      "size": [
+        96,
+        48
+      ],
+      "note": "button brown",
+      "nineSlice": [
+        24,
+        24,
+        24,
+        24
+      ]
+    },
+    "button_red": {
+      "path": "assets/ui/button_red.png",
+      "size": [
+        96,
+        48
+      ],
+      "note": "button red",
+      "nineSlice": [
+        24,
+        24,
+        24,
+        24
+      ]
+    },
+    "progress_bg": {
+      "path": "assets/ui/progress_bg.png",
+      "size": [
+        32,
+        64
+      ],
+      "note": "progress bar background (9-slice horizontal)",
+      "nineSlice": [
+        0,
+        16,
+        0,
+        16
+      ]
+    },
+    "progress_fill": {
+      "path": "assets/ui/progress_fill.png",
+      "size": [
+        32,
+        64
+      ],
+      "note": "progress fill (white, tint)",
+      "nineSlice": [
+        0,
+        16,
+        0,
+        16
+      ]
+    },
+    "round_frame": {
+      "path": "assets/ui/round_frame.png",
+      "size": [
+        128,
+        128
+      ],
+      "note": "round frame (avatar/badge)"
+    },
+    "hex_frame": {
+      "path": "assets/ui/hex_frame.png",
+      "size": [
+        96,
+        128
+      ],
+      "note": "hexagon frame (plate-number badge)"
+    },
+    "icon_sword": {
+      "path": "assets/ui/icon_sword.png",
+      "size": [
+        128,
+        128
+      ],
+      "note": "sword (white, tint)"
+    },
+    "icon_shield": {
+      "path": "assets/ui/icon_shield.png",
+      "size": [
+        128,
+        128
+      ],
+      "note": "shield"
+    },
+    "icon_crown": {
+      "path": "assets/ui/icon_crown.png",
+      "size": [
+        128,
+        128
+      ],
+      "note": "crown"
+    },
+    "icon_heart": {
+      "path": "assets/ui/icon_heart.png",
+      "size": [
+        128,
+        128
+      ],
+      "note": "heart"
+    },
+    "icon_star": {
+      "path": "assets/ui/icon_star.png",
+      "size": [
+        100,
+        100
+      ],
+      "note": "star"
+    },
+    "icon_flag": {
+      "path": "assets/ui/icon_flag.png",
+      "size": [
+        128,
+        128
+      ],
+      "note": "flag"
+    },
+    "icon_skull": {
+      "path": "assets/ui/icon_skull.png",
+      "size": [
+        128,
+        128
+      ],
+      "note": "skull"
+    },
+    "icon_trophy": {
+      "path": "assets/ui/icon_trophy.png",
+      "size": [
+        100,
+        100
+      ],
+      "note": "trophy"
+    },
+    "icon_medal": {
+      "path": "assets/ui/icon_medal.png",
+      "size": [
+        100,
+        100
+      ],
+      "note": "medal"
+    },
+    "icon_arrow": {
+      "path": "assets/ui/icon_arrow.png",
+      "size": [
+        128,
+        128
+      ],
+      "note": "arrow right"
+    },
+    "icon_coin": {
+      "path": "assets/ui/icon_coin.png",
+      "size": [
+        128,
+        128
+      ],
+      "note": "coin / token"
+    },
+    "icon_gem": {
+      "path": "assets/ui/icon_gem.png",
+      "size": [
+        128,
+        128
+      ],
+      "note": "gem / diamond"
+    },
+    "icon_fire": {
+      "path": "assets/ui/icon_fire.png",
+      "size": [
+        128,
+        128
+      ],
+      "note": "fire"
+    },
+    "icon_tower": {
+      "path": "assets/ui/icon_tower.png",
+      "size": [
+        128,
+        128
+      ],
+      "note": "castle tower"
+    },
+    "icon_knight": {
+      "path": "assets/ui/icon_knight.png",
+      "size": [
+        128,
+        128
+      ],
+      "note": "knight / cavalry"
+    },
+    "icon_hourglass": {
+      "path": "assets/ui/icon_hourglass.png",
+      "size": [
+        128,
+        128
+      ],
+      "note": "hourglass / timer"
+    },
+    "icon_dice_sword": {
+      "path": "assets/ui/icon_dice_sword.png",
+      "size": [
+        128,
+        128
+      ],
+      "note": "battle dice"
+    }
+  },
+  "audio": {
+    "sfx_clash_a": {
+      "path": "assets/audio/sfx_clash_a.ogg",
+      "loop": false,
+      "duration": 1.03,
+      "note": "sword clash (StarNinjas, OGA CC0)"
+    },
+    "sfx_clash_b": {
+      "path": "assets/audio/sfx_clash_b.ogg",
+      "loop": false,
+      "duration": 0.92,
+      "note": "sword clash variant"
+    },
+    "sfx_clash_c": {
+      "path": "assets/audio/sfx_clash_c.ogg",
+      "loop": false,
+      "duration": 1.17,
+      "note": "sword clash variant"
+    },
+    "sfx_clash_d": {
+      "path": "assets/audio/sfx_clash_d.ogg",
+      "loop": false,
+      "duration": 0.85,
+      "note": "sword clash variant"
+    },
+    "sfx_swing": {
+      "path": "assets/audio/sfx_swing.ogg",
+      "loop": false,
+      "duration": 0.97,
+      "note": "sword swing/attack"
+    },
+    "sfx_swing_b": {
+      "path": "assets/audio/sfx_swing_b.ogg",
+      "loop": false,
+      "duration": 1.06,
+      "note": "sword swing variant"
+    },
+    "sfx_hit": {
+      "path": "assets/audio/sfx_hit.ogg",
+      "loop": false,
+      "duration": 0.43,
+      "note": "body hit"
+    },
+    "sfx_hit_b": {
+      "path": "assets/audio/sfx_hit_b.ogg",
+      "loop": false,
+      "duration": 0.54,
+      "note": "body hit variant"
+    },
+    "sfx_hit_metal": {
+      "path": "assets/audio/sfx_hit_metal.ogg",
+      "loop": false,
+      "duration": 0.61,
+      "note": "armour/metal hit"
+    },
+    "sfx_wood_hit": {
+      "path": "assets/audio/sfx_wood_hit.ogg",
+      "loop": false,
+      "duration": 0.31,
+      "note": "siege hit on wood/gate"
+    },
+    "sfx_explosion": {
+      "path": "assets/audio/sfx_explosion.ogg",
+      "loop": false,
+      "duration": 0.78,
+      "note": "cannon / siege explosion"
+    },
+    "sfx_explosion_big": {
+      "path": "assets/audio/sfx_explosion_big.ogg",
+      "loop": false,
+      "duration": 2,
+      "note": "big boom"
+    },
+    "sfx_capture": {
+      "path": "assets/audio/sfx_capture.ogg",
+      "loop": false,
+      "duration": 0.96,
+      "note": "province captured stinger (short hit jingle)"
+    },
+    "sfx_capture_b": {
+      "path": "assets/audio/sfx_capture_b.ogg",
+      "loop": false,
+      "duration": 1.32,
+      "note": "alternative capture stinger (pizzicato strings)"
+    },
+    "sfx_horn": {
+      "path": "assets/audio/sfx_horn.ogg",
+      "loop": false,
+      "duration": 5.5,
+      "note": "war horn blast (trimmed from Eldritch Grim \"War Horns\", OGA CC0)"
+    },
+    "sfx_horn_long": {
+      "path": "assets/audio/sfx_horn_long.ogg",
+      "loop": false,
+      "duration": 14,
+      "note": "longer layered war horns (round intro)"
+    },
+    "sfx_gift_small": {
+      "path": "assets/audio/sfx_gift_small.ogg",
+      "loop": false,
+      "duration": 0.29,
+      "note": "small gift blip"
+    },
+    "sfx_gift_medium": {
+      "path": "assets/audio/sfx_gift_medium.ogg",
+      "loop": false,
+      "duration": 1,
+      "note": "medium gift (short jingle)"
+    },
+    "sfx_gift_big": {
+      "path": "assets/audio/sfx_gift_big.ogg",
+      "loop": false,
+      "duration": 2,
+      "note": "big epic gift impact (hit jingle + low boom + bell layered)"
+    },
+    "sfx_round_start": {
+      "path": "assets/audio/sfx_round_start.ogg",
+      "loop": false,
+      "duration": 1.16,
+      "note": "round start hit (use with sfx_horn)"
+    },
+    "sfx_round_end": {
+      "path": "assets/audio/sfx_round_end.ogg",
+      "loop": false,
+      "duration": 1.15,
+      "note": "round end jingle"
+    },
+    "sfx_victory": {
+      "path": "assets/audio/sfx_victory.ogg",
+      "loop": false,
+      "duration": 6.6,
+      "note": "victory fanfare, first phrase (RandomMind \"Medieval: Victory Theme\", OGA CC0)"
+    },
+    "sfx_elimination": {
+      "path": "assets/audio/sfx_elimination.ogg",
+      "loop": false,
+      "duration": 1.48,
+      "note": "heavy bell toll for an eliminated player/province"
+    },
+    "sfx_ui_tick": {
+      "path": "assets/audio/sfx_ui_tick.ogg",
+      "loop": false,
+      "duration": 0.05,
+      "note": "UI tick (countdown)"
+    },
+    "sfx_ui_click": {
+      "path": "assets/audio/sfx_ui_click.ogg",
+      "loop": false,
+      "duration": 0.01,
+      "note": "UI click"
+    },
+    "sfx_join": {
+      "path": "assets/audio/sfx_join.ogg",
+      "loop": false,
+      "duration": 0.38,
+      "note": "viewer joined a province"
+    },
+    "sfx_coins": {
+      "path": "assets/audio/sfx_coins.ogg",
+      "loop": false,
+      "duration": 0.85,
+      "note": "coins"
+    },
+    "sfx_march": {
+      "path": "assets/audio/sfx_march.ogg",
+      "loop": false,
+      "duration": 0.32,
+      "note": "single footstep (loop/randomise for marching)"
+    },
+    "music_main": {
+      "path": "assets/audio/music_main.ogg",
+      "loop": true,
+      "duration": 43.58,
+      "note": "Eldritch Grim \"Epic March Loop\" (OGA CC0), seamless loop ~44 s"
+    },
+    "music_battle": {
+      "path": "assets/audio/music_battle.ogg",
+      "loop": true,
+      "duration": 78.92,
+      "note": "RandomMind \"Medieval: Battle\" (OGA CC0) ~79 s"
+    },
+    "music_victory": {
+      "path": "assets/audio/music_victory.ogg",
+      "loop": false,
+      "duration": 30.3,
+      "note": "RandomMind \"Medieval: Victory Theme\" full ~30 s"
+    }
+  },
+  "fonts": {
+    "font_display": {
+      "path": "assets/fonts/PaytoneOne-Regular.ttf",
+      "family": "Paytone One",
+      "license": "SIL OFL 1.1",
+      "note": "bold rounded display font (titles, plate numbers, big announcements); single weight 400"
+    },
+    "font_text": {
+      "path": "assets/fonts/Nunito-Variable.ttf",
+      "family": "Nunito",
+      "license": "SIL OFL 1.1",
+      "note": "rounded text font, VARIABLE weight 200-1000 (use @font-face font-weight: 200 1000)"
+    }
+  }
+}
