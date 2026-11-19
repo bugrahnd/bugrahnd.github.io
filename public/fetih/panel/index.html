@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>81 İl Fetih · Kontrol Paneli</title>
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+  <header>
+    <h1>81 İl Fetih <span>Kontrol Paneli</span></h1>
+    <div id="status" class="status">
+      <span id="st-dot" class="dot"></span>
+      <span id="st-mode">–</span>
+      <span id="st-text">Sunucuya bağlanılıyor…</span>
+      <span id="st-viewers" class="muted"></span>
+    </div>
+  </header>
+  <div id="bridge-down" class="error bridge-down" hidden>
+    <strong>Köprü sunucusuna ulaşılamıyor</strong> (<code id="bridge-down-addr"></code>).
+    Bu panel, yayın yapılan bilgisayarda çalışan köprü sunucusuyla konuşur.
+    Proje klasöründe bir terminal açıp <code>npm start</code> komutunu çalıştırın; sunucu açılınca bu sayfa kendiliğinden bağlanır.
+    <span id="bridge-down-detail"></span>
+    <br><small>Farklı port için adresin sonuna <code>?bridge=http://127.0.0.1:3001</code> ekleyin.</small>
+  </div>
+  <div id="st-error" class="error" hidden></div>
+
+  <main>
+    <section class="card">
+      <h2>Canlı TikTok</h2>
+      <form id="live-form" class="row">
+        <label class="grow">Kullanıcı adı
+          <input id="live-user" type="text" placeholder="@kullaniciadi" autocomplete="off" spellcheck="false">
+        </label>
+        <button type="submit" class="primary">Bağlan</button>
+        <button type="button" id="live-stop">Bağlantıyı kes</button>
+      </form>
+      <p class="hint" id="live-hint">Bağlanınca simülatör durur. Bağlantı kesilince simülatör moduna dönülür.</p>
+    </section>
+
+    <section class="card">
+      <h2>Simülatör</h2>
+      <div class="row">
+        <button id="sim-start" class="primary">Başlat</button>
+        <button id="sim-pause">Duraklat</button>
+        <label>Yoğunluk
+          <select id="sim-preset"></select>
+        </label>
+        <span id="sim-info" class="muted"></span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Manuel test</h2>
+      <div class="row">
+        <label>Test kullanıcısı
+          <input id="t-name" type="text" value="test_kullanici" spellcheck="false">
+        </label>
+        <label>Görünen ad
+          <input id="t-nick" type="text" value="Test Oyuncu">
+        </label>
+        <label class="small">Plaka (ops.)
+          <input id="t-plate" type="text" inputmode="numeric" placeholder="34 / kktc" maxlength="4" spellcheck="false">
+        </label>
+        <label class="small">Emoji
+          <input id="t-emoji" type="text" value="🔥" maxlength="16" spellcheck="false">
+        </label>
+      </div>
+      <p class="hint">Plaka girilirse test kullanıcısı önce <code>plaka emoji</code> yazarak (ör. <code>34 🔥</code>, <code>KKTC 🦅</code>) ile katılır, sonra olay gönderilir. Plaka 1-81 veya <code>kktc</code>; emoji boşsa 🔥.</p>
+      <div class="row">
+        <label class="grow">Sohbet mesajı
+          <input id="t-text" type="text" value="saldır 06">
+        </label>
+        <label>TikTok emote URL (ops.)
+          <input id="t-emote" type="text" placeholder="/emote/test.svg" spellcheck="false">
+        </label>
+        <button data-inject="chat" class="primary">Mesaj gönder</button>
+      </div>
+      <div class="row wrap">
+        <button data-inject="like">Beğeni ×100</button>
+        <button data-inject="follow">Takip</button>
+        <button data-inject="share">Paylaşım</button>
+        <button data-inject="join">Yayına giriş</button>
+      </div>
+      <div class="row wrap">
+        <span class="label">Hediye:</span>
+        <button data-inject="gift" data-coins="1">1 coin · Rose</button>
+        <button data-inject="gift" data-coins="10">10 coin</button>
+        <button data-inject="gift" data-coins="100">100 coin</button>
+        <button data-inject="gift" data-coins="1000">1000 coin</button>
+        <button data-inject="gift" data-coins="5000">5000 coin</button>
+      </div>
+    </section>
+
+    <section class="card log-card">
+      <div class="row between">
+        <h2>Olay akışı <span id="rate" class="muted"></span></h2>
+        <div class="row">
+          <label class="check"><input type="checkbox" id="log-pause"> Akışı dondur</label>
+          <button id="log-clear">Temizle</button>
+        </div>
+      </div>
+      <ol id="log" class="log"></ol>
+    </section>
+  </main>
+
+  <script src="panel.js" type="module"></script>
+</body>
+</html>

@@ -1,7 +1,10 @@
 // Game rules: teams, membership, troops, gifts, morale, war AI, rebellion, rounds.
 // Presentation goes through `view` (map, effects, labels, hud, audio, camera).
-import { normalizeText, acc, gen, dat, cleanNick, safeImageUrl, fmt, rand, clamp, pointInProvince, splitEmoji, badgeText, firstEmoteUrl } from './util.js';
+import { normalizeText, acc, gen, dat, loc, cleanNick, safeImageUrl, fmt, fmtShort, rand, clamp, pointInProvince, splitEmoji, badgeText, firstEmoteUrl } from './util.js';
 import { layoutFigures } from './units.js';
+
+/** "İzmir'desin", "Ankara'dasın", "Muş'tasın" (locative + 2nd person singular). */
+const youAreIn = (name) => { const l = loc(name); return l + (l.endsWith('a') ? 'sın' : 'sin'); };
 import { TILE_H, wzOf } from './map.js';
 import { provCode } from './labels.js';
 import { NEUTRAL_HEX, hexCss } from './colors.js';
@@ -59,6 +62,7 @@ export class Game {
     this.stats = { events: 0, gifts: 0, coins: 0 };
     this.nextArmyId = 1;
     this.passiveAcc = 0;
+    this.likeAcc = 0; this.likeRate = 0; // likes per second (smoothed), scales the morale need
     this.labelTimer = 0;
     this.leadProvinces = 0;
     this.session = this.loadSession();
@@ -72,7 +76,12 @@ export class Game {
   nameOf(plate) { return this.prov.get(plate).p.name; }
   ownerColor(owner) { return owner ? this.teams.get(owner).colorHex : NEUTRAL_HEX; }
   isHucum(team) { return team.hucumUntil > this.time; }
-  moraleNeed(team) { return this.cfg.morale.needBase + this.cfg.morale.needPerMember * team.memberCount; }
+  /** Likes needed for HÜCUM: grows with team size and with the stream-wide like rate. */
+  moraleNeed(team) {
+    const m = this.cfg.morale;
+    const rateK = Math.pow(Math.max(1, this.likeRate / (m.likeRateRef ?? 20)), m.likeRateExp ?? 0.6);
+    return (m.needBase + m.needPerMember * team.memberCount) * rateK;
+  }
 
   defenseMult(pv) {
     let m = this.cfg.war.defenderBonus;
@@ -145,7 +154,12 @@ export class Game {
     const badge = emoteImg ? { t: emoji ? badgeText(emoji) : '★', img: emoteImg } : emoji ? { t: badgeText(emoji) } : null;
     const n = normalizeText(rest);
     const player = this.touchPlayer(u);
-    if (player) { this.memberChat(player, n, badge); return; }
+    if (player) {
+      const other = n ? this.exactPlace(n) : 0;
+      if (other && other !== player.team) { this.otherPlate(u, player, other, badge); return; }
+      this.memberChat(player, n, badge);
+      return;
+    }
     if (!n) {
       // Emoji/emote-only message: completes a bare plate sent shortly before (gives the badge).
       const bare = this.barePlate.get(u.name);
@@ -176,6 +190,33 @@ export class Game {
       if (pv && pv.p.joinByNumber !== false) return pv.plate;
     }
     return 0;
+  }
+
+  /**
+   * A member typed another city's plate. In the first teams.switchWindowSec of a round
+   * (before they sent a gift) they switch; otherwise they get a visible reply.
+   */
+  otherPlate(u, player, plate, badge) {
+    const team = this.team(player.team);
+    const win = this.cfg.teams.switchWindowSec ?? 0;
+    if (this.round.phase === 'play' && win > 0 && this.time - (this.round.startedAt ?? -1e9) <= win && player.coins === 0) {
+      team.memberCount = Math.max(0, team.memberCount - 1);
+      if (team.commander === player) team.commander = null;
+      this.players.delete(u.name);
+      this.join(u, plate, badge || player.badge);
+      const nt = this.team(plate);
+      const at = this.prov.get(nt.plate);
+      this.view.tags.spawn({ x: at.wx, z: at.wz, nick: player.nick, badge: badge || player.badge, avatar: player.avatar, text: `${team.name} → ${dat(nt.name)} geçti`, colorHex: nt.colorHex, size: 'm', sec: 3 });
+      this.view.hud.reply(player.nick, `${dat(nt.name)} geçtin!`, nt.colorHex);
+      return;
+    }
+    if (this.time - (player.lastReplyAt ?? -1e9) < (this.cfg.teams.replyCooldownSec ?? 20)) return;
+    player.lastReplyAt = this.time;
+    const text = `Zaten ${youAreIn(team.name)}`;
+    const pv = this.prov.get(this.prov.get(team.plate).owner === team.plate ? team.plate : (team.rally || team.plate));
+    this.view.plates.highlight(pv.plate, team.colorHex);
+    this.view.tags.spawn({ x: pv.wx, z: pv.wz, nick: player.nick, badge: player.badge, avatar: player.avatar, text, colorHex: team.colorHex, size: 'm', sec: 3 });
+    this.view.hud.reply(player.nick, text, team.colorHex);
   }
 
   /** Any message from a member does something: votes, badge, or +1 troop. */
@@ -231,6 +272,8 @@ export class Game {
     };
     this.players.set(u.name, player);
     team.memberCount++;
+    if (!team.joinBurst) team.joinBurstAt = this.time;
+    team.joinBurst = (team.joinBurst || 0) + 1;
     const pv = this.prov.get(plate);
     if (!team.awake && this.round.phase === 'play') {
       this.wakeTeam(team, true);
@@ -302,11 +345,14 @@ export class Game {
       this.view.effects.hearts(pv.wx, TILE_H, pv.wz, Math.min(4, 1 + Math.floor(count / 10)));
       this.view.effects.sparkle(pv.wx, TILE_H, pv.wz, 0xff5a8a, 2, 0.9);
     }
+    this.likeAcc += count;
     if (this.isHucum(team)) return;
     const mult = this.actionMult(team);
-    team.morale += count * this.cfg.morale.perLike * mult;
-    this.view.plates.setMorale(team.plate, clamp(team.morale / this.moraleNeed(team), 0, 1), mult > 1);
-    if (team.morale >= this.moraleNeed(team)) this.startHucum(team);
+    const need = this.moraleNeed(team);
+    team.morale = Math.min(need * 1.5, team.morale + count * this.cfg.morale.perLike * mult);
+    this.view.plates.setMorale(team.plate, clamp(team.morale / need, 0, 1), mult > 1);
+    // One HÜCUM at a time (morale.oneAtATime): a full bar waits for the current charge.
+    if (team.morale >= need && !this.hucumBusy(team)) this.startHucum(team);
   }
 
   onBonus(u, kind) {
@@ -332,6 +378,13 @@ export class Game {
       troops: n, coins: 0, giftName: '', count: 0, team: team.name, code: this.codeOf(team.plate), tierIndex: 1,
       msg: kind === 'follow' ? 'takip etti, teşekkürler!' : 'yayını paylaştı, teşekkürler!',
     });
+  }
+
+  /** Another team is charging right now (only one HÜCUM moment at a time). */
+  hucumBusy(team) {
+    if (this.cfg.morale.oneAtATime === false) return false;
+    for (const t of this.teams.values()) if (t !== team && this.isHucum(t)) return true;
+    return false;
   }
 
   startHucum(team) {
@@ -390,11 +443,26 @@ export class Game {
     return t;
   }
 
+  /**
+   * Troops for ONE gift worth `coins`: troops.giftCurve points ([coins, troops]) joined
+   * on a log-log scale, so bigger gifts are clearly stronger but never round-ending.
+   */
+  giftTroops(coins) {
+    const pts = this.cfg.troops.giftCurve || [[1, 5], [100, 170], [1000, 700], [5000, 1800]];
+    const c = Math.max(1, coins);
+    if (c <= pts[0][0]) return pts[0][1] * c / pts[0][0];
+    let i = 1;
+    while (i < pts.length - 1 && c > pts[i][0]) i++;
+    const [x0, y0] = pts[i - 1]; const [x1, y1] = pts[i];
+    const t = Math.log(c / x0) / Math.log(x1 / x0);
+    return Math.round(y0 * Math.pow(y1 / y0, t));
+  }
+
   applyGift(player, g) {
     const team = this.team(player.team);
     const tier = this.tierFor(g.coins);
     const fm = this.finaleMult();
-    const troops = g.total * this.cfg.troops.perCoin * (tier.troopBonus || 1) * fm;
+    const troops = this.giftTroops(g.coins) * g.count * fm;
     player.coins += g.total; player.totalCoins += g.total;
     team.coins += g.total;
     if (!team.commander || (team.commander !== player && player.coins > team.commander.coins)) {
@@ -404,17 +472,25 @@ export class Game {
     }
     if (!team.awake) this.wakeTeam(team, true);
     const tierIndex = this.cfg.gifts.tiers.indexOf(tier);
-    this.view.audio.play(tier.sfx || 'sfx_gift_small', { vol: tierIndex === 0 ? 0.35 : 0.8, minGap: tierIndex === 0 ? 0.1 : 0.2 });
+    // Each tier has its own sound (tier.sfx: one key or a layered list).
+    const sfx = Array.isArray(tier.sfx) ? tier.sfx : [tier.sfx || 'sfx_gift_small'];
+    sfx.forEach((k, i) => this.view.audio.play(k, { vol: tierIndex === 0 ? 0.35 : i ? 0.6 : 0.8, minGap: tierIndex === 0 ? 0.1 : 0.2 }));
     if (tierIndex >= 1) this.view.audio.play('sfx_coins', { vol: 0.5, minGap: 0.3 });
-    const tagAt = (pv, extra = '') => this.view.tags.spawn({
+    // 100+ coins: the gift is THE visible event for a moment (minor callouts wait).
+    if (tierIndex >= 2) this.view.hud.holdCallouts(this.cfg.hud.giftHoldCalloutsSec ?? 1.5);
+    // Small gifts get a name tag at the province; from 100 coins the HUD credit strip is
+    // the single credit (no second tag on the map saying the same thing).
+    const tagAt = (pv, extra = '') => tierIndex >= 2 ? null : this.view.tags.spawn({
       x: pv.wx, z: pv.wz, nick: player.nick, badge: player.badge, avatar: player.avatar,
-      text: `${g.giftName}${g.count > 1 ? ' ×' + g.count : ''} → +${fmt(troops)} asker${extra}`,
+      text: `${g.giftName}${g.count > 1 ? ' ×' + g.count : ''} → +${fmtShort(troops)} asker${extra}`,
       colorHex: team.colorHex, size: ['s', 'm', 'l', 'xl', 'xl'][Math.min(4, tierIndex)], sec: [2.6, 3.2, 3.8, 4.5, 5][Math.min(4, tierIndex)],
     });
     // Personal credit at a fixed HUD spot (queued, repeats merged) + the province lights up.
     this.view.hud.credit({
       key: player.name, nick: player.nick, badge: player.badge, avatar: player.avatar, colorHex: team.colorHex,
       troops, coins: g.total, giftName: g.giftName, count: g.count, team: team.name, code: this.codeOf(team.plate), tierIndex, x2: fm > 1,
+      // Announced gifts: the credit outlasts the full-screen card.
+      extraSec: tier.announce ? (tier.announceSec || 5) * 0.5 : 0,
     });
     const litAt = team.provinces === 0 ? team.plate : (this.prov.get(team.plate).owner === team.plate ? team.plate : (team.rally || team.plate));
     this.view.plates.highlight(litAt, team.colorHex, player.nick);
@@ -424,7 +500,7 @@ export class Game {
       if (this.parade(team, player, troops)) return;
       const plate = this.addTroops(team, troops);
       const pv = this.prov.get(plate);
-      this.view.floater(pv, `+${fmt(troops)}`, team.colorHex, true);
+      this.view.floater(pv, `+${fmtShort(troops)}`, team.colorHex, true);
       this.view.effects.sparkle(pv.wx, TILE_H, pv.wz, team.colorHex, 6, 1.4);
       this.view.effects.giftBurst(pv.wx, TILE_H, pv.wz, team.colorHex, 0);
       if (this.time - this.lastSmallTag > 0.8) { this.lastSmallTag = this.time; tagAt(pv); }
@@ -439,8 +515,8 @@ export class Game {
       });
       if (tier.horn) this.view.audio.play(tier.horn, { vol: 0.9, minGap: 1 });
     }
-    if (tierIndex >= 2) this.view.hud.feed(`${player.nick} → ${tier.label}! ${fmt(troops)} asker (${team.name})`, team.colorHex, 'gift');
-    else if (tierIndex === 1 && g.coins >= 30) this.view.hud.feed(`${player.nick} → ${fmt(troops)} şövalye (${team.name})`, team.colorHex, 'gift', true);
+    if (tierIndex >= 2) this.view.hud.feed(`${player.nick} → ${tier.label}! ${fmtShort(troops)} asker (${team.name})`, team.colorHex, 'gift');
+    else if (tierIndex === 1 && g.coins >= 30) this.view.hud.feed(`${player.nick} → ${fmtShort(troops)} şövalye (${team.name})`, team.colorHex, 'gift', true);
 
     // Landless team: everything becomes an uprising at home.
     if (team.provinces === 0) {
@@ -485,7 +561,7 @@ export class Game {
     if (!target) {
       const plate = this.addTroops(team, troops);
       const pv = this.prov.get(plate);
-      this.view.floater(pv, `+${fmt(troops)}`, team.colorHex, true);
+      this.view.floater(pv, `+${fmtShort(troops)}`, team.colorHex, true);
       tagAt(pv);
       this.view.effects.giftBurst(pv.wx, TILE_H, pv.wz, team.colorHex, tierIndex);
       this.giftCamera(tierIndex, tier, pv.wx, pv.wz);
@@ -498,7 +574,7 @@ export class Game {
       && last.army.state === 'march' && last.army.traveled < last.army.dist * 0.4) {
       last.army.troops += troops;
       last.t = this.time;
-      this.view.floater(this.prov.get(src), `+${fmt(troops)}`, team.colorHex);
+      this.view.floater(this.prov.get(src), `+${fmtShort(troops)}`, team.colorHex);
       return;
     }
     const unitKey = tier.units ? 'mixed' : (tier.cavalryFromCoins && g.coins >= tier.cavalryFromCoins ? 'cavalry' : tier.unit || 'knight');
@@ -538,7 +614,7 @@ export class Game {
     const last = player.paradeArmy;
     if (last && last.state === 'march' && last.traveled < last.dist * 0.7) {
       last.troops += troops;
-      this.view.floater(this.prov.get(last.dest), `+${fmt(troops)}`, team.colorHex);
+      this.view.floater(this.prov.get(last.dest), `+${fmtShort(troops)}`, team.colorHex);
       return true;
     }
     const live = this.armies.reduce((n, a) => n + (a.kind === 'parade' && a.state !== 'done' ? 1 : 0), 0);
@@ -748,19 +824,19 @@ export class Game {
     this.view.director?.note(sx, sz, 18 + Math.sqrt(troops));
     if (this.time - (team.lastRebelCall || -1e9) > 25 && troops >= 20) {
       team.lastRebelCall = this.time;
-      this.view.hud.callout({ title: `${team.name.toLocaleUpperCase('tr')} AYAKLANDI!`, sub: `${fmt(troops)} isyancı şehrini geri istiyor`, colorHex: team.colorHex, prio: 1, sec: 2.2 });
+      this.view.hud.callout({ title: `${team.name.toLocaleUpperCase('tr')} AYAKLANDI!`, sub: `${fmtShort(troops)} isyancı şehrini geri istiyor`, colorHex: team.colorHex, prio: 1, sec: 2.2 });
     }
     if (this.time - (team.lastRebelFeed || 0) > 6) {
       team.lastRebelFeed = this.time;
       const occ = pv.owner ? this.teams.get(pv.owner).name : 'işgalci';
-      this.view.hud.feed(`${team.name} ayaklandı! ${fmt(troops)} isyancı ${occ} garnizonuna saldırıyor`, team.colorHex, 'fire');
+      this.view.hud.feed(`${team.name} ayaklandı! ${fmtShort(troops)} isyancı ${occ} garnizonuna saldırıyor`, team.colorHex, 'fire');
     }
     return army;
   }
 
   launchSieges(team, tier, g, targets, srcPlate) {
     const shots = tier.siegeShots || 3;
-    const dmgTotal = g.total * (tier.siegeDamagePerCoin || 1);
+    const dmgTotal = this.giftTroops(g.coins) * g.count * (tier.siegeTroopShare ?? 0.3);
     const engines = tier.siegeEngines || 1;
     for (const target of targets) {
       const tp = this.prov.get(target);
@@ -783,6 +859,8 @@ export class Game {
           yaw: Math.atan2(tp.wx - x, tp.wz - z), appear: 0, recoil: 0, hidden: !visible,
           shotsLeft: Math.ceil(shots / targets.length / engines) || 1, nextShot: 0.8 + e * 0.35,
           dmg: dmgTotal / targets.length / engines / Math.max(1, Math.ceil(shots / targets.length / engines)), done: false,
+          // Explosion size / shake / flash follow the gift tier (damage is compressed).
+          fx: tier.siege === 'trebuchet' ? 2 : tier.siege === 'catapult' ? 1 : 0,
         });
       }
     }
@@ -894,7 +972,7 @@ export class Game {
       const changed = lead.plate !== d.leader;
       if ((changed && this.time - d.lastLeaderCall > 20) || this.time - d.lastLeaderCall > 75) {
         d.leader = lead.plate; d.lastLeaderCall = this.time;
-        hud.callout({ title: `${lead.name.toLocaleUpperCase('tr')} ÖNDE!`, sub: `${lead.provinces} il · ${fmt(lead.garrisonSum)} asker`, colorHex: lead.colorHex, prio: 1, sec: 2.2, kind: 'leader' });
+        hud.callout({ title: `${lead.name.toLocaleUpperCase('tr')} ÖNDE!`, sub: `${lead.provinces} il · ${fmtShort(lead.garrisonSum)} asker`, colorHex: lead.colorHex, prio: 1, sec: 2.2, kind: 'leader' });
         return;
       }
     }
@@ -993,14 +1071,32 @@ export class Game {
     const secs = this.passiveAcc;
     this.passiveAcc = 0;
     const t = this.cfg.troops;
+    this.likeRate += (this.likeAcc / secs - this.likeRate) * 0.25;
+    this.likeAcc = 0;
+    let ready = null; let anyHucum = false;
     for (const team of this.teams.values()) {
       if (!team.awake) continue;
+      if (this.isHucum(team)) anyHucum = true;
+      else if (team.morale >= this.moraleNeed(team) && (!ready || team.morale / this.moraleNeed(team) > ready.morale / this.moraleNeed(ready))) ready = team;
+      // Crowd bonus: modest, grows with the square root of the member count.
+      const crowd = (t.passivePerSqrtMemberPerSec ?? 0) * Math.sqrt(team.memberCount);
       if (team.provinces === 0) {
-        team.rebelPool += t.passivePerTeamPerSec * t.passiveRebelShare * secs;
+        team.rebelPool += (t.passivePerTeamPerSec + crowd) * t.passiveRebelShare * secs;
       } else {
-        this.addTroops(team, (t.passivePerTeamPerSec + t.passivePerProvincePerSec * team.provinces) * secs);
+        this.addTroops(team, (t.passivePerTeamPerSec + t.passivePerProvincePerSec * team.provinces + crowd) * secs);
+      }
+      // "+N kişi" when people join in numbers.
+      if (team.joinBurst && this.time - team.joinBurstAt >= 1.2) {
+        const n = team.joinBurst; team.joinBurst = 0;
+        if (n >= (this.cfg.engage?.joinBurstMin ?? 3) && this.round.phase === play) {
+          const pv = this.prov.get(this.prov.get(team.plate).owner === team.plate ? team.plate : (team.rally || team.plate));
+          this.view.floater(pv, `+${fmt(n)} kişi`, team.colorHex, true);
+          this.view.effects.sparkle(pv.wx, TILE_H, pv.wz, team.colorHex, Math.min(14, 4 + n), 1.4);
+          if (n >= 10) this.view.effects.wake(pv.wx, TILE_H, pv.wz, team.colorHex);
+        }
       }
     }
+    if (ready && !anyHucum) this.startHucum(ready);
   }
 
   stepAI() {
@@ -1136,7 +1232,7 @@ export class Game {
     if (a.kind === 'parade') {
       const plate = pv.owner === a.team ? pv.plate : this.addTroops(team, a.troops);
       if (pv.owner === a.team) pv.garrison += a.troops;
-      this.view.floater(this.prov.get(plate), `+${fmt(a.troops)}`, team.colorHex);
+      this.view.floater(this.prov.get(plate), `+${fmtShort(a.troops)}`, team.colorHex);
       return;
     }
     if (pv.owner === a.team) { pv.garrison += a.troops; return; }
@@ -1229,7 +1325,7 @@ export class Game {
         this.projectiles.push({
           x0: fx, z0: fz, x1: tp.wx + (Math.random() - 0.5) * 14, z1: tp.wz + (Math.random() - 0.5) * 10,
           t: 0, dur: clamp(d / 70, 0.7, 1.6), h: clamp(d * 0.45, 18, 60), x: fx, y: TILE_H + 6, z: fz,
-          team: s.team, target: s.target, dmg: s.dmg, trailT: 0,
+          team: s.team, target: s.target, dmg: s.dmg, fx: s.fx || 0, trailT: 0,
         });
         if (s.shotsLeft <= 0) s.done = true;
       }
@@ -1251,16 +1347,17 @@ export class Game {
 
   impact(p) {
     const pv = this.prov.get(p.target);
-    this.view.effects.explosion(p.x1, TILE_H, p.z1, p.dmg > 400 ? 1.5 : 1.1);
-    this.view.audio.play(p.dmg > 400 ? 'sfx_explosion_big' : 'sfx_explosion', { vol: 0.7, minGap: 0.1 });
-    this.view.director?.note(p.x1, p.z1, 6 + Math.min(20, p.dmg / 40));
-    if (p.dmg > 120) this.view.camera.shake(p.dmg > 600 ? 6 : 3.5);
-    if (p.dmg > 300) this.view.hud.flash(Math.min(0.5, p.dmg / 2000 + 0.15));
+    const fx = p.fx || 0;
+    this.view.effects.explosion(p.x1, TILE_H, p.z1, [1.1, 1.4, 1.6][fx]);
+    this.view.audio.play(fx >= 1 ? 'sfx_explosion_big' : 'sfx_explosion', { vol: 0.7, minGap: 0.1 });
+    this.view.director?.note(p.x1, p.z1, 8 + fx * 8);
+    this.view.camera.shake([2.5, 4, 6][fx]);
+    if (fx >= 1) this.view.hud.flash(fx === 2 ? 0.4 : 0.25);
     pv.burnT = Math.max(pv.burnT, 4);
     if (pv.owner === p.team || this.round.phase !== 'play') return;
     const dmg = Math.min(pv.garrison, p.dmg);
     pv.garrison -= dmg;
-    if (dmg >= 1) this.view.floater(pv, `-${fmt(dmg)}`, 0xff4a3a);
+    if (dmg >= 1) this.view.floater(pv, `-${fmtShort(dmg)}`, 0xff4a3a);
   }
 
   stepBurning(dt) {
@@ -1281,6 +1378,7 @@ export class Game {
     r.duration = this.cfgRoundSec();
     r.left = r.duration;
     r.endsAtMs = Date.now() + r.duration * 1000;
+    r.startedAt = this.time;
     r.winner = null;
     r.lastTick = -1;
     r.battleMusic = false;

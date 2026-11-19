@@ -19,15 +19,21 @@
     "castleLargeMembers": 25,
     "nudgeCooldownSec": 25,
     "pendingGiftMaxAgeMin": 30,
-    "bareJoinWindowSec": 10
+    "bareJoinWindowSec": 10,
+    "_switch": "A member typing another plate: switches city within switchWindowSec of the round start (if no gift sent yet, 0 = never), else a reply 'Zaten İzmir'desin' (once per replyCooldownSec).",
+    "switchWindowSec": 20,
+    "replyCooldownSec": 20
   },
   "troops": {
-    "perCoin": 5,
+    "_giftCurve": "Troops for ONE gift by its coin value: [coins, troops] points, interpolated on a log-log scale (extrapolated with the last slope). Combos: troops x count. Finale multiplier on top. Siege damage = troops x tier.siegeTroopShare.",
+    "giftCurve": [[1, 5], [10, 35], [100, 170], [1000, 700], [5000, 1800], [30000, 5000]],
     "followBonus": 20,
     "shareBonus": 30,
     "passivePerTeamPerSec": 0.4,
     "passivePerProvincePerSec": 0.12,
-    "passiveRebelShare": 0.5
+    "passiveRebelShare": 0.5,
+    "_crowd": "Crowd bonus: passivePerSqrtMemberPerSec x sqrt(members) troops per second (1 member 0.25/s, 100 members 2.5/s, 300 members 4.3/s).",
+    "passivePerSqrtMemberPerSec": 0.25
   },
   "engage": {
     "_note": "Zero-effort actions. Bare plate/city message joins. Any member chat = chatTroops (once per chatCooldownSec per viewer). Comeback: a team with no province, or at most comebackShare of the leader's provinces (leader >= comebackMinLead), gets likes and chat x comebackMult. 1-coin gifts march as a named soldier (paradeMax at once).",
@@ -37,6 +43,7 @@
     "comebackMult": 2,
     "comebackShare": 0.2,
     "comebackMinLead": 8,
+    "joinBurstMin": 3,
     "paradeMax": 24,
     "paradeDistance": 26,
     "conquerorSec": 20,
@@ -44,13 +51,12 @@
     "fewPlayers": 6
   },
   "gifts": {
-    "_note": "Tiers by the coin value of ONE gift (highest matching minCoins wins). Troops = total coins * troops.perCoin * troopBonus.",
+    "_note": "Tiers by the coin value of ONE gift (highest matching minCoins wins). Troops per gift come from troops.giftCurve; the tier sets the spectacle (units, siege, announce, camera).",
     "tiers": [
       {
         "id": "piyade",
         "minCoins": 1,
         "label": "Piyade",
-        "troopBonus": 1,
         "mode": "garrison",
         "unit": "infantry",
         "sfx": "sfx_gift_small",
@@ -60,34 +66,31 @@
         "id": "atli",
         "minCoins": 10,
         "label": "Şövalye Birliği",
-        "troopBonus": 1.1,
         "mode": "army",
         "unit": "knight",
         "cavalryFromCoins": 30,
         "maxFigures": 10,
-        "sfx": "sfx_gift_medium",
+        "sfx": ["sfx_gift_medium", "sfx_march"],
         "legend": "Şövalye akını"
       },
       {
         "id": "kusatma",
         "minCoins": 100,
         "label": "Kuşatma Topları",
-        "troopBonus": 1.25,
         "mode": "army",
         "unit": "cavalry",
         "maxFigures": 14,
         "siege": "cannon",
         "siegeEngines": 1,
         "siegeShots": 4,
-        "siegeDamagePerCoin": 2,
-        "sfx": "sfx_gift_big",
+        "siegeTroopShare": 0.35,
+        "sfx": ["sfx_explosion_big", "sfx_hit_metal"],
         "legend": "Top ateşi"
       },
       {
         "id": "ordu",
         "minCoins": 1000,
         "label": "Büyük Ordu",
-        "troopBonus": 1.5,
         "mode": "army",
         "units": [
           "cavalry",
@@ -98,7 +101,7 @@
         "siege": "catapult",
         "siegeEngines": 2,
         "siegeShots": 6,
-        "siegeDamagePerCoin": 2,
+        "siegeTroopShare": 0.3,
         "announce": true,
         "announceSec": 5,
         "horn": "sfx_horn",
@@ -110,7 +113,6 @@
         "id": "sultan",
         "minCoins": 5000,
         "label": "Sultan Ordusu",
-        "troopBonus": 2,
         "mode": "multi",
         "maxTargets": 4,
         "units": [
@@ -123,13 +125,13 @@
         "siege": "trebuchet",
         "siegeEngines": 3,
         "siegeShots": 8,
-        "siegeDamagePerCoin": 2.5,
+        "siegeTroopShare": 0.3,
         "announce": true,
         "announceSec": 7,
         "horn": "sfx_horn_long",
         "camera": true,
         "shake": true,
-        "sfx": "sfx_gift_big",
+        "sfx": ["sfx_gift_big", "sfx_victory"],
         "legend": "4 cepheye saldırı"
       }
     ],
@@ -139,6 +141,10 @@
     "perLike": 1,
     "needBase": 60,
     "needPerMember": 12,
+    "_rate": "Need x max(1, likeRate/likeRateRef)^likeRateExp (likeRate = stream-wide likes per second). oneAtATime: a full bar waits while another city charges.",
+    "likeRateRef": 20,
+    "likeRateExp": 0.6,
+    "oneAtATime": true,
     "hucumSec": 15,
     "speedMult": 1.6,
     "powerMult": 1.5,
@@ -237,11 +243,12 @@
     "topCities": 5,
     "topGifters": 3,
     "topLikers": 2,
+    "_giftStrip": "Up to four gifts shown under the map: name as viewers see it in the TikTok app (may be empty: the tile then shows the coin value, plus=true adds +), coins, effect text. Effects come from the coin value (gifts.tiers), never from the name.",
     "giftStrip": [
-      { "name": "Rose", "coins": 1, "effect": "Asker", "icon": "icon_knight" },
-      { "name": "Hand Hearts", "coins": 100, "effect": "Top ateşi", "icon": "icon_fire" },
-      { "name": "Galaxy", "coins": 1000, "effect": "Büyük ordu", "icon": "icon_sword" },
-      { "name": "Unicorn Fantasy", "coins": 5000, "effect": "Sultan ordusu", "icon": "icon_crown" }
+      { "name": "Gül", "coins": 1, "effect": "Asker", "icon": "icon_knight" },
+      { "name": "Donat", "coins": 30, "effect": "Şövalye akını", "icon": "icon_sword" },
+      { "name": "Elle Kalp", "coins": 100, "effect": "Top ateşi", "icon": "icon_fire" },
+      { "name": "", "coins": 1000, "plus": true, "effect": "Büyük ordu", "icon": "icon_crown" }
     ],
     "floaterMax": 24,
     "maxTags": 6,
@@ -257,6 +264,11 @@
     "creditQueueMax": 6,
     "creditMergeSec": 6,
     "highlightSec": 3,
+    "_tiktokZones": "Design units on the 1080x1920 stage that TikTok LIVE covers: top header height, chat (y >= chatTop, x <= chatRight), bottom bar height, right hearts/gift column (x >= rightColLeft, y >= rightColTop). The stream layout keeps everything between top and chatTop and left of rightColLeft below rightColTop. ?zones=1 draws them.",
+    "tiktokZones": { "top": 230, "chatTop": 1250, "chatRight": 720, "bottomBar": 130, "rightColLeft": 900, "rightColTop": 1000 },
+    "giftHoldCalloutsSec": 1.5,
+    "busyEventsPerSec": 14,
+    "busyArmyMinTroops": 150,
     "commanderBadges": 3,
     "commanderNames": 5
   }

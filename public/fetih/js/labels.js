@@ -3,7 +3,7 @@
 // All untrusted text goes through textContent.
 import * as THREE from 'three';
 import { TILE_H, wzOf } from './map.js';
-import { fmt, cleanNick, safeImageUrl, setNameBadge, badgeKey } from './util.js';
+import { fmtShort as fmt, cleanNick, safeImageUrl, setNameBadge, badgeKey } from './util.js';
 import { hexCss } from './colors.js';
 
 const _v = new THREE.Vector3();

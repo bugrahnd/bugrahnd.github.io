@@ -7,10 +7,30 @@ export const urlOpts = {
   debug: qs.get('debug') === '1',
   mute: qs.get('mute') === '1',
   noMusic: qs.get('nomusic') === '1',
-  layout: qs.get('layout'), // 'portrait' | 'landscape' | null (auto)
+  layout: qs.get('layout'), // 'stream' | 'full' (portrait variants) | 'portrait' | 'landscape' | null (auto)
+  zones: qs.get('zones') === '1', // draw TikTok LIVE UI zones over the stage
   roundSec: Number(qs.get('round')) || 0, // override round length (testing)
   demo: qs.get('demo'), // '1' | 'low' | 'medium' | 'high' | 'chaos' | '0' | null (auto)
+  // Stream mode on any host (e.g. the game served from a website for TikTok LIVE Studio):
+  // ?yayin=1 or ?bridge=local -> the bridge on this PC; ?bridge=ws://host:port/ws -> that one.
+  bridgeUrl: bridgeParam(),
 };
+
+/** The forced bridge WebSocket URL, or '' when the page's own host is the bridge (or demo). */
+function bridgeParam() {
+  const b = (qs.get('bridge') || '').trim();
+  if (/^wss?:\/\/[^\s/]+\/\S*$/i.test(b)) return b;
+  if (b === 'local' || qs.get('yayin') === '1') return 'ws://127.0.0.1:3000/ws';
+  return '';
+}
+
+/** http(s) origin of a ws(s) URL: ws://127.0.0.1:3000/ws -> http://127.0.0.1:3000 */
+export function httpOriginOf(wsUrl) {
+  try {
+    const u = new URL(wsUrl);
+    return `${u.protocol === 'wss:' ? 'https:' : 'http:'}//${u.host}`;
+  } catch { return ''; }
+}
 
 export const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 export const lerp = (a, b, t) => a + (b - a) * t;
@@ -166,12 +186,21 @@ export const badgeKey = (b) => (b ? `${b.t || ''}|${b.img || ''}` : '');
 // ---------- formatting ----------
 
 const nfInt = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 0 });
-const nfCompact = new Intl.NumberFormat('tr-TR', { notation: 'compact', maximumFractionDigits: 1 });
 
+const nf1 = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 });
+
+/** Short Turkish form: 950, 7,5B, 12B, 150B, 1,2Mn. */
+export function fmtShort(n) {
+  n = Math.max(0, Math.round(n));
+  if (n < 1000) return String(n);
+  if (n < 1e6) return `${nf1.format(n < 1e5 ? Math.floor(n / 100) / 10 : Math.round(n / 1000))}B`;
+  return `${nf1.format(Math.floor(n / 1e5) / 10)}Mn`;
+}
+
+/** Coins and other exact counts: full up to 9.999 ("5.000"), short above. */
 export function fmt(n) {
   n = Math.max(0, Math.round(n));
-  // Full numbers up to a million ("50.000" reads better than the compact "50 B").
-  return n < 1e6 ? nfInt.format(n) : nfCompact.format(n);
+  return n < 10000 ? nfInt.format(n) : fmtShort(n);
 }
 
 export function fmtTime(sec) {

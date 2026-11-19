@@ -2,7 +2,7 @@
 // callouts, announcements, countdown, end screen.
 // Every untrusted string (nicknames, gift names) is inserted with textContent;
 // avatars are <img> elements with a letter fallback.
-import { fmt, fmtTime, safeImageUrl, setNameBadge, badgeKey } from './util.js';
+import { fmt, fmtShort, fmtTime, safeImageUrl, setNameBadge, badgeKey } from './util.js';
 import { hexCss } from './colors.js';
 
 function el(tag, cls, parent, text) {
@@ -73,22 +73,44 @@ const BANDS = {
 // (the map is fitted below it). Keep in sync with .leader-card / .credit in hud.css.
 const MAP_TOP_INSET = 206;
 
+// ---- Stream layout (portrait, TikTok LIVE safe zones) ----
+// TikTok covers the top (header), the bottom-left (chat), the bottom edge and a right
+// column of the lower half. Defaults below; hud.tiktokZones in game.json overrides.
+// Everything a viewer needs sits between safeTop (= zones.top) and safeBottom
+// (= zones.chatTop). Rows, top-down from safeTop (keep in sync with the .stream rules
+// in hud.css, which use the same offsets via --st / --sb):
+//   strip   st+4   h 72   timer (centre), session wins (left), top likers (right)
+//   boards  st+82  h 190  3 cities | 3 gifters
+//   lead    st+278 h 84   round leader (left) | credit / held-gift hint / tips (right)
+//   band    st+368 … sb-146   map; imperative line overlays its top STREAM_MAP_INSET
+//   cta     sb-142 h 58   "PLAKANI YAZ: 34"
+//   gifts   sb-80  h 80   four-gift strip (x <= zones.rightColLeft)
+export const DEFAULT_ZONES = { top: 230, chatTop: 1250, chatRight: 720, bottomBar: 130, rightColLeft: 900, rightColTop: 1000 };
+const STREAM_BAND_TOP = 368; // from safeTop
+const STREAM_BAND_BOTTOM = 146; // above safeBottom
+const STREAM_MAP_INSET = 62; // imperative line over the top of the band
+
 const CTA_LINES = [
-  ['34', 'yaz → İstanbul ordusuna katıl'],
+  ['34', 'yaz → İstanbul’a katıl'],
   ['ankara', 'şehir adı da olur'],
-  ['❤️ ekrana bas', '→ moral dolar, HÜCUM!'],
-  ['💬 her mesaj', '→ +1 asker'],
-  ['🎁 hediye', '→ adınla asker yürür'],
+  ['❤️ ekrana bas', 'moral → HÜCUM!'],
+  ['💬 her mesaj', '+1 asker'],
+  ['🎁 hediye', 'adınla asker yürür'],
 ];
 
 export class Hud {
-  constructor(root, assets, config, provinceCount = 81) {
+  /** opts.variant: default portrait variant, 'stream' (TikTok safe zones) or 'full'. */
+  constructor(root, assets, config, provinceCount = 81, opts = {}) {
     this.root = root;
     this.assets = assets;
     this.cfg = config;
     this.provinceCount = provinceCount;
     this.layout = null;
+    this.variant = null;
+    this.defaultVariant = opts.variant === 'full' ? 'full' : 'stream';
+    this.zones = { ...DEFAULT_ZONES, ...(config.hud.tiktokZones || {}) };
     this._build();
+    if (opts.zones) this._buildZones();
     this.feedLines = [];
     this.feedQueue = [];
     this.lastFeedAt = -1e9;
@@ -157,10 +179,23 @@ export class Hud {
     iconEl(a, 'icon_hourglass', timer, 'icon timer-icon');
     this.timerText = el('span', 'timer-text', timer, '10:00');
     this.roundText = el('span', 'round-text', timer, '1. TUR');
+    this.timerEl = timer;
+    this.topEl = top;
+    // Technical status: only with ?debug=1 (hud.css hides .conn otherwise).
     const conn = el('div', 'conn', top);
+    this.connEl = conn;
     this.connDot = el('span', 'conn-dot', conn);
     this.connText = el('span', 'conn-text', conn, 'Bağlanıyor…');
     this.statusText = el('span', 'status-text', conn, '');
+    // Small waiting indicator while the bridge is down (no technical detail).
+    this.waitEl = el('div', 'wait-pill', r, 'Köprü bekleniyor…');
+    // Stream layout: one slim strip below TikTok's header (timer, session, likers).
+    this.stripEl = el('div', 'strip panel-dark', r);
+    this.stripL = el('div', 'strip-l', this.stripEl);
+    this.stripC = el('div', 'strip-c', this.stripEl);
+    this.stripR = el('div', 'strip-r', this.stripEl);
+    // Stream layout: idle tips in the credit slot (when no credit / held gift shows).
+    this.idleEl = el('div', 'idle-slot', r);
 
     // Leaderboard
     const board = el('div', 'board panel-dark', r);
@@ -211,11 +246,13 @@ export class Hud {
     }
     this.gifterEmpty = el('div', 'board-empty', glist, 'İlk hediyeyi sen gönder!');
     // Top likers: recognition for viewers who only tap.
-    const lh = el('div', 'panel-title likers-title', gift);
+    this.giftersEl = gift;
+    this.likerBox = el('div', 'likers', gift);
+    const lh = el('div', 'panel-title likers-title', this.likerBox);
     iconEl(a, 'icon_heart', lh);
     el('span', '', lh, 'EN ÇOK BEĞENENLER');
     this.likerRows = [];
-    const llist = el('div', 'liker-list', gift);
+    const llist = el('div', 'liker-list', this.likerBox);
     for (let i = 0; i < (this.cfg.hud.topLikers ?? 2); i++) {
       const row = el('div', 'liker-row', llist);
       const nick = el('span', 'liker-nick', row);
@@ -237,6 +274,7 @@ export class Hud {
 
     // Call to action
     const cta = el('div', 'cta', r);
+    this.ctaEl = cta;
     const ctaMain = el('div', 'cta-main', cta);
     el('span', 'cta-a', ctaMain, 'PLAKANI YAZ:');
     el('span', 'cta-chip', ctaMain, '34');
@@ -250,14 +288,21 @@ export class Hud {
     // the config; the game's own icons, not TikTok artwork). Other gifts work by coin value.
     const tiers = el('div', 'tiers panel-dark', r);
     const strip = this.cfg.hud.giftStrip || this.cfg.gifts.tiers.map((t) => ({ name: t.label, coins: t.minCoins, effect: t.legend }));
+    // An entry without a name shows its coin value instead ("1.000+ jeton"); `plus`
+    // marks "this value or more". Effects follow coin value, never the name.
     strip.slice(0, 4).forEach((g, i) => {
       const s = el('div', `tier gs${i}`, tiers);
-      const top = el('span', 'tier-name', s);
-      iconEl(a, g.icon || 'icon_gem', top, 'icon tiny');
-      el('span', '', top, String(g.name || ''));
+      const name = String(g.name || '').trim();
+      const coinText = `${fmt(Number(g.coins) || 0)}${g.plus ? '+' : ''}${name ? '' : ' jeton'}`;
+      s.classList.toggle('noname', !name);
+      if (name) {
+        const top = el('span', 'tier-name', s);
+        iconEl(a, g.icon || 'icon_gem', top, 'icon tiny');
+        el('span', '', top, name);
+      }
       const c = el('span', 'tier-coins', s);
       iconEl(a, 'icon_coin', c, 'icon tiny');
-      el('span', '', c, fmt(Number(g.coins) || 0));
+      el('span', '', c, coinText);
       el('span', 'tier-label', s, String(g.effect || ''));
     });
 
@@ -339,26 +384,39 @@ export class Hud {
   applyLayout(w, h, forced) {
     // The HUD is designed on a 1080x1920 (portrait) or 1920x1080 (landscape) stage,
     // scaled by --u and centred in the viewport. A portrait screen taller than 9:16
-    // (phones) gives the extra height to the map band (--ex design units).
-    const portrait = forced ? forced === 'portrait' : w / h < 0.85;
+    // (phones) gives the extra height to the map band (--ex design units) in the full
+    // layout; the stream layout keeps the exact 9:16 stage so the TikTok zones line up.
+    // forced: 'stream' | 'full' (portrait variants), 'portrait' | 'landscape'.
+    const variantForced = forced === 'stream' || forced === 'full' ? forced : null;
+    const portrait = variantForced ? true : forced ? forced === 'portrait' : w / h < 0.85;
+    const variant = portrait ? (variantForced || this.defaultVariant) : 'full';
+    const stream = portrait && variant === 'stream';
     const safe = this._safeArea();
     const ah = Math.max(1, h - safe.top - safe.bottom);
     const dw = portrait ? 1080 : 1920; let dh = portrait ? 1920 : 1080;
     const u = Math.min(w / dw, ah / dh);
     let ex = 0;
-    if (portrait && ah / u > dh + 1) { ex = Math.min(700, ah / u - dh); dh += ex; }
+    if (portrait && !stream && ah / u > dh + 1) { ex = Math.min(700, ah / u - dh); dh += ex; }
     const ox = (w - dw * u) / 2; const oy = safe.top + (ah - dh * u) / 2;
     const doc = document.documentElement;
     doc.style.setProperty('--u', `${u}px`);
     doc.style.setProperty('--ex', String(ex));
+    const Z = this.zones;
+    doc.style.setProperty('--st', String(Z.top));
+    doc.style.setProperty('--sb', String(Z.chatTop));
+    doc.style.setProperty('--srx', String(Z.rightColLeft));
     doc.classList.toggle('portrait', portrait);
     doc.classList.toggle('landscape', !portrait);
+    doc.classList.toggle('stream', stream);
     this.root.style.left = `${ox}px`;
     this.root.style.top = `${oy}px`;
     this.root.style.width = `${dw * u}px`;
     this.root.style.height = `${dh * u}px`;
     this.layout = portrait ? 'portrait' : 'landscape';
-    const b = { ...BANDS[this.layout] };
+    this._place(stream ? 'stream' : 'full');
+    const b = stream
+      ? { x: 6, y: Z.top + STREAM_BAND_TOP, w: 1068, h: Z.chatTop - STREAM_BAND_BOTTOM - (Z.top + STREAM_BAND_TOP) }
+      : { ...BANDS[this.layout] };
     b.h += ex;
     this.bandDesign = b;
     const rect = { x: ox + b.x * u, y: oy + b.y * u, w: b.w * u, h: b.h * u, u };
@@ -371,9 +429,43 @@ export class Hud {
     this.bandEl.style.width = `${rect.w}px`;
     this.bandEl.style.height = `${rect.h}px`;
     // The map itself is fitted below the leader spot and credit strip.
-    const inset = MAP_TOP_INSET * u;
+    const inset = (stream ? STREAM_MAP_INSET : MAP_TOP_INSET) * u;
     rect.fit = { x: rect.x, y: rect.y + inset, w: rect.w, h: Math.max(rect.h * 0.5, rect.h - inset) };
     return rect;
+  }
+
+  /** Moves the few nodes that live in different containers per portrait variant. */
+  _place(variant) {
+    if (this.variant === variant) return;
+    this.variant = variant;
+    this._sessK = null;
+    if (variant === 'stream') {
+      this.stripL.append(this.sessEl);
+      this.stripC.append(this.timerEl);
+      this.stripR.append(this.likerBox);
+      this.idleEl.append(this.ctaLine);
+    } else {
+      this.topEl.insertBefore(this.timerEl, this.connEl);
+      this.root.insertBefore(this.sessEl, this.ctaEl);
+      this.giftersEl.append(this.likerBox);
+      this.ctaEl.append(this.ctaLine);
+    }
+  }
+
+  /** ?zones=1: TikTok LIVE UI zones drawn over the stage (owner alignment check). */
+  _buildZones() {
+    const Z = this.zones;
+    const H = 1920;
+    const box = el('div', 'tt-zones', this.root);
+    const rect = (x, y, w, h, label, cls) => {
+      const d = el('div', 'tt-zone ' + cls, box);
+      Object.assign(d.style, { left: `calc(var(--u) * ${x})`, top: `calc(var(--u) * ${y})`, width: `calc(var(--u) * ${w})`, height: `calc(var(--u) * ${h})` });
+      el('span', 'tt-zone-l', d, label);
+    };
+    rect(0, 0, 1080, Z.top, `TikTok başlık / izleyici (0–${Z.top})`, 'z-top');
+    rect(0, Z.chatTop, Z.chatRight, H - Z.bottomBar - Z.chatTop, `TikTok sohbet (y ≥ ${Z.chatTop}, x ≤ ${Z.chatRight})`, 'z-chat');
+    rect(Z.rightColLeft, Z.rightColTop, 1080 - Z.rightColLeft, H - Z.bottomBar - Z.rightColTop, 'kalp / hediye', 'z-right');
+    rect(0, H - Z.bottomBar, 1080, Z.bottomBar, 'yorum kutusu / hediye / paylaş', 'z-bottom');
   }
 
   _safeArea() {
@@ -395,6 +487,7 @@ export class Hud {
     this.connDot.classList.toggle('ok', ok);
     this.connText.textContent = ok ? 'Bağlı' : 'Bağlantı yok – yeniden deneniyor…';
     this.root.classList.toggle('offline', !ok);
+    this.waitEl.classList.toggle('on', !ok);
   }
 
   setStatus(s) {
@@ -425,7 +518,9 @@ export class Hud {
         r.row.animate([{ opacity: 0.3, transform: 'translateX(-12px)' }, { opacity: 1, transform: 'none' }], { duration: 350 });
       }
       r.prov.textContent = t.landless ? 'İsyanda!' : `${t.provinces} il`;
-      r.troops.textContent = `${fmt(t.troops)} asker · ${fmt(t.members)} kişi`;
+      r.troops.textContent = this.variant === 'stream'
+        ? `${fmtShort(t.troops)} · ${fmtShort(t.members)} kişi`
+        : `${fmtShort(t.troops)} asker · ${fmt(t.members)} kişi`;
       r.fill.style.transform = `scaleX(${t.morale.toFixed(3)})`;
       r.row.classList.toggle('hucum', t.hucum);
       if (t.commander) {
@@ -465,17 +560,18 @@ export class Hud {
     this.likerEmpty.style.display = likers.length ? 'none' : '';
 
     // Session scoreboard
-    const ss = sum.session || [];
-    const sk = ss.map((s) => `${s.name}:${s.wins}`).join('|');
+    const stream = this.variant === 'stream';
+    const ss = (sum.session || []).slice(0, stream ? 2 : 3);
+    const sk = `${this.variant}|` + ss.map((s) => `${s.name}:${s.wins}`).join('|');
     if (sk !== this._sessK) {
       this._sessK = sk;
       this.sessEl.replaceChildren();
       this.sessEl.style.display = ss.length ? '' : 'none';
       if (ss.length) {
-        iconEl(this.assets, 'icon_trophy', this.sessEl, 'icon tiny');
+        if (!stream) iconEl(this.assets, 'icon_trophy', this.sessEl, 'icon tiny');
         ss.forEach((s, i) => {
-          if (i) el('span', 'sess-dot', this.sessEl, '·');
-          const e = el('span', 'sess-city', this.sessEl, `${s.name} ${s.wins}`);
+          if (i && !stream) el('span', 'sess-dot', this.sessEl, '·');
+          const e = el('span', 'sess-city', this.sessEl, stream ? `🏆 ${s.name} ${s.wins}` : `${s.name} ${s.wins}`);
           e.style.color = hexCss(s.colorHex);
         });
       }
@@ -572,7 +668,7 @@ export class Hud {
     el('span', 'nudge-nick', l1, nick);
     const c = el('span', 'nudge-coins', l1, `${fmt(coins)} jeton bekliyor`);
     const l2 = el('div', 'nudge-msg', txt);
-    el('span', '', l2, 'Hediyen bekliyor! Yaz: ');
+    el('span', '', l2, 'Plakanı yaz: ');
     el('span', 'cta-chip tiny', l2, '34 🔥');
     this.nudgeEl.append(n);
     n.animate([{ opacity: 0, transform: 'translateX(40px)' }, { opacity: 1, transform: 'none' }], { duration: 300 });
@@ -725,7 +821,7 @@ export class Hud {
     A.av.set(o.avatar, o.nick, o.colorHex);
     setName(A.nick, o.nick, o.badge);
     A.gift.textContent = `${o.giftName}${o.count > 1 ? ' ×' + o.count : ''} gönderdi`;
-    A.troops.textContent = `${fmt(o.troops)} asker → ${o.team}`;
+    A.troops.textContent = `${fmtShort(o.troops)} asker → ${o.team}`;
     A.effect.textContent = o.effect || '';
     A.effect.style.display = o.effect ? '' : 'none';
     const dur = (o.sec || 5) * 1000;
@@ -733,7 +829,7 @@ export class Hud {
     // Full-screen moment first, then the card shrinks to a ribbon at the top of the map
     // band so the battle it started stays visible.
     const u = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--u')) || 1;
-    const band = this.layout === 'landscape' ? { top: 100, h: 840 } : { top: 470, h: 690 };
+    const band = { top: this.bandDesign?.y ?? 470, h: this.bandDesign?.h ?? 690 };
     const cardH = A.card.offsetHeight || 500 * u;
     const rootTop = A.root.offsetTop; const rootH = A.root.offsetHeight;
     const centreY = rootTop + rootH / 2;
@@ -881,7 +977,7 @@ export class Hud {
       this.crediting = null;
       this.lastCreditEnd = this.timeNow;
       const anim = C.root.animate([{ opacity: 1, transform: 'translateX(-50%)' }, { opacity: 0, transform: 'translateX(-50%) translateY(-12px)' }], { duration: 220, fill: 'forwards' });
-      anim.onfinish = () => { if (!this.crediting) C.root.style.display = 'none'; anim.cancel(); };
+      anim.onfinish = () => { if (!this.crediting) { C.root.style.display = 'none'; this.root.classList.remove('crediting'); } anim.cancel(); };
     }
     if (this.crediting || !this.creditQueue.length) return;
     if (this.timeNow - this.lastCreditEnd < (this.cfg.hud.creditGapSec ?? 0.25)) return;
@@ -890,6 +986,7 @@ export class Hud {
     o.until = this.timeNow + this._creditSec(o);
     this.crediting = o;
     C.root.style.display = '';
+    this.root.classList.add('crediting');
     this._renderCredit(o, false);
     C.root.animate([
       { opacity: 0, transform: 'translateX(-50%) scale(0.8)' },
@@ -905,7 +1002,7 @@ export class Hud {
     C.av.set(o.avatar, o.nick, o.colorHex);
     setName(C.nick, o.nick, o.badge);
     C.msg.textContent = o.msg || `${o.giftName}${o.count > 1 ? ' ×' + o.count : ''} gönderdi · ${fmt(o.coins)} jeton`;
-    C.troops.textContent = `+${fmt(o.troops)} asker → ${o.team}${o.x2 ? ' (2 KAT!)' : ''}`;
+    C.troops.textContent = `+${fmtShort(o.troops)} asker → ${o.team}${o.x2 ? ' (2 KAT!)' : ''}`;
     if (bump) C.troops.animate([{ transform: 'scale(1.25)' }, { transform: 'scale(1)' }], { duration: 350, easing: 'ease-out' });
   }
 
@@ -999,5 +1096,7 @@ export class Hud {
 
   toggleDebug(on) {
     this.debugEl.style.display = on ? '' : 'none';
+    // Technical status text (bridge, simulator, errors, audio button) only in debug.
+    document.documentElement.classList.toggle('dbg', !!on);
   }
 }

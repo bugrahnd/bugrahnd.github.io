@@ -39,7 +39,9 @@ async function main() {
   // Demo mode (static hosting: no bridge). ?demo=1|low|medium|high|chaos, ?demo=0 forces the bridge.
   const isLocal = ['localhost', '127.0.0.1', '[::1]', ''].includes(location.hostname) || location.hostname.endsWith('.localhost');
   const demoParam = urlOpts.demo;
-  let demoWanted = demoParam === '0' ? false : !!demoParam || !isLocal;
+  // Stream mode (?yayin=1 / ?bridge=…): always the bridge, never the demo, on any host.
+  const streamBridge = urlOpts.bridgeUrl;
+  let demoWanted = streamBridge ? false : demoParam === '0' ? false : !!demoParam || !isLocal;
   const demoPreset = DEMO_PRESETS[demoParam] ? demoParam : 'medium';
   // Phones / demo: cap the expensive bits instead of letting the frame rate crawl.
   const mobile = matchMedia('(pointer: coarse)').matches || Math.min(screen.width, screen.height) < 600;
@@ -78,7 +80,9 @@ async function main() {
   const director = new Director(rig, config);
   const hudRoot = document.getElementById('hud');
   const overlay = document.getElementById('overlay');
-  const hud = new Hud(hudRoot, assets, config, provinces.length);
+  // Portrait variant: the TikTok safe-zone "stream" layout on localhost (OBS source),
+  // the full-height layout for the web demo on phones; ?layout=stream|full overrides.
+  const hud = new Hud(hudRoot, assets, config, provinces.length, { variant: isLocal || streamBridge ? 'stream' : 'full', zones: urlOpts.zones });
   const minimap = new Minimap(hudRoot, provinces, 300);
   const plates = new PlateLabels(overlay, provinces, config);
   const armyLabels = new ArmyLabels(overlay);
@@ -116,10 +120,11 @@ async function main() {
     demo.start();
     window.__demo = demo;
   };
+  if (streamBridge) console.info(`Yayın modu: köprü ${streamBridge} (demo kapalı)`);
   if (demoWanted) startDemo();
   else {
     hud.setConnected(false);
-    const bridge = new BridgeClient((msg) => game.handleEvent(msg), (ok) => hud.setConnected(ok));
+    const bridge = new BridgeClient((msg) => game.handleEvent(msg), (ok) => hud.setConnected(ok), streamBridge);
     net = bridge;
     // On localhost the bridge is the real source: never fall back to fake viewers, keep
     // reconnecting and show a small waiting state (demo only with ?demo=1). Remote hosts

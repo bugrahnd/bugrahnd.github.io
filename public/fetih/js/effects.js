@@ -272,6 +272,24 @@ export class Effects {
     this.add.spawn({ sprite: this.sp('fx_ring'), x, y: y + 1, z, size: 6, size1: 40 * s, life: 0.6, color: 0xffd700, fadeIn: 0 });
     if (tier >= 1) this.add.spawn({ sprite: this.sp('fx_magic'), x, y: y + 1, z, size: 10, size1: 55 * s, life: 1.0, color: colorHex, rv: 2 });
     if (tier >= 2) this.add.spawn({ sprite: this.sp('fx_flare'), x, y: y + 18, z, size: 30 * s, size1: 10, life: 0.8, color: 0xffffff, fadeIn: 0 });
+    // Tier signatures so 1 / 10 / 100 coins read differently at a glance.
+    if (tier === 1) {
+      // Knights' charge: crossed blade slashes and a kicked-up dust ring.
+      for (let i = 0; i < 3; i++) this.add.spawn({ sprite: this.sp('fx_slash'), x: x + rand(-4, 4), y: y + 10, z: z + rand(-3, 3), size: 14, size1: 26, life: 0.45, color: i === 1 ? colorHex : 0xffffff, rot: i * 1.1, fadeIn: 0, delay: i * 0.08 });
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        this.norm.spawn({ sprite: this.sp('fx_dust'), x: x + Math.cos(a) * 6, y: y + 2, z: z + Math.sin(a) * 6, vx: Math.cos(a) * 22, vz: Math.sin(a) * 22, drag: 2, size: 6, size1: 14, life: 0.9, color: 0xb59f7c, alpha: 0.6 });
+      }
+    } else if (tier === 2) {
+      // Cannon salute: a ring of muzzle flashes and smoke puffs, then a gold shock ring.
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2; const px = x + Math.cos(a) * 16; const pz = z + Math.sin(a) * 12;
+        this.add.spawn({ sprite: this.sp('fx_flash'), x: px, y: y + 6, z: pz, size: 10, size1: 18, life: 0.3, fadeIn: 0, delay: i * 0.07 });
+        this.norm.spawn({ sprite: this.sp('fx_puff'), x: px, y: y + 6, z: pz, vy: 8, size: 8, size1: 20, life: 1.2, color: 0xdddddd, alpha: 0.8, delay: i * 0.07 });
+      }
+      this.add.spawn({ sprite: this.sp('fx_ring_b'), x, y: y + 1, z, size: 8, size1: 90, life: 0.8, color: 0xffb040, fadeIn: 0, delay: 0.45 });
+      this.add.spawn({ sprite: this.sp('fx_explosion'), x, y: y + 12, z, size: 18, size1: 34, life: 0.5, fadeIn: 0, delay: 0.45 });
+    }
     const n = 4 + tier * 5;
     for (let i = 0; i < n; i++) {
       const a = rand(0, Math.PI * 2); const sp = rand(10, 30) * s;
