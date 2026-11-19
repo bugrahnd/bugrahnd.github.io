@@ -111,8 +111,8 @@ const MAP_TOP_INSET = 206;
 //   lead     st+255  h 92   round leader (left) | credit / held-gift hint / tips (right)
 //   band     st+351 … sb-224   map; the imperative line overlays its top STREAM_MAP_INSET
 //   tab      sb-232  h 40   "HEDİYE AT, ORDU KUR" tab, overlapping the ladder's top edge
-//   gifts    sb-212  h 140  gift ladder, 3 tiles per page    } one unit, x sx … rightColLeft - sx
-//   cta row  sb-66   h 60   "PLAKANI YAZ: 34" | HÜCUM bar     } (clear of the hearts column)
+//   gifts    sb-212  h 140  gift ladder, 3 tiles per page    } one unit, x sx … 1080 - sx
+//   cta row  sb-66   h 60   "PLAKANI YAZ: 34" | HÜCUM bar     } (full width: the owner chose to ignore the hearts column)
 // safeBottom (zones.chatTop) defaults to 1340 and is a streamer setting (layout.chatTop), as is
 // the side inset (layout.side): both are tuned against a real phone.
 export const DEFAULT_ZONES = { top: 230, chatTop: 1340, chatRight: 720, bottomBar: 130, rightColLeft: 900, rightColTop: 1000, side: 60 };
@@ -463,7 +463,7 @@ export class Hud {
       const t = el('div', `tier r${this._rankFor(coins)}`);
       t.classList.toggle('noname', !name);
       // Long names step down one size on the stream tiles (still >= 30 units) before ellipsizing.
-      t.classList.toggle('long-name', Array.from(name).length > 10);
+      t.classList.toggle('long-name', Array.from(name).length > 13);
       const head = el('div', 'tier-head', t);
       const fb = a.uiPath(g.icon || 'icon_gem');
       const img = giftImg(head, 'tier-img', fb);

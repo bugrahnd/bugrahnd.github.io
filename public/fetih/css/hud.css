@@ -759,7 +759,7 @@ html:not(.dbg) .wait-pill.on { display: block; }
    See the table at the top of hud.js. Nothing below 34 design units is meant to
    be read here; secondary lines are hidden instead of shrunk.
    ========================================================================== */
-.stream { --bw: calc(var(--srx) - 2 * var(--sx)); } /* bottom unit width (left of the hearts column) */
+.stream { --bw: calc(1080 - 2 * var(--sx)); } /* bottom unit width: inset to inset (owner: the ladder ignores the hearts column; ?zones=1 still draws it) */
 .stream .panel-dark { border-width: calc(var(--u) * 8); border-image-width: calc(var(--u) * 8); }
 
 /* Title: decoration only, under TikTok's header. */
@@ -931,7 +931,7 @@ html:not(.dbg) .wait-pill.on { display: block; }
 .stream .tiers-tab span { overflow: hidden; text-overflow: ellipsis; }
 .stream .tier-row { gap: calc(var(--u) * 6); }
 .stream .tier {
-  flex: 1 1 0; min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto auto auto;
+  flex: 1 1 0; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); /* picture | price, centred as a pair */ grid-template-rows: auto auto auto;
   column-gap: calc(var(--u) * 6); row-gap: 0; align-items: center; justify-items: start; align-content: center;
   padding: calc(var(--u) * 2) calc(var(--u) * 8); line-height: 1.04; overflow: hidden;
   background: rgba(0, 0, 0, 0.62); border: calc(var(--u) * 3) solid rgba(255, 255, 255, 0.38); border-radius: calc(var(--u) * 14);
@@ -942,7 +942,7 @@ html:not(.dbg) .wait-pill.on { display: block; }
 .stream .tier-name { grid-column: 1 / span 2; grid-row: 1; justify-self: stretch; text-align: center; max-width: 100%; overflow: hidden; text-overflow: ellipsis; font-size: calc(var(--u) * 36); }
 .stream .tier-img { grid-column: 1; grid-row: 2; width: calc(var(--u) * 40); height: calc(var(--u) * 40); justify-self: end; }
 .stream .tier-coins { grid-column: 2; grid-row: 2; gap: calc(var(--u) * 3); font-size: calc(var(--u) * 38); font-family: var(--font-display); }
-.stream .tier.long-name .tier-name { font-size: calc(var(--u) * 30); }
+.stream .tier.long-name .tier-name { font-size: calc(var(--u) * 32); }
 .stream .tier.noname .tier-img { grid-row: 1 / span 2; }
 .stream .tier.noname .tier-coins { grid-row: 1 / span 2; }
 .stream .tier .icon.tiny { width: calc(var(--u) * 30); height: calc(var(--u) * 30); }
