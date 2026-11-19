@@ -28,7 +28,8 @@ const GROUPS = [
   {
     id: 'hediye', title: 'Hediyeler',
     fields: [
-      { key: 'gifts.strip', kind: 'strip', label: 'Hediye merdiveni (haritanın altı)', hint: 'En ucuzdan pahalıya 1-12 hediye; ekranda sayfa sayfa döner. Hediye adı izleyicinin TikTok\'ta gördüğü ad olmalı (boş bırakılırsa jeton değeri yazar). "+N asker" kısmı asker eğrisinden otomatik gelir; etki yazısını siz yazarsınız. Etkiyi jeton değeri belirler, ad değil. TikTok\'un hediye listesi varsa "Listeden seç" ile resim, ad ve fiyat hazır gelir.' },
+      { key: 'gifts.strip', kind: 'strip', label: 'Hediye merdiveni (haritanın altı)', hint: 'En ucuzdan pahalıya 1-12 hediye; ekranda sayfa sayfa döner. Hediye adı izleyicinin TikTok\'ta gördüğü ad olmalı (boş bırakılırsa jeton değeri yazar). "+N asker" kısmı asker eğrisinden otomatik gelir; etki yazısını siz yazarsınız. Etkiyi jeton değeri belirler, ad değil. "Listeden seç" yayında görülen hediyeleri gösterir: resim, ad ve fiyat hazır gelir.' },
+      { key: 'gifts.heading', kind: 'text', label: 'Merdiven başlığı', hint: 'Yayın görünümünde hediye merdiveninin üstündeki sarı sekme (ör. HEDİYE AT, ORDU KUR).' },
       { key: 'gifts.showTroops', kind: 'toggle', label: 'Kutularda asker sayısı', hint: 'Açıksa her hediye kutusunda "+N asker" yazar (sayı asker eğrisinden gelir).' },
       { key: 'gifts.curve', kind: 'curve', label: 'Hediye başına asker', hint: 'Tek bir hediyenin jeton değerine göre kaç asker verdiği. Aradaki değerler bu noktalardan hesaplanır; sayılar artan sırada olmalı.' },
     ],
@@ -61,6 +62,8 @@ const GROUPS = [
       { key: 'show.giftStrip', kind: 'toggle', label: 'Hediye şeridi', hint: 'En alttaki hediye merdiveni (sayfa sayfa döner).' },
       { key: 'show.hucumBar', kind: 'toggle', label: 'HÜCUM çubuğu', hint: 'Haritanın altındaki "İSTANBUL HÜCUM %80" çubuğu.' },
       { key: 'show.minimap', kind: 'toggle', label: 'Küçük harita', hint: 'Kamera yakınlaşınca köşede çıkan Türkiye haritası.' },
+      { key: 'layout.chatTop', kind: 'num', label: 'Sohbet çizgisi', unit: 'birim (1920 üzerinden)', hint: 'Yayın görünümünde her şey bu çizginin üstünde kalır; altı TikTok sohbetine ayrılır. Telefonda sohbet hediye merdivenini ya da "PLAKANI YAZ" satırını kapatıyorsa küçültün, boşluk kalıyorsa büyütün (1150-1500). Kontrol: oyun adresine ?zones=1 ekleyin.' },
+      { key: 'layout.side', kind: 'num', label: 'Yan boşluk', unit: 'birim', hint: 'Uzun ekranlı telefonlarda yayının sağı ve solu kırpılır; kutular kenardan bu kadar içeride durur (0-120).' },
       { key: 'cta.text', kind: 'text', label: 'Çağrı yazısı', hint: 'Haritanın altındaki kırmızı çağrının yazısı.' },
       { key: 'cta.example', kind: 'text', label: 'Çağrı örneği', hint: 'Çağrının yanındaki örnek kutu (ör. plaka).' },
       { key: 'title.text', kind: 'text', label: 'Başlık yazısı', hint: 'En üstteki logo. İlk kelime plakanın içinde, gerisi yanında yazar (ör. "PLAKA SAVAŞLARI"). TikTok\'un üst çubuğu çoğunu kapatır; süs içindir.' },
@@ -116,14 +119,32 @@ export function initSettings({ api }) {
   let catalogNote = null; let stripPreview = null; let picker = null;
 
   const catalogIcon = (id) => catalog.items.find((x) => x.id === id)?.icon || '';
+  const nameKey = (s) => String(s || '').toLocaleLowerCase('tr').replace(/[^\p{L}\p{N}]+/gu, '');
+  const when = (ms) => (ms ? new Date(ms).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' }) : '');
+  /** "Gül (Rose)" when the bridge knows the Turkish app name, else TikTok's name. */
+  const bothNames = (it) => (it.tr && nameKey(it.tr) !== nameKey(it.name) ? `${it.tr} (${it.name})` : it.name);
+  /**
+   * Catalogue gift for a ladder row: by its id, otherwise by name (Turkish or English) at the
+   * same price; the game does the same (game/js/gift-names.js), so the row learns its id.
+   */
+  function resolveRow(name, coins, id) {
+    if (id) {
+      const it = catalog.items.find((x) => x.id === id);
+      return it ? { item: it, auto: false } : null;
+    }
+    const k = nameKey(name);
+    if (!k) return null;
+    const it = catalog.items.find((x) => x.coins === coins && (nameKey(x.name) === k || nameKey(x.tr) === k));
+    return it ? { item: it, auto: true } : null;
+  }
   function renderCatalogNote() {
     if (!catalogNote) return;
     if (!catalog.items.length) {
-      catalogNote.textContent = 'TikTok hediye listesi henüz yok: canlı yayına bağlanınca otomatik alınır. O zamana kadar ad ve jetonu elle yazın.';
+      catalogNote.textContent = 'Henüz hediye görülmedi. Liste, canlı yayında izleyiciler hediye gönderdikçe kendiliğinden dolar ve kaydedilir. O zamana kadar ad ve jetonu elle yazın.';
       return;
     }
-    const when = catalog.ts ? new Date(catalog.ts).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' }) : 'bilinmiyor';
-    catalogNote.textContent = `TikTok hediye listesi: ${catalog.items.length} hediye · son alınma: ${when}${catalog.source === 'test' ? ' (test verisi)' : ''}. "Listeden seç" ile resim, ad ve fiyat hazır gelir.`;
+    const src = catalog.source === 'live' ? ' (TikTok oda listesi + yayında görülenler)' : catalog.source === 'test' ? ' (test verisi)' : '';
+    catalogNote.textContent = `Şimdiye kadar görülen hediyeler: ${catalog.items.length}${src} · son değişiklik: ${when(catalog.ts) || 'bilinmiyor'}. "Listeden seç" ile resim, ad ve fiyat hazır gelir; liste izleyiciler hediye gönderdikçe büyür.`;
   }
   function setCatalog(c) {
     catalog = { items: Array.isArray(c?.items) ? c.items : [], ts: Number(c?.ts) || 0, source: String(c?.source || '') };
@@ -153,22 +174,25 @@ export function initSettings({ api }) {
     const box = el('div', 'gift-picker');
     box._anchor = anchor;
     picker = box;
+    el('strong', 'gp-title', box, 'Şimdiye kadar görülen hediyeler');
     if (!catalog.items.length) {
-      el('p', 'hint', box, 'Liste yok: TikTok hediye listesi canlı yayına bağlanınca gelir. Şimdilik ad ve jetonu elle yazın.');
+      el('p', 'hint', box, 'Henüz hediye görülmedi. Liste, canlı yayında izleyiciler hediye gönderdikçe dolar. Şimdilik ad ve jetonu elle yazın.');
     } else {
-      const q = el('input', '', box); q.type = 'search'; q.placeholder = 'Ara (ad ya da jeton)…';
+      el('p', 'hint', box, 'Liste, izleyiciler hediye gönderdikçe dolar; burada olmayan bir hediyeyi elle yazabilirsiniz.');
+      const q = el('input', '', box); q.type = 'search'; q.placeholder = 'Ara (Türkçe/İngilizce ad ya da jeton)…';
       const list = el('div', 'gift-picker-list', box);
       const render = () => {
         const t = q.value.trim().toLocaleLowerCase('tr');
         list.replaceChildren();
         for (const it of catalog.items) {
-          if (t && !it.name.toLocaleLowerCase('tr').includes(t) && String(it.coins) !== t) continue;
+          if (t && !it.name.toLocaleLowerCase('tr').includes(t) && !String(it.tr || '').toLocaleLowerCase('tr').includes(t) && String(it.coins) !== t) continue;
           const b = el('button', 'gift-picker-item', list); b.type = 'button';
           const img = el('img', '', b); img.alt = ''; img.referrerPolicy = 'no-referrer'; img.loading = 'lazy';
           if (it.icon) img.src = it.icon; else img.style.visibility = 'hidden';
           img.onerror = () => { img.style.visibility = 'hidden'; };
-          el('span', 'gp-name', b, it.name);
-          el('span', 'gp-coins', b, `${it.coins.toLocaleString('tr-TR')} jeton`);
+          const nm = el('span', 'gp-name', b, bothNames(it));
+          el('small', 'gp-seen', nm, it.seen ? `son görülme: ${when(it.seen)}` : 'TikTok listesinden (yayında görülmedi)');
+          el('span', 'gp-coins', b, `${it.coins.toLocaleString('tr-TR')} jeton · #${it.id}`);
           b.onclick = () => { onPick(it); box.remove(); picker = null; };
         }
         if (!list.childElementCount) el('p', 'hint', list, 'Eşleşen hediye yok.');
@@ -332,10 +356,21 @@ export function initSettings({ api }) {
             const t = c >= 1 ? previewTroops(c) : 0;
             const showN = inputs.get('gifts.showTroops')?.get() !== false;
             r.out.textContent = c >= 1 ? `${showN ? `+${t.toLocaleString('tr-TR')} asker` : ''}${showN && r.effect.value.trim() ? ', ' : ''}${r.effect.value.trim()}` : '–';
-            r.idTag.textContent = r.id ? `#${r.id}` : '';
-            r.idTag.title = r.id ? 'TikTok hediye kimliği (listeden seçildi). Resim buna göre bulunur.' : '';
-            r.img.style.display = r.id && catalogIcon(r.id) ? '' : 'none';
-            if (r.id && catalogIcon(r.id)) r.img.src = catalogIcon(r.id);
+            // Learn the id from the seen gifts (same name, same price) and flag a wrong price.
+            const res = resolveRow(r.name.value.trim(), c, r.id);
+            r.autoId = res?.auto ? res.item.id : 0;
+            const id = r.id || r.autoId;
+            r.idTag.textContent = id ? `#${id}${r.autoId ? ' (otomatik)' : ''}` : '';
+            r.idTag.title = r.autoId
+              ? 'TikTok hediye kimliği, yayında aynı ad ve fiyatla görülen hediyeden otomatik bulundu; "Kaydet" ile saklanır.'
+              : id ? 'TikTok hediye kimliği. Resim ve gerçek fiyat buna göre bulunur.' : '';
+            const it = res?.item;
+            r.enTag.textContent = it && nameKey(it.name) !== nameKey(r.name.value) ? `TikTok: ${it.name}` : '';
+            r.img.style.display = it?.icon ? '' : 'none';
+            if (it?.icon && r.img.src !== it.icon) r.img.src = it.icon;
+            const wrong = it && !r.plus.checked && c >= 1 && it.coins !== c;
+            r.priceNote.textContent = wrong ? `Not: TikTok bu hediyeyi ${it.coins.toLocaleString('tr-TR')} jeton olarak bildiriyor; ekranda gerçek fiyat gösterilir.` : '';
+            r.priceNote.style.display = wrong ? '' : 'none';
           }
           addBtn.disabled = rows.length >= s.maxCount;
         };
@@ -351,9 +386,10 @@ export function initSettings({ api }) {
           r.img.onerror = () => { r.img.style.display = 'none'; };
           r.name = el('input', '', nameTd); r.name.type = 'text'; r.name.maxLength = s.nameMax; r.name.placeholder = '(jeton değeri yazsın)';
           r.idTag = el('span', 'muted gift-id', nameTd);
+          r.enTag = el('span', 'muted gift-id', nameTd);
           const pick = el('button', 'small', nameTd, 'Listeden seç'); pick.type = 'button';
           pick.onclick = () => openPicker(pick, (it) => {
-            r.id = it.id; r.name.value = it.name.slice(0, s.nameMax); r.coins.value = it.coins; r.plus.checked = false;
+            r.id = it.id; r.name.value = (it.tr || it.name).slice(0, s.nameMax); r.coins.value = it.coins; r.plus.checked = false;
             markDirty(); preview();
           });
           r.pick = pick;
@@ -366,6 +402,7 @@ export function initSettings({ api }) {
           r.effect = el('input', '', el_); r.effect.type = 'text'; r.effect.maxLength = s.effectMax; r.effect.placeholder = 'ör. şövalye birliği';
           r.out = el('span', 'gift-out', l2);
           r.out.title = 'Ekranda böyle yazar';
+          r.priceNote = el('p', 'hint gift-price-note', tr); r.priceNote.style.display = 'none';
           const act = el('span', 'row-act', l1);
           r.up = el('button', 'small', act, '↑'); r.down = el('button', 'small', act, '↓'); r.del = el('button', 'small danger', act, '✕');
           for (const b of [r.up, r.down, r.del]) b.type = 'button';
@@ -383,7 +420,7 @@ export function initSettings({ api }) {
           r.name.oninput = () => { r.id = 0; markDirty(); preview(); };
           r.coins.oninput = () => { markDirty(); preview(); };
           r.effect.oninput = () => { markDirty(); preview(); };
-          r.plus.onchange = markDirty;
+          r.plus.onchange = () => { markDirty(); preview(); };
           r.name.value = g.name ?? ''; r.coins.value = g.coins ?? ''; r.effect.value = g.effect ?? ''; r.plus.checked = g.plus === true;
           rows.push(r);
           return r;
@@ -397,7 +434,7 @@ export function initSettings({ api }) {
         api_ = {
           get: () => rows.map((r) => {
             const o = { name: r.name.value.trim(), coins: r.coins.value.trim() === '' ? '' : Number(r.coins.value), effect: r.effect.value.trim() };
-            if (r.id) o.id = r.id;
+            if (r.id || r.autoId) o.id = r.id || r.autoId;
             if (r.plus.checked) o.plus = true;
             return o;
           }),

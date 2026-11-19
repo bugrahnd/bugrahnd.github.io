@@ -225,12 +225,23 @@ export function safeImageUrl(url) {
   return '';
 }
 
-/** Trim and cap untrusted display names (still inserted via textContent). */
+/** User-perceived characters (grapheme clusters): emoji, flags and ZWJ families stay whole. */
+export function graphemes(s) {
+  if (segmenter) return Array.from(segmenter.segment(s), (x) => x.segment);
+  return Array.from(s);
+}
+
+/**
+ * Trim and cap untrusted display names (still inserted via textContent). Stacked combining
+ * marks ("zalgo" text) are cut to two per character (enough for real accents, emoji
+ * variation selectors and keycaps); the cap counts graphemes, so an emoji is never split.
+ */
 export function cleanNick(s, max = 22) {
   if (typeof s !== 'string') return '?';
-  const t = s.replace(/[\u0000-\u001f\u007f​-‏‪-‮⁦-⁩]/g, '').trim();
-  const chars = Array.from(t);
-  return chars.length > max ? chars.slice(0, max - 1).join('') + '…' : t || '?';
+  // Zero-width joiners (U+200C/U+200D) stay: they hold emoji families together.
+  const t = s.replace(/[\u0000-\u001f\u007f​‎‏‪-‮⁦-⁩]/g, '').replace(/(\p{M}{2})\p{M}+/gu, '$1').trim();
+  const g = graphemes(t);
+  return g.length > max ? g.slice(0, max - 1).join('').trimEnd() + '…' : t || '?';
 }
 
 /** Point in polygon (ring: [[x,y],...], unclosed). */

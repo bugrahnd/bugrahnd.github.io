@@ -337,6 +337,8 @@ html, body {
 .tier-head { display: flex; align-items: center; gap: calc(var(--u) * 6); font-size: calc(var(--u) * 22); font-weight: 900; }
 .tier-img { width: calc(var(--u) * 30); height: calc(var(--u) * 30); object-fit: contain; flex: none; }
 .tier-name { color: #fff; }
+.tier-en { color: rgba(255,255,255,.62); font-size: .62em; font-weight: 700; }
+.stream .tier-en { display: none; } /* no room on the stream tile; the panel shows both names */
 .tier-coins { display: flex; align-items: center; gap: calc(var(--u) * 3); color: var(--gold); }
 .tier.noname .tier-coins { color: #fff; }
 .tier-res { font-size: calc(var(--u) * 21); font-weight: 900; }
@@ -631,28 +633,28 @@ html, body {
 /* Viewer tags at provinces (joins and gifts). */
 .wtag { position: absolute; left: 0; top: 0; will-change: transform; }
 .wtag-in {
-  display: flex; align-items: center; gap: calc(var(--plate-k) * 8px); transform-origin: 50% 100%;
-  background: rgba(12, 8, 4, 0.9); border: calc(var(--plate-k) * 3px) solid var(--c); border-radius: 999px;
-  padding: calc(var(--plate-k) * 3px) calc(var(--plate-k) * 14px) calc(var(--plate-k) * 3px) calc(var(--plate-k) * 3px);
-  box-shadow: 0 0 calc(var(--plate-k) * 12px) var(--c);
+  display: flex; align-items: center; gap: calc(var(--tag-k, var(--plate-k)) * 8px); transform-origin: 50% 100%;
+  background: rgba(12, 8, 4, 0.9); border: calc(var(--tag-k, var(--plate-k)) * 3px) solid var(--c); border-radius: 999px;
+  padding: calc(var(--tag-k, var(--plate-k)) * 3px) calc(var(--tag-k, var(--plate-k)) * 14px) calc(var(--tag-k, var(--plate-k)) * 3px) calc(var(--tag-k, var(--plate-k)) * 3px);
+  box-shadow: 0 0 calc(var(--tag-k, var(--plate-k)) * 12px) var(--c);
   white-space: nowrap;
 }
-.avatar.tag { width: calc(var(--plate-k) * 40px); height: calc(var(--plate-k) * 40px); box-shadow: 0 0 0 calc(var(--plate-k) * 2px) var(--c); }
-.avatar.tag .avatar-fb { font-size: calc(var(--plate-k) * 22px); }
+.avatar.tag { width: calc(var(--tag-k, var(--plate-k)) * 40px); height: calc(var(--tag-k, var(--plate-k)) * 40px); box-shadow: 0 0 0 calc(var(--tag-k, var(--plate-k)) * 2px) var(--c); }
+.avatar.tag .avatar-fb { font-size: calc(var(--tag-k, var(--plate-k)) * 22px); }
 .wtag-text { display: flex; flex-direction: column; line-height: 1.05; }
-.wtag-nick { font-family: var(--font-display); font-size: calc(var(--plate-k) * 22px); color: #fff; max-width: calc(var(--plate-k) * 360px); overflow: hidden; text-overflow: ellipsis; }
-.wtag-msg { font-weight: 900; font-size: calc(var(--plate-k) * 19px); color: var(--gold); }
-.wtag.size-m .avatar.tag { width: calc(var(--plate-k) * 50px); height: calc(var(--plate-k) * 50px); }
-.wtag.size-m .wtag-nick { font-size: calc(var(--plate-k) * 28px); }
-.wtag.size-m .wtag-msg { font-size: calc(var(--plate-k) * 21px); }
-.wtag.size-l .wtag-in { border-width: calc(var(--plate-k) * 4px); border-color: var(--gold); }
-.wtag.size-l .avatar.tag { width: calc(var(--plate-k) * 68px); height: calc(var(--plate-k) * 68px); box-shadow: 0 0 0 calc(var(--plate-k) * 3px) var(--gold); }
-.wtag.size-l .wtag-nick { font-size: calc(var(--plate-k) * 30px); }
-.wtag.size-l .wtag-msg { font-size: calc(var(--plate-k) * 25px); }
-.wtag.size-xl .wtag-in { border-width: calc(var(--plate-k) * 5px); border-color: #fff; box-shadow: 0 0 calc(var(--plate-k) * 30px) var(--gold); background: linear-gradient(180deg, var(--c), rgba(12, 8, 4, 0.95)); }
-.wtag.size-xl .avatar.tag { width: calc(var(--plate-k) * 72px); height: calc(var(--plate-k) * 72px); box-shadow: 0 0 0 calc(var(--plate-k) * 4px) var(--gold); }
-.wtag.size-xl .wtag-nick { font-size: calc(var(--plate-k) * 36px); }
-.wtag.size-xl .wtag-msg { font-size: calc(var(--plate-k) * 30px); color: #fff; }
+.wtag-nick { font-family: var(--font-display); font-size: calc(var(--tag-k, var(--plate-k)) * 22px); color: #fff; max-width: calc(var(--tag-k, var(--plate-k)) * 360px); overflow: hidden; text-overflow: ellipsis; }
+.wtag-msg { font-weight: 900; font-size: calc(var(--tag-k, var(--plate-k)) * 19px); color: var(--gold); }
+.wtag.size-m .avatar.tag { width: calc(var(--tag-k, var(--plate-k)) * 50px); height: calc(var(--tag-k, var(--plate-k)) * 50px); }
+.wtag.size-m .wtag-nick { font-size: calc(var(--tag-k, var(--plate-k)) * 28px); }
+.wtag.size-m .wtag-msg { font-size: calc(var(--tag-k, var(--plate-k)) * 21px); }
+.wtag.size-l .wtag-in { border-width: calc(var(--tag-k, var(--plate-k)) * 4px); border-color: var(--gold); }
+.wtag.size-l .avatar.tag { width: calc(var(--tag-k, var(--plate-k)) * 68px); height: calc(var(--tag-k, var(--plate-k)) * 68px); box-shadow: 0 0 0 calc(var(--tag-k, var(--plate-k)) * 3px) var(--gold); }
+.wtag.size-l .wtag-nick { font-size: calc(var(--tag-k, var(--plate-k)) * 30px); }
+.wtag.size-l .wtag-msg { font-size: calc(var(--tag-k, var(--plate-k)) * 25px); }
+.wtag.size-xl .wtag-in { border-width: calc(var(--tag-k, var(--plate-k)) * 5px); border-color: #fff; box-shadow: 0 0 calc(var(--tag-k, var(--plate-k)) * 30px) var(--gold); background: linear-gradient(180deg, var(--c), rgba(12, 8, 4, 0.95)); }
+.wtag.size-xl .avatar.tag { width: calc(var(--tag-k, var(--plate-k)) * 72px); height: calc(var(--tag-k, var(--plate-k)) * 72px); box-shadow: 0 0 0 calc(var(--tag-k, var(--plate-k)) * 4px) var(--gold); }
+.wtag.size-xl .wtag-nick { font-size: calc(var(--tag-k, var(--plate-k)) * 36px); }
+.wtag.size-xl .wtag-msg { font-size: calc(var(--tag-k, var(--plate-k)) * 30px); color: #fff; }
 
 /* Komutan badges standing over the leading capitals. */
 .cmd-badge {
@@ -773,7 +775,7 @@ html:not(.dbg) .wait-pill.on { display: block; }
 /* Strip: session leader | timer | top liker. */
 .stream .strip {
   display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: calc(var(--u) * 12);
-  position: absolute; left: calc(var(--u) * var(--sx)); right: calc(var(--u) * var(--sx)); top: calc(var(--u) * (var(--st) + 4)); height: calc(var(--u) * 66);
+  position: absolute; left: calc(var(--u) * var(--sx)); right: calc(var(--u) * var(--sx)); top: calc(var(--u) * (var(--st) + 4)); height: calc(var(--u) * 62);
   padding: 0 calc(var(--u) * 6);
 }
 .strip-l, .strip-r { min-width: 0; overflow: hidden; }
@@ -792,39 +794,39 @@ html:not(.dbg) .wait-pill.on { display: block; }
 .stream .liker-row { height: auto; background: none; padding: 0; font-size: calc(var(--u) * 34); line-height: 1.05; max-width: 100%; text-shadow: 0 calc(var(--u) * 2) 0 #000; }
 .stream .liker-row .liker-n { order: -1; }
 
-/* Chip rows: top 3 cities, top 3 gifters (one line each, full safe width). */
-.stream .board, .stream .gifters {
-  left: calc(var(--u) * var(--sx)); right: calc(var(--u) * var(--sx)); width: auto; height: calc(var(--u) * 48); padding: 0 calc(var(--u) * 6);
-  top: calc(var(--u) * (var(--st) + var(--s-cities, 76)));
-  border: 0; border-image: none; background: rgba(22, 13, 4, 0.86); border-radius: calc(var(--u) * 14);
-  box-shadow: inset 0 0 0 calc(var(--u) * 3) rgba(255, 209, 102, 0.55);
-  display: flex; align-items: center; gap: calc(var(--u) * 6);
-}
-.stream .gifters { top: calc(var(--u) * (var(--st) + var(--s-gifters, 130))); }
-.stream .board .panel-title, .stream .gifters .panel-title { font-size: 0; margin: 0; flex: none; gap: 0; }
-.stream .panel-title .icon { width: calc(var(--u) * 34); height: calc(var(--u) * 34); }
-.stream .city-list, .stream .gifter-list { flex: 1; min-width: 0; display: flex; flex-direction: row; gap: calc(var(--u) * 6); height: calc(var(--u) * 40); }
-.stream .city-row { position: relative; flex: 1 1 0; min-width: 0; height: calc(var(--u) * 40); gap: calc(var(--u) * 6); padding: 0 calc(var(--u) * 8) 0 calc(var(--u) * 4); border-left-width: calc(var(--u) * 6); background: rgba(255, 255, 255, 0.08); }
-.stream .rank, .stream .hucum-tag, .stream .commander, .stream .city-troops, .stream .medal, .stream .gifter-sub { display: none !important; }
-.stream .plate-badge, .stream .plate-badge.wide { font-size: calc(var(--u) * 34); padding: calc(var(--u) * 1) calc(var(--u) * 5) 0; min-width: calc(var(--u) * 58); border-width: calc(var(--u) * 2); }
-.stream .city-info { flex: 1; flex-direction: row; align-items: center; gap: calc(var(--u) * 6); }
+/* Titled boards side by side (the earlier stream layout, inside the side insets):
+   "EN GÜÇLÜ ŞEHİRLER" (rank, plate, city, "N il · N asker · N kişi") | "EN CÖMERTLER". */
+.stream .board { left: calc(var(--u) * var(--sx)); top: calc(var(--u) * (var(--st) + var(--s-cities, 76))); width: calc(var(--u) * 548); height: calc(var(--u) * 181); padding: 0; }
+.stream .gifters { left: calc(var(--u) * (var(--sx) + 554)); right: calc(var(--u) * var(--sx)); top: calc(var(--u) * (var(--st) + var(--s-gifters, 76))); width: auto; height: calc(var(--u) * 181); }
+.stream .board .panel-title, .stream .gifters .panel-title { font-size: calc(var(--u) * 30); height: calc(var(--u) * 34); margin: 0 0 calc(var(--u) * 2); }
+.stream .panel-title .icon { width: calc(var(--u) * 32); height: calc(var(--u) * 32); }
+.stream .city-list, .stream .gifter-list { gap: calc(var(--u) * 3); }
+.stream .city-row { position: relative; height: calc(var(--u) * 41); gap: calc(var(--u) * 8); border-left-width: calc(var(--u) * 6); }
+.stream .rank { font-size: calc(var(--u) * 30); width: calc(var(--u) * 22); }
+.stream .plate-badge { font-size: calc(var(--u) * 30); padding: calc(var(--u) * 2) calc(var(--u) * 5); min-width: calc(var(--u) * 56); border-width: calc(var(--u) * 2); }
+.stream .plate-badge.wide { font-size: calc(var(--u) * 30); padding: calc(var(--u) * 2) calc(var(--u) * 3); }
+.stream .city-info { flex-direction: row; align-items: center; gap: calc(var(--u) * 10); }
 .stream .city-line1 { flex: 1; min-width: 0; }
-.stream .city-name { font-family: var(--font-text); font-weight: 900; font-size: calc(var(--u) * 34); line-height: 1.1; }
-.stream .city-line2 { font-family: var(--font-display); font-size: calc(var(--u) * 34); flex: none; }
-.stream .morale { position: absolute; left: calc(var(--u) * 4); right: calc(var(--u) * 6); bottom: calc(var(--u) * 1); height: calc(var(--u) * 4); }
-.stream .gifter-row { flex: 1 1 0; min-width: 0; height: calc(var(--u) * 40); padding: 0 calc(var(--u) * 10) 0 calc(var(--u) * 4); gap: calc(var(--u) * 6); background: rgba(255, 255, 255, 0.08); border-radius: calc(var(--u) * 10); }
-.stream .gifter-row .avatar.mid { width: calc(var(--u) * 34); height: calc(var(--u) * 34); }
+.stream .city-name { font-size: calc(var(--u) * 32); }
+.stream .hucum-tag, .stream .commander, .stream .gifter-sub { display: none !important; }
+.stream .city-line2 { font-size: calc(var(--u) * 30); flex: none; gap: calc(var(--u) * 8); }
+.stream .morale { position: absolute; left: calc(var(--u) * 6); right: calc(var(--u) * 6); bottom: calc(var(--u) * 2); height: calc(var(--u) * 4); }
+.stream .gifter-row { height: calc(var(--u) * 41); padding: 0 calc(var(--u) * 8); gap: calc(var(--u) * 8); }
+.stream .gifter-row .avatar.mid { width: calc(var(--u) * 36); height: calc(var(--u) * 36); }
 .stream .gifter-row .avatar-fb { font-size: calc(var(--u) * 22); }
-.stream .gifter-info { display: flex; align-items: center; gap: calc(var(--u) * 6); }
-.stream .gifter-nick { flex: 1; min-width: 0; font-size: calc(var(--u) * 34); }
+.stream .medal { width: calc(var(--u) * 32); height: calc(var(--u) * 32); font-size: calc(var(--u) * 22); }
+.stream .gifter-info { display: flex; align-items: center; gap: calc(var(--u) * 8); }
+.stream .gifter-nick { flex: 1; min-width: 0; font-size: calc(var(--u) * 30); }
 .stream .gifter-l2 { flex: none; }
-.stream .gifter-coins { font-size: calc(var(--u) * 34); }
-.stream .board-empty { font-size: calc(var(--u) * 34); padding: 0 calc(var(--u) * 6); line-height: calc(var(--u) * 40); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.stream .gifter-coins { font-size: calc(var(--u) * 30); }
+.stream .board-empty { font-size: calc(var(--u) * 30); padding: calc(var(--u) * 6) 0; line-height: 1.15; }
 .stream .city-row:nth-child(n+4), .stream .gifter-row:nth-child(n+4) { display: none !important; }
+.stream #hud.hide-gifterBoard .board { width: calc(var(--u) * (1080 - 2 * var(--sx))); }
+.stream #hud.hide-cityBoard .gifters { left: calc(var(--u) * var(--sx)); }
 
 /* Lead row: round leader (left) and the credit slot (right): credit > held-gift hint > tips. */
 .stream .leader-card {
-  left: calc(var(--u) * (var(--sx) + 235)); top: calc(var(--u) * (var(--st) + var(--s-lead, 184))); width: calc(var(--u) * 470); height: calc(var(--u) * 104);
+  left: calc(var(--u) * (var(--sx) + 235)); top: calc(var(--u) * (var(--st) + var(--s-lead, 184))); width: calc(var(--u) * 470); height: calc(var(--u) * 92);
   gap: calc(var(--u) * 14); padding: 0 calc(var(--u) * 18) 0 calc(var(--u) * 12); border-radius: calc(var(--u) * 22);
 }
 .stream .leader-av { width: calc(var(--u) * 84); height: calc(var(--u) * 84); }
@@ -843,7 +845,7 @@ html:not(.dbg) .wait-pill.on { display: block; }
 .stream .leader-card.empty .leader-nick { font-size: calc(var(--u) * 34); white-space: normal; line-height: 1.1; }
 
 .stream .credit {
-  left: calc(var(--u) * (1080 - var(--sx) - 240)); top: calc(var(--u) * (var(--st) + var(--s-lead, 184))); width: calc(var(--u) * 480); max-width: none; height: calc(var(--u) * 104); z-index: 7;
+  left: calc(var(--u) * (1080 - var(--sx) - 240)); top: calc(var(--u) * (var(--st) + var(--s-lead, 184))); width: calc(var(--u) * 480); max-width: none; height: calc(var(--u) * 92); z-index: 7;
   display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: 1fr 1fr; column-gap: calc(var(--u) * 14); align-items: center;
   padding: calc(var(--u) * 6) calc(var(--u) * 18) calc(var(--u) * 6) calc(var(--u) * 10); border-radius: calc(var(--u) * 22);
 }
@@ -856,7 +858,7 @@ html:not(.dbg) .wait-pill.on { display: block; }
 .stream .credit-troops, .stream .credit.tier3 .credit-troops, .stream .credit.tier4 .credit-troops { font-size: calc(var(--u) * 34); align-self: start; line-height: 1.15; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .stream .credit-gift { width: calc(var(--u) * 40); height: calc(var(--u) * 40); vertical-align: -0.25em; }
 .stream .nudges { left: calc(var(--u) * var(--sx)); right: auto; top: calc(var(--u) * (var(--st) + var(--s-lead, 184))); width: calc(var(--u) * 470); z-index: 8; }
-.stream .nudge { height: calc(var(--u) * 104); gap: calc(var(--u) * 10); }
+.stream .nudge { height: calc(var(--u) * 92); gap: calc(var(--u) * 10); }
 .stream .nudge .avatar.mid { width: calc(var(--u) * 64); height: calc(var(--u) * 64); }
 .stream .nudge:not(:last-child) { display: none; }
 .stream .nudge-nick, .stream .nudge-coins, .stream .nudge-msg { font-size: calc(var(--u) * 34); }
@@ -868,7 +870,7 @@ html:not(.dbg) .wait-pill.on { display: block; }
 #hud.hinting .idle-slot { visibility: visible; z-index: 9; border-color: var(--gold); background: rgb(14, 9, 4); }
 .stream .idle-slot {
   display: flex; align-items: center; justify-content: center; position: absolute; z-index: 4;
-  left: calc(var(--u) * (1080 - var(--sx) - 480)); top: calc(var(--u) * (var(--st) + var(--s-lead, 184))); width: calc(var(--u) * 480); height: calc(var(--u) * 104);
+  left: calc(var(--u) * (1080 - var(--sx) - 480)); top: calc(var(--u) * (var(--st) + var(--s-lead, 184))); width: calc(var(--u) * 480); height: calc(var(--u) * 92);
   background: rgba(14, 9, 4, 0.84); border: calc(var(--u) * 4) solid rgba(255, 209, 102, 0.7); border-radius: calc(var(--u) * 22);
   padding: 0 calc(var(--u) * 12); overflow: hidden;
 }
@@ -906,20 +908,55 @@ html:not(.dbg) .wait-pill.on { display: block; }
   top: calc(var(--u) * (var(--sb) - var(--s-cta, 166))); height: calc(var(--u) * 60); border-radius: calc(var(--u) * 18);
 }
 .stream .hb-text { font-size: calc(var(--u) * 34); line-height: calc(var(--u) * 52); padding: 0 calc(var(--u) * 10); }
-.stream .tiers { left: calc(var(--u) * var(--sx)); right: auto; width: calc(var(--u) * var(--bw)); top: calc(var(--u) * (var(--sb) - 100)); height: calc(var(--u) * 96); padding: calc(var(--u) * 3) calc(var(--u) * 6); gap: calc(var(--u) * 6); }
-.stream .tier { flex-direction: column; gap: 0; padding: 0 calc(var(--u) * 6); line-height: 1.08; }
-.stream .tier-head, .stream .tier-res { font-size: calc(var(--u) * 34); }
-.stream .tier-head { gap: calc(var(--u) * 5); }
-.stream .tier-img { width: calc(var(--u) * 36); height: calc(var(--u) * 36); }
-.stream .tier .icon.tiny { width: calc(var(--u) * 22); height: calc(var(--u) * 22); }
-.stream .tier-coins { gap: calc(var(--u) * 2); }
-.stream .tier-name { max-width: calc(var(--u) * 114); overflow: hidden; text-overflow: ellipsis; }
+/* Gift ladder: the prominent block of the bottom panel, directly under the map band (the
+   call-to-action row sits below it). Three tiles per page, three big lines each: name /
+   picture + price / "+N asker". --s-tiers = ladder top above the safe bottom; the heading
+   tab overlaps the ladder's top edge. */
+.stream .tiers {
+  left: calc(var(--u) * var(--sx)); right: auto; width: calc(var(--u) * var(--bw));
+  top: calc(var(--u) * (var(--sb) - var(--s-tiers, 212))); height: calc(var(--u) * 140);
+  padding: calc(var(--u) * 14) calc(var(--u) * 6) calc(var(--u) * 2); gap: calc(var(--u) * 6);
+}
+.tiers-tab { display: none; }
+.stream .tiers-tab {
+  display: flex; align-items: center; gap: calc(var(--u) * 8); position: absolute; z-index: 6;
+  left: calc(var(--u) * (var(--sx) + 18)); top: calc(var(--u) * (var(--sb) - var(--s-tiers, 212) - 22));
+  height: calc(var(--u) * 40); max-width: calc(var(--u) * (var(--bw) - 36)); padding: 0 calc(var(--u) * 18) 0 calc(var(--u) * 12);
+  background: linear-gradient(180deg, #ffd166, #f0a020); color: #2a1300; border-radius: calc(var(--u) * 14);
+  border: calc(var(--u) * 3) solid #2a1300;
+  font-family: var(--font-display); font-size: calc(var(--u) * 32); font-weight: 900; line-height: 1; white-space: nowrap; overflow: hidden;
+  box-shadow: 0 calc(var(--u) * 3) calc(var(--u) * 10) rgba(0, 0, 0, 0.5);
+}
+.stream .tiers-tab .icon { width: calc(var(--u) * 30); height: calc(var(--u) * 30); flex: none; }
+.stream .tiers-tab span { overflow: hidden; text-overflow: ellipsis; }
+.stream .tier-row { gap: calc(var(--u) * 6); }
+.stream .tier {
+  flex: 1 1 0; min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto auto auto;
+  column-gap: calc(var(--u) * 6); row-gap: 0; align-items: center; justify-items: start; align-content: center;
+  padding: calc(var(--u) * 2) calc(var(--u) * 8); line-height: 1.04; overflow: hidden;
+  background: rgba(0, 0, 0, 0.62); border: calc(var(--u) * 3) solid rgba(255, 255, 255, 0.38); border-radius: calc(var(--u) * 14);
+}
+.stream .tier.r2 { border-color: rgba(255, 179, 71, 0.8); }
+.stream .tier.r3, .stream .tier.r4 { border-color: rgba(255, 155, 230, 0.85); }
+.stream .tier-head { display: contents; font-size: calc(var(--u) * 36); }
+.stream .tier-name { grid-column: 1 / span 2; grid-row: 1; justify-self: stretch; text-align: center; max-width: 100%; overflow: hidden; text-overflow: ellipsis; font-size: calc(var(--u) * 36); }
+.stream .tier-img { grid-column: 1; grid-row: 2; width: calc(var(--u) * 40); height: calc(var(--u) * 40); justify-self: end; }
+.stream .tier-coins { grid-column: 2; grid-row: 2; gap: calc(var(--u) * 3); font-size: calc(var(--u) * 38); font-family: var(--font-display); }
+.stream .tier.long-name .tier-name { font-size: calc(var(--u) * 30); }
+.stream .tier.noname .tier-img { grid-row: 1 / span 2; }
+.stream .tier.noname .tier-coins { grid-row: 1 / span 2; }
+.stream .tier .icon.tiny { width: calc(var(--u) * 30); height: calc(var(--u) * 30); }
 .stream .tier-jeton { display: none; }
+.stream .tier-res, .stream .tier-hot { grid-column: 1 / span 2; grid-row: 3; justify-self: stretch; text-align: center; font-size: calc(var(--u) * 38); overflow: hidden; text-overflow: ellipsis; }
+.stream .tier-troops { color: #7dff7d; text-shadow: 0 calc(var(--u) * 2) 0 #000; }
 /* "+N asker" on the tile; the effect word only when the number is hidden. */
 .stream .tier-troops + .tier-label { display: none; }
-/* "AZ ÖNCE!" replaces the second line inside the tile (never over the CTA row). */
-.stream .tier-hot { position: static; font-size: calc(var(--u) * 34); line-height: 1.08; padding: 0 calc(var(--u) * 12); box-shadow: none; }
+/* "AZ ÖNCE!" replaces the result line inside the tile; the tile glows inside its own frame. */
+.stream .tier-hot { position: static; padding: 0 calc(var(--u) * 8); box-shadow: none; line-height: 1.04; }
 .stream .tier.hot .tier-res { display: none; }
+.stream .tier.hot { border-color: var(--gold); box-shadow: inset 0 0 0 calc(var(--u) * 3) var(--gold), inset 0 0 calc(var(--u) * 30) rgba(255, 209, 102, 0.75); background: rgba(70, 45, 0, 0.78); }
+.stream .tier-dots i { width: calc(var(--u) * 12); height: calc(var(--u) * 12); }
+.stream .tier-dots { gap: calc(var(--u) * 6); }
 
 /* Below the safe bottom: nothing for viewers. */
 .stream .feed { display: none; }
@@ -931,7 +968,7 @@ html.stream:not(.dbg) .audio-unlock { display: none !important; }
    collapses the freed rows (--s-* offsets) and the map band grows into them. */
 #hud.hide-cityBoard .board, #hud.hide-gifterBoard .gifters, #hud.hide-likers .likers,
 #hud.hide-leader .leader-card, #hud.hide-credit .credit, #hud.hide-credit .idle-slot,
-#hud.hide-imperative .imperative, #hud.hide-giftStrip .tiers, #hud.hide-session .session,
+#hud.hide-imperative .imperative, #hud.hide-giftStrip .tiers, #hud.hide-giftStrip .tiers-tab, #hud.hide-session .session,
 #hud.hide-minimap .minimap, #hud.hide-hucumBar .hucum-bar { display: none !important; }
 .stream #hud.hide-credit .leader-card, .stream #hud.hide-credit .leader-card.empty { left: calc(var(--u) * 540); width: calc(var(--u) * 640); }
 .stream #hud.hide-leader .credit { left: calc(var(--u) * 540); }

@@ -327,7 +327,7 @@ export class Game {
     // TikTok gift id and image (live mode, optional): the HUD shows the real gift picture.
     g.giftId = Math.floor(Number(msg.giftId)) || 0;
     g.icon = /^https:///i.test(String(msg.icon || '')) ? safeImageUrl(msg.icon) : '';
-    if (g.icon) this.view.hud.noteGiftIcon?.(g.giftId, g.giftName, g.icon);
+    if (g.icon) this.view.hud.noteGiftIcon?.(g.giftId, g.giftName, g.icon, g.coins);
     if (!g.icon) g.icon = this.view.hud.giftIconFor?.(g.giftId, g.giftName) || '';
     this.stats.gifts++; this.stats.coins += total;
     const player = this.touchPlayer(u);
@@ -517,7 +517,8 @@ export class Game {
     this.view.hud.feed(`${team.name} HÜCUM! Moral doldu, ${m.hucumSec} sn boyunca ordular daha hızlı ve güçlü!`, team.colorHex, 'fire');
     this.view.hud.callout({ title: `${team.name.toLocaleUpperCase('tr')} HÜCUMDA!`, sub: 'Beğeniler moral doldurdu!', colorHex: team.colorHex, prio: 2, sec: 2.6, kind: 'hucum' });
     this.view.plates.setMorale(team.plate, 1, false, true);
-    this.view.audio.play('sfx_round_start', { vol: 0.6, minGap: 0.5 });
+    // Its own sound (a low sword sweep), not the round-start hit.
+    this.view.audio.play('sfx_swing_b', { vol: 0.85, rate: 0.82, minGap: 0.5, cat: 'hucum' });
     const pv = this.prov.get(team.rally || team.plate);
     this.view.effects.wake(pv.wx, TILE_H, pv.wz, 0xff5030);
   }
@@ -640,6 +641,8 @@ export class Game {
         giftName: g.giftName, giftIcon: g.icon, count: g.count, troops, team: team.name, colorHex: team.colorHex,
         sec: tier.announceSec || 5,
       });
+      // Music steps back under the announcement; the horn is capped (one at a time, faded).
+      this.view.audio.duck((tier.announceSec || 5) + 0.5);
       if (tier.horn) this.view.audio.play(tier.horn, { vol: 0.9, minGap: 1 });
     }
     if (tierIndex >= 2) this.view.hud.feed(`${player.nick} → ${tier.label}! ${fmtShort(troops)} asker (${team.name})`, team.colorHex, 'gift');
@@ -1001,6 +1004,13 @@ export class Game {
     const r = this.round;
     // Round clocks follow wall-clock time (keep running in a hidden tab / at low FPS).
     const nowMs = Date.now();
+    if (r.phase === 'timeup') {
+      // "SÜRE DOLDU!" beat between the clock reaching zero and the end card.
+      r.left = 0;
+      if (nowMs >= r.timeUpEndMs) { r.phase = 'play'; this.endRound(null); return; }
+      this.stepArmies(dt, true);
+      return;
+    }
     if (r.phase === 'end') {
       r.endLeft = (r.endAtMs - nowMs) / 1000;
       this.view.hud.setEndCountdown(r.endLeft);
@@ -1016,7 +1026,7 @@ export class Game {
       this.view.hud.countdown(sec);
     }
     if (!r.battleMusic && r.left < 120) { r.battleMusic = true; this.view.audio.playMusic('music_battle'); }
-    if (r.left <= 0) { this.endRound(null); return; }
+    if (r.left <= 0) { this.timeUp(); return; }
 
     this.stepIncome(dt);
     this.stepAI();
@@ -1564,7 +1574,9 @@ export class Game {
       this.view.audio.play('sfx_round_start', { vol: 0.8, minGap: 0.5 });
       this.view.audio.play('sfx_horn', { vol: 0.6, minGap: 1 });
     }
-    this.view.audio.playMusic('music_main');
+    // Alternate the two loops (each one full pass, crossfaded); odd rounds open with the
+    // march, even rounds with the battle track. The last 2 minutes lock to the battle track.
+    this.view.audio.playMusicCycle(r.n % 2 ? ['music_main', 'music_battle'] : ['music_battle', 'music_main']);
     // Gifts that arrived during the end screen.
     const deferred = this.deferred; this.deferred = [];
     for (const d of deferred) {
@@ -1575,6 +1587,19 @@ export class Game {
 
   cfgRoundSec() {
     return this.view.roundOverride || this.cfg.round.durationSec;
+  }
+
+  /** The clock hit zero: a short "SÜRE DOLDU!" beat (music out, round-end jingle), then the end card. */
+  timeUp() {
+    const r = this.round;
+    if (r.phase !== 'play') return;
+    r.phase = 'timeup';
+    r.left = 0;
+    r.timeUpEndMs = Date.now() + (this.cfg.round.timeUpSec ?? 1.8) * 1000;
+    this.view.audio.stopMusic(0.6);
+    this.view.audio.play('sfx_round_end', { vol: 0.9, minGap: 1 });
+    this.view.hud.callout({ title: 'SÜRE DOLDU!', sub: 'Sonuçlar geliyor…', colorHex: 0xff4a3a, prio: 5, sec: this.cfg.round.timeUpSec ?? 1.8, kind: 'alarm', now: true });
+    this.view.hud.flash?.(0.35, 0xff4a3a);
   }
 
   endRound(winner) {
@@ -1605,8 +1630,8 @@ export class Game {
       members,
       sec: this.cfg.round.endScreenSec,
     });
+    // One victory theme (music_victory); sfx_victory is the same tune, so it is not layered on top.
     this.view.audio.playMusic('music_victory');
-    this.view.audio.play('sfx_victory', { vol: 0.8, minGap: 1 });
     if (winner) {
       const pv = this.prov.get(winner.plate);
       this.view.effects.bigBurst(pv.wx, TILE_H, pv.wz, winner.colorHex);

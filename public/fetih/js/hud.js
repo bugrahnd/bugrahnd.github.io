@@ -4,6 +4,7 @@
 // avatars are <img> elements with a letter fallback.
 import { fmt, fmtShort, fmtTime, safeImageUrl, setNameBadge, badgeKey } from './util.js';
 import { hexCss } from './colors.js';
+import { giftKey, resolveEntry, trName, enName } from './gift-names.js';
 
 function el(tag, cls, parent, text) {
   const e = document.createElement(tag);
@@ -105,21 +106,24 @@ const MAP_TOP_INSET = 206;
 // outer `side` units of each edge may not be visible). Rows, top-down from safeTop (keep
 // in sync with the .stream rules in hud.css, which use the same offsets via --st / --sb /
 // --sx / --s-*), x from side (sx) to 1080 - sx:
-//   strip    st+4    h 66   timer (centre), session leader (left), top liker (right)
-//   cities   st+76   h 48   top 3 cities as chips
-//   gifters  st+130  h 48   top 3 gifters as chips
-//   lead     st+184  h 104  round leader (left) | credit / held-gift hint / tips (right)
-//   band     st+294 … sb-172   map; the imperative line overlays its top STREAM_MAP_INSET
-//   cta row  sb-166  h 60   "PLAKANI YAZ: 34" | HÜCUM bar   } one unit, x sx … rightColLeft - sx
-//   gifts    sb-100  h 96   gift ladder, 3 tiles per page    } (clear of the hearts column)
-export const DEFAULT_ZONES = { top: 230, chatTop: 1250, chatRight: 720, bottomBar: 130, rightColLeft: 900, rightColTop: 1000, side: 60 };
+//   strip    st+4    h 62   timer (centre), session leader (left), top liker (right)
+//   boards   st+70   h 181  "EN GÜÇLÜ ŞEHİRLER" (3 rows) | "EN CÖMERTLER" (3 rows)
+//   lead     st+255  h 92   round leader (left) | credit / held-gift hint / tips (right)
+//   band     st+351 … sb-224   map; the imperative line overlays its top STREAM_MAP_INSET
+//   tab      sb-232  h 40   "HEDİYE AT, ORDU KUR" tab, overlapping the ladder's top edge
+//   gifts    sb-212  h 140  gift ladder, 3 tiles per page    } one unit, x sx … rightColLeft - sx
+//   cta row  sb-66   h 60   "PLAKANI YAZ: 34" | HÜCUM bar     } (clear of the hearts column)
+// safeBottom (zones.chatTop) defaults to 1340 and is a streamer setting (layout.chatTop), as is
+// the side inset (layout.side): both are tuned against a real phone.
+export const DEFAULT_ZONES = { top: 230, chatTop: 1340, chatRight: 720, bottomBar: 130, rightColLeft: 900, rightColTop: 1000, side: 60 };
 // Row heights incl. their 6-unit gap. Rows of hidden blocks collapse (Hud._streamRows)
 // and the map band grows into them.
-const STREAM_STRIP_H = 76;
-const STREAM_CHIPS_H = 54;
-const STREAM_LEAD_H = 110;
-const STREAM_GIFTS_H = 100; // gift ladder top above safeBottom (96 + 4)
-const STREAM_CTA_H = 66; // cta row height + gap
+const STREAM_STRIP_H = 70;
+const STREAM_BOARDS_H = 185; // the two titled boards (181 + 4)
+const STREAM_LEAD_H = 96;
+const STREAM_GIFTS_H = 146; // gift ladder height + gap (140 + 6), above the cta row
+const STREAM_CTA_H = 66; // cta row height + gap (the lowest row)
+const STREAM_TAB_H = 12; // reserved for the ladder's heading tab above the ladder frame (it overlaps the band by 10 more)
 const STREAM_MAP_INSET = 58; // imperative line over the top of the band
 
 /** How-to lines in the tips slot; the like line uses the live likes-per-troop number. */
@@ -138,8 +142,6 @@ function ctaLines(cfg) {
 const LEADER_EMPTY = 'Hediye gönder, lider sen ol!';
 export const DEFAULT_TITLE = 'PLAKA SAVAŞLARI';
 
-/** Normalised gift name for matching strip entries to TikTok's catalogue. */
-const giftKey = (s) => String(s || '').toLocaleLowerCase('tr').replace(/[^\p{L}\p{N}]+/gu, '');
 
 export class Hud {
   /** opts.variant: default portrait variant, 'stream' (TikTok safe zones) or 'full'. */
@@ -151,7 +153,8 @@ export class Hud {
     this.layout = null;
     this.variant = null;
     this.defaultVariant = opts.variant === 'full' ? 'full' : 'stream';
-    this.zones = { ...DEFAULT_ZONES, ...(config.hud.tiktokZones || {}) };
+    this.baseZones = { ...DEFAULT_ZONES, ...(config.hud.tiktokZones || {}) };
+    this.zones = { ...this.baseZones };
     this.show = {}; // block id -> false when hidden by the streamer (settings "Ekran")
     this._build();
     if (opts.zones) this._buildZones();
@@ -338,10 +341,17 @@ export class Hud {
     // Gift ladder: every tile reads "gift · price → +N asker, effect" (N live from
     // troops.giftCurve via this.troopsFor). Shown as auto-advancing pages that fit the strip.
     this.tiersEl = el('div', 'tiers panel-dark', r);
+    // Stream layout: a heading tab on the ladder so its purpose is obvious (gifts.heading).
+    this.tierTab = el('div', 'tiers-tab', r);
+    iconEl(this.assets, 'icon_gem', this.tierTab, 'icon');
+    this.tierTabText = el('span', '', this.tierTab, this.cfg.hud.giftHeading || 'HEDİYE AT, ORDU KUR');
     this.tierTrack = el('div', 'tier-track', this.tiersEl);
     this.tierMeasure = el('div', 'tier-measure', this.tiersEl);
     this.tierDots = el('div', 'tier-dots', this.tiersEl);
     this.giftIcons = { byId: new Map(), byName: new Map(), v: 0 };
+    // Known TikTok gifts by id ({ id, name, tr?, coins, icon }): the bridge's catalogue plus
+    // live gift events. Ladder entries resolve against it (id, real price, picture).
+    this.giftCat = new Map();
     this.troopsFor = null; // (coins) => troops for ONE gift (set by main.js from the game)
     this.stripTroops = this.cfg.hud.giftStripTroops !== false;
     this.stripPage = 0; this.stripT = 0; this.pulseUntil = 0; this.pulseCoins = 0; this.pulseAt = -1e9;
@@ -437,8 +447,10 @@ export class Hud {
    */
   setGiftStrip(list, troopsOn) {
     if (troopsOn !== undefined) this.stripTroops = troopsOn !== false;
+    if (list !== undefined) this._stripRaw = list;
+    list = this._stripRaw;
     const strip = (Array.isArray(list) && list.length ? list : this.cfg.gifts.tiers.map((t) => ({ name: '', coins: t.minCoins, plus: true, effect: t.legend })))
-      .slice(0, 12);
+      .slice(0, 12).map((g) => this._resolveStripEntry(g));
     this._stripList = strip;
     const troops = strip.map((g) => (this.troopsFor ? Math.round(this.troopsFor(Math.max(1, Number(g.coins) || 1))) : 0));
     const key = JSON.stringify([strip, troops, this.stripTroops]);
@@ -450,10 +462,13 @@ export class Hud {
       const coins = Math.max(1, Number(g.coins) || 1);
       const t = el('div', `tier r${this._rankFor(coins)}`);
       t.classList.toggle('noname', !name);
+      // Long names step down one size on the stream tiles (still >= 30 units) before ellipsizing.
+      t.classList.toggle('long-name', Array.from(name).length > 10);
       const head = el('div', 'tier-head', t);
       const fb = a.uiPath(g.icon || 'icon_gem');
       const img = giftImg(head, 'tier-img', fb);
       if (name) el('span', 'tier-name', head, name);
+      if (name && g.en && giftKey(g.en) !== giftKey(name)) el('span', 'tier-en', head, g.en);
       const c = el('span', 'tier-coins', head);
       iconEl(a, 'icon_coin', c, 'icon tiny');
       el('span', '', c, `${fmt(coins)}${g.plus ? '+' : ''}`);
@@ -476,6 +491,39 @@ export class Hud {
     return Math.min(4, r);
   }
 
+  /**
+   * A ladder entry with what the catalogue knows: the TikTok id (learned when the entry
+   * has none: same name in either language at the same price), the English name, and the
+   * real price when TikTok reports a different one for that id (the real price wins).
+   */
+  _resolveStripEntry(g) {
+    const r = resolveEntry(g, this.giftCat.values());
+    const out = { ...g };
+    if (r) {
+      out.id = r.item.id;
+      out.en = r.item.name;
+      if (!g.plus && r.item.coins !== Math.floor(Number(g.coins))) out.coins = r.item.coins;
+    } else if (g.name) {
+      const en = enName(g.name);
+      if (en) out.en = en;
+    }
+    return out;
+  }
+
+  /** Adds/updates one known TikTok gift. Returns true when the ladder may need a rebuild. */
+  _catPut(it) {
+    const id = Math.floor(Number(it?.id));
+    const coins = Math.floor(Number(it?.coins));
+    const name = String(it?.name || '').slice(0, 40);
+    if (!(id > 0) || !(coins >= 1) || !name || /^Hediye \d+$/.test(name)) return false;
+    const old = this.giftCat.get(id);
+    const icon = safeImageUrl(it.icon) || old?.icon || '';
+    const tr = String(it.tr || '') || trName(name);
+    if (old && old.coins === coins && old.name === name && old.icon === icon) return false;
+    this.giftCat.set(id, { id, name, tr, coins, icon });
+    return true;
+  }
+
   _iconForEntry(g) {
     const I = this.giftIcons;
     if (g.id && I.byId.has(g.id)) return I.byId.get(g.id);
@@ -485,21 +533,36 @@ export class Hud {
   /** Room gift catalogue from the bridge ({ type: "gifts", items: [{ id, name, coins, icon }] }). */
   setGiftCatalog(items) {
     if (!Array.isArray(items)) return;
+    let changed = false;
+    for (const it of items) changed = this._catPut(it) || changed;
     for (const it of items) {
       const icon = safeImageUrl(it?.icon);
       if (!icon || !/^https:/i.test(icon)) continue;
       const id = Math.floor(Number(it.id));
       if (id > 0) this.giftIcons.byId.set(id, icon);
-      const k = giftKey(it.name);
-      if (k && !this.giftIcons.byName.has(k)) this.giftIcons.byName.set(k, icon);
+      for (const n of [it.name, it.tr || trName(it.name)]) {
+        const k = giftKey(n);
+        if (k && !this.giftIcons.byName.has(k)) this.giftIcons.byName.set(k, icon);
+      }
     }
+    if (changed && this._stripRaw !== undefined) this.setGiftStrip();
     for (const t of this.tiles) t.img.set(this._iconForEntry(t.g), t.fb);
   }
 
-  /** A gift event carried its picture: remember it (by id and name) for tiles and credits. */
-  noteGiftIcon(id, name, icon) {
+  /**
+   * A gift event carried its picture (live events only: the simulator sends none): remember
+   * it by id and name (both languages) for tiles and credits, and learn the gift itself so a
+   * ladder entry without an id gets it and a wrong price is corrected.
+   */
+  noteGiftIcon(id, name, icon, coins = 0) {
     const safe = safeImageUrl(icon);
     if (!safe) return;
+    if (coins > 0 && this._catPut({ id, name, coins, icon: safe }) && this._stripRaw !== undefined) this.setGiftStrip();
+    const tr = trName(name);
+    if (tr && giftKey(tr) !== giftKey(name) && this.giftIcons.byName.get(giftKey(tr)) !== safe) {
+      this.giftIcons.byName.set(giftKey(tr), safe);
+      for (const t of this.tiles) if (giftKey(t.g.name) === giftKey(tr)) t.img.set(safe, t.fb);
+    }
     const k = giftKey(name);
     if ((id && this.giftIcons.byId.get(id) === safe) || (!id && k && this.giftIcons.byName.get(k) === safe)) return;
     if (id) this.giftIcons.byId.set(id, safe);
@@ -508,13 +571,23 @@ export class Hud {
   }
 
   giftIconFor(id, name) {
-    return (id && this.giftIcons.byId.get(id)) || this.giftIcons.byName.get(giftKey(name)) || '';
+    return (id && this.giftIcons.byId.get(id)) || this.giftIcons.byName.get(giftKey(name)) || this.giftIcons.byName.get(giftKey(trName(name))) || '';
   }
 
   /** Packs the tiles into pages that fit the strip (measured, so the type never shrinks). */
   _paginate() {
     const u = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--u')) || 0;
     const W = u ? this.tiersEl.clientWidth / u : 0;
+    if (this.variant === 'stream' && this.tiles.length) {
+      // Stream: fixed-size big tiles (names ellipsize), giftStripPageSizeStream per page.
+      const per = Math.max(1, this.cfg.hud.giftStripPageSizeStream ?? 3);
+      this.pages = [];
+      for (let i = 0; i < this.tiles.length; i += per) this.pages.push([this.tiles.slice(i, i + per).map((_, j) => i + j)]);
+      this.tierDots.replaceChildren(...this.pages.map(() => el('i')));
+      this.tierDots.style.display = this.pages.length > 1 ? '' : 'none';
+      this._showPage(Math.min(this.stripPage, this.pages.length - 1));
+      return;
+    }
     if (!u || W < 50 || !this.tiles.length) { this.pages = this.tiles.length ? [[this.tiles.map((_, i) => i)]] : []; this._showPage(0); return; }
     this.tierMeasure.replaceChildren(...this.tiles.map((t) => t.el));
     const widths = this.tiles.map((t) => t.el.getBoundingClientRect().width / u);
@@ -560,7 +633,7 @@ export class Hud {
     const T = this.tiles;
     let idx = id ? T.findIndex((t) => t.g.id === id) : -1;
     const k = giftKey(name);
-    if (idx < 0 && k) idx = T.findIndex((t) => t.g.name && giftKey(t.g.name) === k);
+    if (idx < 0 && k) idx = T.findIndex((t) => t.g.name && (giftKey(t.g.name) === k || giftKey(t.g.en) === k));
     if (idx < 0) {
       let best = -1;
       T.forEach((t, i) => { if (t.g.coins <= coins && (best < 0 || t.g.coins > T[best].g.coins)) best = i; });
@@ -574,7 +647,12 @@ export class Hud {
     for (const t of T) t.el.classList.remove('hot');
     const tile = T[idx].el;
     tile.classList.add('hot');
-    tile.animate([{ transform: 'scale(1.1)' }, { transform: 'scale(1)' }], { duration: 420, easing: 'ease-out' });
+    // Stream: the pop stays inside the tile (picture and price bounce); full: the tile itself.
+    if (this.variant === 'stream') {
+      for (const n of tile.querySelectorAll('.tier-img, .tier-coins')) n.animate([{ transform: 'scale(1.25)' }, { transform: 'scale(1)' }], { duration: 480, easing: 'ease-out' });
+    } else {
+      tile.animate([{ transform: 'scale(1.1)' }, { transform: 'scale(1)' }], { duration: 420, easing: 'ease-out' });
+    }
   }
 
   _stepStrip(dt) {
@@ -584,7 +662,8 @@ export class Hud {
     }
     if (this.pulseUntil || this.pages.length < 2) return;
     this.stripT += dt;
-    if (this.stripT >= (this.cfg.hud.giftStripPageSec ?? 4)) this._showPage(this.stripPage + 1, true);
+    const sec = this.variant === 'stream' ? (this.cfg.hud.giftStripPageSecStream ?? 4) : (this.cfg.hud.giftStripPageSec ?? 4);
+    if (this.stripT >= sec) this._showPage(this.stripPage + 1, true);
   }
 
   /** The labelled morale bar: "İSTANBUL HÜCUM %80"; full = "İSTANBUL HÜCUMDA! 12 sn". */
@@ -620,6 +699,26 @@ export class Hud {
   }
 
   /** Call-to-action text ("PLAKANI YAZ:") and its example chip ("34"). */
+  /**
+   * Streamer settings layout.chatTop / layout.side: the stream layout's lower limit (where
+   * TikTok's chat starts) and the side inset. Returns true when the layout must be redone.
+   */
+  setZones(z = {}) {
+    const next = { ...this.baseZones };
+    if (Number.isFinite(z.chatTop)) next.chatTop = Math.min(1500, Math.max(1150, z.chatTop));
+    if (Number.isFinite(z.side)) next.side = Math.min(120, Math.max(0, z.side));
+    if (next.chatTop === this.zones.chatTop && next.side === this.zones.side) return false;
+    this.zones = next;
+    this.zonesBox?.remove(); this.zonesBox = null;
+    if (this._zonesOn) this._buildZones();
+    return true;
+  }
+
+  /** Ladder heading tab text (streamer setting gifts.heading). */
+  setGiftHeading(text) {
+    this.tierTabText.textContent = String(text || '').trim() || 'HEDİYE AT, ORDU KUR';
+  }
+
   setCta(text, example) {
     if (this.ctaA.textContent !== text) this.ctaA.textContent = text;
     if (this.ctaMainChip.textContent !== example) this.ctaMainChip.textContent = example;
@@ -695,6 +794,8 @@ export class Hud {
     doc.style.setProperty('--s-bt', String(R.bandTop));
     doc.style.setProperty('--s-bb', String(R.bandBottom));
     doc.style.setProperty('--s-cta', String(R.cta));
+    doc.style.setProperty('--s-tiers', String(R.tiers));
+    doc.style.setProperty('--s-tab', String(R.tab));
     const b = stream
       ? { x: 0, y: Z.top + R.bandTop, w: 1080, h: Z.chatTop - R.bandBottom - (Z.top + R.bandTop) }
       : { ...BANDS[this.layout] };
@@ -730,14 +831,15 @@ export class Hud {
    */
   _streamRows() {
     let y = STREAM_STRIP_H;
+    // The two boards share one row; it collapses only when both are hidden.
     const cities = y;
-    if (this._vis('cityBoard')) y += STREAM_CHIPS_H;
     const gifters = y;
-    if (this._vis('gifterBoard')) y += STREAM_CHIPS_H;
+    if (this._vis('cityBoard') || this._vis('gifterBoard')) y += STREAM_BOARDS_H;
     const lead = y;
     if (this._vis('leader') || this._vis('credit')) y += STREAM_LEAD_H;
-    const cta = (this._vis('giftStrip') ? STREAM_GIFTS_H : 4) + STREAM_CTA_H;
-    return { cities, gifters, lead, bandTop: y, bandBottom: cta + 6, cta };
+    const gifts = this._vis('giftStrip');
+    const tiers = STREAM_CTA_H + (gifts ? STREAM_GIFTS_H : 0);
+    return { cities, gifters, lead, bandTop: y, bandBottom: tiers + 6 + (gifts ? STREAM_TAB_H : 0), cta: STREAM_CTA_H, tiers, tab: gifts ? STREAM_TAB_H : 0 };
   }
 
   /** Moves the few nodes that live in different containers per portrait variant. */
@@ -762,7 +864,9 @@ export class Hud {
   _buildZones() {
     const Z = this.zones;
     const H = 1920;
+    this._zonesOn = true;
     const box = el('div', 'tt-zones', this.root);
+    this.zonesBox = box;
     const rect = (x, y, w, h, label, cls) => {
       const d = el('div', 'tt-zone ' + cls, box);
       Object.assign(d.style, { left: `calc(var(--u) * ${x})`, top: `calc(var(--u) * ${y})`, width: `calc(var(--u) * ${w})`, height: `calc(var(--u) * ${h})` });
@@ -1053,6 +1157,13 @@ export class Hud {
 
   /** o: { title, sub, colorHex, prio, sec, kind, rivals? } — one at a time, small queue. */
   callout(o) {
+    // o.now ("SÜRE DOLDU!"): replaces whatever is showing and clears the queue.
+    if (o.now) {
+      this.calloutQueue.length = 0;
+      if (this.callouting) { const cur = this._calloutAnim; this.callouting = null; cur?.cancel(); }
+      this._showCallout(o);
+      return;
+    }
     if (this.announcing) {
       // Big gift announcements own the centre; only urgent callouts wait.
       if ((o.prio || 0) < 3) return;

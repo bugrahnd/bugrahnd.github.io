@@ -116,6 +116,9 @@ async function main() {
   hud.troopsFor = (coins) => game.giftTroops(coins);
   hud.setGiftStrip(config.hud.giftStrip, config.hud.giftStripTroops !== false);
   window.__game = game; // handy for debugging from the console
+  window.__audio = audio;
+  // ?audiolog=1: record which sounds fire or are skipped (window.__audio.trace).
+  if (new URLSearchParams(location.search).get('audiolog') === '1') audio.trace = [];
   window.__director = director;
   window.__scene = scene; window.__renderer = renderer;
 
@@ -128,7 +131,9 @@ async function main() {
     hud.setGiftStrip(s.giftStrip, s.giftStripTroops);
     hud.setCta(s.cta.text, s.cta.example);
     hud.setTitle(s.title);
-    if (hud.setVisibility(s.show)) resize();
+    hud.setGiftHeading?.(s.giftHeading);
+    const zonesChanged = hud.setZones?.(s.zones);
+    if (hud.setVisibility(s.show) || zonesChanged) resize();
     audio.applyVolumes(urlOpts.mute || s.mute);
     director.enabled = s.director;
   };
@@ -190,6 +195,9 @@ async function main() {
     overlay.style.setProperty('--bx', `${band.x}px`); overlay.style.setProperty('--by', `${band.y}px`);
     overlay.style.setProperty('--vw', `${W}px`); overlay.style.setProperty('--vh', `${H}px`);
     document.documentElement.style.setProperty('--plate-k', String(band.u));
+    // Name tags scale with the map, not the stage: a smaller map gets smaller tags.
+    const mapK = band.fit ? Math.min(1, Math.max(0.6, band.fit.w / (960 * band.u))) : 1;
+    document.documentElement.style.setProperty('--tag-k', String(band.u * mapK));
   };
   window.addEventListener('resize', () => resize());
   window.visualViewport?.addEventListener('resize', () => resize());
@@ -274,6 +282,8 @@ async function main() {
     const calm = !(busy && rig.zoom <= 1.3);
     if (calm !== lastCalm) { lastCalm = calm; overlay.classList.toggle('busy', !calm); }
     tags.maxNow = rig.zoom > 1.3 ? (config.hud.maxTags ?? 8) : (config.hud.maxTagsOverview ?? 4);
+    // Stream layout: at most two name tags over the map at once.
+    if (document.documentElement.classList.contains('stream')) tags.maxNow = Math.min(tags.maxNow, config.hud.maxTagsStream ?? 2);
     tags.update(dt, rig.camera, W, H);
 
     hudT -= dt;

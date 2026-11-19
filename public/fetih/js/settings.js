@@ -115,6 +115,11 @@ export function applySettings(config, base, values = {}) {
       example: isStr(v['cta.example'], 12) ? v['cta.example'].trim() : '34',
     },
     title: isStr(v['title.text'], 20) ? v['title.text'].trim() : 'PLAKA SAVAŞLARI',
+    zones: {
+      chatTop: isNum(v['layout.chatTop'], 1150, 1500) ? v['layout.chatTop'] : undefined,
+      side: isNum(v['layout.side'], 0, 120) ? v['layout.side'] : undefined,
+    },
+    giftHeading: isStr(v['gifts.heading'], 24) ? v['gifts.heading'].trim() : (B.hud.giftHeading || 'HEDİYE AT, ORDU KUR'),
     giftStrip: C.hud.giftStrip,
     giftStripTroops: C.hud.giftStripTroops,
     mute: v['audio.mute'] === true,
