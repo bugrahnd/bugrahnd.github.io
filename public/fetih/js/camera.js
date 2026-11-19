@@ -21,6 +21,14 @@ export class CameraRig {
     this.zoom = 1;
   }
 
+  /** Camera tilt (degrees from straight down); the stream layout uses its own (visual.streamTiltDeg). */
+  setTilt(deg) {
+    const t = THREE.MathUtils.degToRad(deg);
+    if (Math.abs(t - this.tilt) < 1e-6) return;
+    this.tilt = t;
+    this.dir.set(0, Math.cos(t), Math.sin(t));
+  }
+
   /** World-space bounds of everything that must be visible in the overview. */
   setBounds(minX, maxX, minZ, maxZ) {
     this.box = { minX, maxX, minZ, maxZ };

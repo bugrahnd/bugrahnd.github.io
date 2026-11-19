@@ -812,12 +812,14 @@ export class Hud {
     this.bandEl.style.width = `${rect.w}px`;
     this.bandEl.style.height = `${rect.h}px`;
     // The map itself is fitted below the leader spot and credit strip.
-    const inset = (stream ? (this._vis('imperative') ? STREAM_MAP_INSET : 0) : MAP_TOP_INSET) * u;
+    // Stream: the map runs underneath the imperative pill (it overlays the map's top edge).
+    const inset = (stream ? (this._vis('imperative') ? (this.cfg.hud.streamMapInset ?? STREAM_MAP_INSET) : 0) : MAP_TOP_INSET) * u;
     rect.fit = { x: rect.x, y: rect.y + inset, w: rect.w, h: Math.max(rect.h * 0.5, rect.h - inset) };
     if (stream) {
       // Turkey (with KKTC) spans the width between the side insets; nearly no extra margin.
       const sx = Z.side * u;
-      Object.assign(rect.fit, { x: ox + sx, w: dw * u - 2 * sx, fx: 0.985, fy: 0.97 });
+      // Nearly the whole band: only a few units of margin at the top and bottom.
+      Object.assign(rect.fit, { x: ox + sx, w: dw * u - 2 * sx, fx: 0.99, fy: this.cfg.hud.streamMapFitY ?? 0.985 });
     }
     // Ladder pages depend on the strip width at this scale.
     this._paginate();

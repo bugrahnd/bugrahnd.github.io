@@ -186,6 +186,9 @@ async function main() {
     H = Math.max(1, Math.round(window.visualViewport?.height || window.innerHeight));
     renderer.setSize(W, H, false);
     band = hud.applyLayout(W, H, urlOpts.layout);
+    // The stream layout's band is wide and short: a steeper view fits Turkey wider in it.
+    const streamNow = document.documentElement.classList.contains('stream');
+    rig.setTilt(streamNow ? (config.visual.streamTiltDeg ?? config.visual.tiltDeg) : config.visual.tiltDeg);
     rig.fit(W, H, band.fit || band);
     tags.band = band;
     plates.layout(rig.camera, W, H, config.visual.labelSizePx * band.u, band);
