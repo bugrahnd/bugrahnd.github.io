@@ -100,26 +100,27 @@ const MAP_TOP_INSET = 206;
 // TikTok covers the top (header), the bottom-left (chat), the bottom edge and a right
 // column of the lower half. Defaults below; hud.tiktokZones in game.json overrides.
 // Everything a viewer needs sits between safeTop (= zones.top) and safeBottom
-// (= zones.chatTop). Rows, top-down from safeTop (keep in sync with the .stream rules
-// in hud.css, which use the same offsets via --st / --sb):
-//   strip   st+4   h 72   timer (centre), session wins (left), top likers (right)
-//   boards  st+82  h 190  3 cities | 3 gifters
-//   lead    st+278 h 84   round leader (left) | credit / held-gift hint / tips (right)
-//   band    st+368 … sb-146   map; imperative line overlays its top STREAM_MAP_INSET
-//   cta     sb-142 h 58   "PLAKANI YAZ: 34"
-//   gifts   sb-80  h 80   four-gift strip (x <= zones.rightColLeft)
-export const DEFAULT_ZONES = { top: 230, chatTop: 1250, chatRight: 720, bottomBar: 130, rightColLeft: 900, rightColTop: 1000 };
-// Row heights incl. gaps (STREAM_STRIP_H + BOARDS_H + LEAD_H = 368, the band top from
-// safeTop; GIFTS_H + CTA_H + 4 = 146, the band bottom above safeBottom). Rows of hidden
-// blocks collapse (Hud._streamRows) and the band grows; hud.css reads --s-* offsets.
-const STREAM_STRIP_H = 82;
-const STREAM_BOARDS_H = 196;
-const STREAM_LEAD_H = 90;
-const STREAM_GIFTS_H = 84;
-const STREAM_CTA_H = 58;
-const STREAM_MAP_INSET = 62; // imperative line over the top of the band
-
-const STREAM_HUCUM_INSET = 52; // HÜCUM bar over the bottom of the band (map fitted above it)
+// (= zones.chatTop), and between the side insets (zones.side: a 9:16 stream shown on a
+// taller phone screen is scaled to fill the height and cropped left and right, so the
+// outer `side` units of each edge may not be visible). Rows, top-down from safeTop (keep
+// in sync with the .stream rules in hud.css, which use the same offsets via --st / --sb /
+// --sx / --s-*), x from side (sx) to 1080 - sx:
+//   strip    st+4    h 66   timer (centre), session leader (left), top liker (right)
+//   cities   st+76   h 48   top 3 cities as chips
+//   gifters  st+130  h 48   top 3 gifters as chips
+//   lead     st+184  h 104  round leader (left) | credit / held-gift hint / tips (right)
+//   band     st+294 … sb-172   map; the imperative line overlays its top STREAM_MAP_INSET
+//   cta row  sb-166  h 60   "PLAKANI YAZ: 34" | HÜCUM bar   } one unit, x sx … rightColLeft - sx
+//   gifts    sb-100  h 96   gift ladder, 3 tiles per page    } (clear of the hearts column)
+export const DEFAULT_ZONES = { top: 230, chatTop: 1250, chatRight: 720, bottomBar: 130, rightColLeft: 900, rightColTop: 1000, side: 60 };
+// Row heights incl. their 6-unit gap. Rows of hidden blocks collapse (Hud._streamRows)
+// and the map band grows into them.
+const STREAM_STRIP_H = 76;
+const STREAM_CHIPS_H = 54;
+const STREAM_LEAD_H = 110;
+const STREAM_GIFTS_H = 100; // gift ladder top above safeBottom (96 + 4)
+const STREAM_CTA_H = 66; // cta row height + gap
+const STREAM_MAP_INSET = 58; // imperative line over the top of the band
 
 /** How-to lines in the tips slot; the like line uses the live likes-per-troop number. */
 function ctaLines(cfg) {
@@ -133,6 +134,9 @@ function ctaLines(cfg) {
     ['🎁 hediye', 'adınla asker yürür'],
   ];
 }
+
+const LEADER_EMPTY = 'Hediye gönder, lider sen ol!';
+export const DEFAULT_TITLE = 'PLAKA SAVAŞLARI';
 
 /** Normalised gift name for matching strip entries to TikTok's catalogue. */
 const giftKey = (s) => String(s || '').toLocaleLowerCase('tr').replace(/[^\p{L}\p{N}]+/gu, '');
@@ -192,7 +196,7 @@ export class Hud {
     const ll = el('div', 'leader-label', lt);
     this.lead.label = el('span', '', ll, 'TURUN LİDERİ');
     this.lead.newTag = el('span', 'leader-new', ll, 'YENİ LİDER!');
-    this.lead.nick = el('div', 'leader-nick', lt, 'İlk hediyeyi gönder, lider sen ol!');
+    this.lead.nick = el('div', 'leader-nick', lt, LEADER_EMPTY);
     this.lead.sub = el('div', 'leader-sub', lt, '');
     const lc = el('div', 'leader-total', lead);
     this.lead.coins = el('div', 'leader-coins', lc, '');
@@ -212,12 +216,13 @@ export class Hud {
 
     // Top bar
     const top = el('div', 'topbar panel-dark', r);
+    // Logo: the first word on a licence plate (blue TR band), the rest in gold. The text
+    // is a streamer setting (title.text); see setTitle.
     const title = el('div', 'title', top);
-    el('span', 'title-81', title, '81');
-    const tt = el('span', 'title-txt', title);
-    el('span', 'title-il', tt, 'İL');
-    el('span', 'title-kktc', tt, '+ KKTC');
-    el('span', 'title-fetih', title, 'FETİH');
+    const plate = el('span', 'title-plate', title);
+    el('span', 'title-tr', plate, 'TR');
+    this.titleA = el('span', 'title-a', plate, 'PLAKA');
+    this.titleB = el('span', 'title-b', title, 'SAVAŞLARI');
     const timer = el('div', 'timer', top);
     iconEl(a, 'icon_hourglass', timer, 'icon timer-icon');
     this.timerText = el('span', 'timer-text', timer, '10:00');
@@ -267,7 +272,7 @@ export class Hud {
       const cmdName = el('span', 'cmd-name', cmdText);
       this.cityRows.push({ row, rank, plate, name, flag, prov, troops, fill, cmd, av, cmdName, key: '' });
     }
-    this.boardEmpty = el('div', 'board-empty', list, 'Henüz kimse yok — plakanı + emoji yaz, şehrini uyandır!');
+    this.boardEmpty = el('div', 'board-empty', list, 'Plakanı yaz, şehrini uyandır!');
 
     // Top gifters
     const gift = el('div', 'gifters panel-dark', r);
@@ -451,7 +456,8 @@ export class Hud {
       if (name) el('span', 'tier-name', head, name);
       const c = el('span', 'tier-coins', head);
       iconEl(a, 'icon_coin', c, 'icon tiny');
-      el('span', '', c, `${fmt(coins)}${g.plus ? '+' : ''}${name ? '' : ' jeton'}`);
+      el('span', '', c, `${fmt(coins)}${g.plus ? '+' : ''}`);
+      if (!name) el('span', 'tier-jeton', c, ' jeton');
       const res = el('div', 'tier-res', t);
       if (this.stripTroops && troops[i] > 0) el('span', 'tier-troops', res, `+${fmt(troops[i])} asker`);
       if (String(g.effect || '').trim()) el('span', 'tier-label', res, String(g.effect).trim());
@@ -584,16 +590,33 @@ export class Hud {
   /** The labelled morale bar: "İSTANBUL HÜCUM %80"; full = "İSTANBUL HÜCUMDA! 12 sn". */
   _updateHucumBar(h) {
     const E = this.hbEl;
-    if (!h || !this._vis('hucumBar')) { if (E.style.display !== 'none') E.style.display = 'none'; return; }
+    const on = !!h && this._vis('hucumBar');
+    // Stream layout: the bar shares the call-to-action row (the CTA narrows while it shows).
+    if (on !== this._hbOn) { this._hbOn = on; this.root.classList.toggle('hb-on', on); }
+    if (!on) { if (E.style.display !== 'none') E.style.display = 'none'; return; }
     if (E.style.display === 'none') E.style.display = '';
     E.style.setProperty('--c', hexCss(h.colorHex));
     E.classList.toggle('on', h.hucum);
     const up = h.name.toLocaleUpperCase('tr');
-    const t = h.hucum ? `🔥 ${up} HÜCUMDA! ${Math.max(0, Math.ceil(h.left))} sn` : `❤ ${up} HÜCUM %${Math.floor(h.frac * 100)}`;
+    const left = Math.max(0, Math.ceil(h.left));
+    const pct = Math.floor(h.frac * 100);
+    const t = this.variant === 'stream'
+      ? (h.hucum ? `🔥 ${up} HÜCUMDA ${left}` : `❤ ${up} %${pct}`)
+      : (h.hucum ? `🔥 ${up} HÜCUMDA! ${left} sn` : `❤ ${up} HÜCUM %${pct}`);
     if (this.hbText.textContent !== t) this.hbText.textContent = t;
     this.hbFill.style.transform = `scaleX(${h.frac.toFixed(3)})`;
     if (h.hucum && !this._hbWas) E.animate([{ transform: 'scale(1.08)' }, { transform: 'scale(1)' }], { duration: 500, easing: 'ease-out' });
     this._hbWas = h.hucum;
+  }
+
+  /** Logo text (streamer setting): first word on the plate, the rest beside it in gold. */
+  setTitle(text) {
+    const words = String(text || DEFAULT_TITLE).trim().split(/\s+/);
+    const a = words.shift() || '';
+    const b = words.join(' ');
+    if (this.titleA.textContent !== a) this.titleA.textContent = a;
+    if (this.titleB.textContent !== b) this.titleB.textContent = b;
+    this.titleB.style.display = b ? '' : 'none';
   }
 
   /** Call-to-action text ("PLAKANI YAZ:") and its example chip ("34"). */
@@ -653,6 +676,7 @@ export class Hud {
     doc.style.setProperty('--st', String(Z.top));
     doc.style.setProperty('--sb', String(Z.chatTop));
     doc.style.setProperty('--srx', String(Z.rightColLeft));
+    doc.style.setProperty('--sx', String(Z.side));
     doc.classList.toggle('portrait', portrait);
     doc.classList.toggle('landscape', !portrait);
     doc.classList.toggle('stream', stream);
@@ -665,19 +689,21 @@ export class Hud {
     // Stream rows collapse when the streamer hides their blocks; the map band takes the
     // space. Still between safeTop and safeBottom (TikTok header / chat never overlap).
     const R = this._streamRows();
-    doc.style.setProperty('--s-boards', String(R.boards));
+    doc.style.setProperty('--s-cities', String(R.cities));
+    doc.style.setProperty('--s-gifters', String(R.gifters));
     doc.style.setProperty('--s-lead', String(R.lead));
     doc.style.setProperty('--s-bt', String(R.bandTop));
     doc.style.setProperty('--s-bb', String(R.bandBottom));
     doc.style.setProperty('--s-cta', String(R.cta));
     const b = stream
-      ? { x: 6, y: Z.top + R.bandTop, w: 1068, h: Z.chatTop - R.bandBottom - (Z.top + R.bandTop) }
+      ? { x: 0, y: Z.top + R.bandTop, w: 1080, h: Z.chatTop - R.bandBottom - (Z.top + R.bandTop) }
       : { ...BANDS[this.layout] };
     b.h += ex;
     this.bandDesign = b;
     const rect = { x: ox + b.x * u, y: oy + b.y * u, w: b.w * u, h: b.h * u, u };
-    // A window wider than the portrait stage: let the map use the extra width.
-    if (portrait && ox > 8) { rect.x = 8; rect.w = w - 16; }
+    // A window wider than the portrait stage: let the map use the extra width (full
+    // layout only; the stream frame is the 9:16 stage, its map stays inside the side insets).
+    if (portrait && !stream && ox > 8) { rect.x = 8; rect.w = w - 16; }
     // Same for extra height in landscape.
     if (!portrait && oy > 8) { rect.y = oy + b.y * u; rect.h = b.h * u + oy * 0.5; }
     this.bandEl.style.left = `${rect.x - ox}px`;
@@ -686,9 +712,12 @@ export class Hud {
     this.bandEl.style.height = `${rect.h}px`;
     // The map itself is fitted below the leader spot and credit strip.
     const inset = (stream ? (this._vis('imperative') ? STREAM_MAP_INSET : 0) : MAP_TOP_INSET) * u;
-    // The HÜCUM bar sits over the bottom of the band (stream layout): fit the map above it.
-    const insetB = (stream && this._vis('hucumBar') ? STREAM_HUCUM_INSET : 0) * u;
-    rect.fit = { x: rect.x, y: rect.y + inset, w: rect.w, h: Math.max(rect.h * 0.5, rect.h - inset - insetB) };
+    rect.fit = { x: rect.x, y: rect.y + inset, w: rect.w, h: Math.max(rect.h * 0.5, rect.h - inset) };
+    if (stream) {
+      // Turkey (with KKTC) spans the width between the side insets; nearly no extra margin.
+      const sx = Z.side * u;
+      Object.assign(rect.fit, { x: ox + sx, w: dw * u - 2 * sx, fx: 0.985, fy: 0.97 });
+    }
     // Ladder pages depend on the strip width at this scale.
     this._paginate();
     return rect;
@@ -701,14 +730,14 @@ export class Hud {
    */
   _streamRows() {
     let y = STREAM_STRIP_H;
-    const boards = y;
-    if (this._vis('cityBoard') || this._vis('gifterBoard')) y += STREAM_BOARDS_H;
+    const cities = y;
+    if (this._vis('cityBoard')) y += STREAM_CHIPS_H;
+    const gifters = y;
+    if (this._vis('gifterBoard')) y += STREAM_CHIPS_H;
     const lead = y;
     if (this._vis('leader') || this._vis('credit')) y += STREAM_LEAD_H;
-    let bottom = this._vis('giftStrip') ? STREAM_GIFTS_H : 0;
-    const cta = bottom + STREAM_CTA_H;
-    bottom = cta + 4;
-    return { boards, lead, bandTop: y, bandBottom: bottom, cta };
+    const cta = (this._vis('giftStrip') ? STREAM_GIFTS_H : 4) + STREAM_CTA_H;
+    return { cities, gifters, lead, bandTop: y, bandBottom: cta + 6, cta };
   }
 
   /** Moves the few nodes that live in different containers per portrait variant. */
@@ -743,6 +772,11 @@ export class Hud {
     rect(0, Z.chatTop, Z.chatRight, H - Z.bottomBar - Z.chatTop, `TikTok sohbet (y ≥ ${Z.chatTop}, x ≤ ${Z.chatRight})`, 'z-chat');
     rect(Z.rightColLeft, Z.rightColTop, 1080 - Z.rightColLeft, H - Z.bottomBar - Z.rightColTop, 'kalp / hediye', 'z-right');
     rect(0, H - Z.bottomBar, 1080, Z.bottomBar, 'yorum kutusu / hediye / paylaş', 'z-bottom');
+    // Side insets: cropped on phones taller than 9:16 (the stream is scaled to fill the height).
+    if (Z.side > 0) {
+      rect(0, Z.top, Z.side, H - Z.top - Z.bottomBar, '', 'z-side');
+      rect(1080 - Z.side, Z.top, Z.side, H - Z.top - Z.bottomBar, '', 'z-side');
+    }
   }
 
   _safeArea() {
@@ -819,7 +853,7 @@ export class Hud {
       setName(r.nick, g.nick, g.badge);
       r.sub.textContent = `${g.code} ${g.team}`;
       r.sub.style.color = hexCss(g.colorHex);
-      r.coins.textContent = `${fmt(g.coins)} jeton`;
+      r.coins.textContent = this.variant === 'stream' ? fmt(g.coins) : `${fmt(g.coins)} jeton`;
     });
     for (let i = sum.gifters.length; i < this.gifterRows.length; i++) this.gifterRows[i].row.style.display = 'none';
     this.gifterEmpty.style.display = sum.gifters.length ? 'none' : '';
@@ -838,7 +872,7 @@ export class Hud {
 
     // Session scoreboard
     const stream = this.variant === 'stream';
-    const ss = (sum.session || []).slice(0, stream ? 2 : 3);
+    const ss = (sum.session || []).slice(0, stream ? 1 : 3);
     const sk = `${this.variant}|` + ss.map((s) => `${s.name}:${s.wins}`).join('|');
     if (sk !== this._sessK) {
       this._sessK = sk;
@@ -1192,7 +1226,7 @@ export class Hud {
       if (this.leaderKey !== '') {
         this.leaderKey = '';
         L.root.classList.add('empty');
-        L.nick.textContent = 'İlk hediyeyi gönder, lider sen ol!';
+        L.nick.textContent = LEADER_EMPTY;
         L.sub.textContent = ''; L.coins.textContent = '';
         L.av.set('', '?', 0xffd166);
       }

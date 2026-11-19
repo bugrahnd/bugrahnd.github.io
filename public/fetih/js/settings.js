@@ -114,6 +114,7 @@ export function applySettings(config, base, values = {}) {
       text: isStr(v['cta.text'], 24) ? v['cta.text'].trim() : 'PLAKANI YAZ:',
       example: isStr(v['cta.example'], 12) ? v['cta.example'].trim() : '34',
     },
+    title: isStr(v['title.text'], 20) ? v['title.text'].trim() : 'PLAKA SAVAŞLARI',
     giftStrip: C.hud.giftStrip,
     giftStripTroops: C.hud.giftStripTroops,
     mute: v['audio.mute'] === true,

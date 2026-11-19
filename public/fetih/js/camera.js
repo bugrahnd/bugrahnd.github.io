@@ -56,13 +56,15 @@ export class CameraRig {
       }
       return { minX, maxX, minY, maxY };
     };
-    const fitX = this.cfg.fitWidth ?? 0.9;
+    // rect.fx / rect.fy: per-layout share of the rect the map may fill (stream layout).
+    const fitX = rect.fx ?? this.cfg.fitWidth ?? 0.9;
+    const fitY = rect.fy ?? 0.95;
     let lo = 100; let hi = 20000;
     for (let i = 0; i < 40; i++) {
       const d = (lo + hi) / 2;
       const m = measure(d);
       // Side margin keeps the east/west plates (Hakkari, Edirne) and KKTC inside the frame.
-      const ok = (m.maxX - m.minX) <= halfX * 2 * fitX && (m.maxY - m.minY) <= halfY * 2 * 0.95;
+      const ok = (m.maxX - m.minX) <= halfX * 2 * fitX && (m.maxY - m.minY) <= halfY * 2 * fitY;
       if (ok) hi = d; else lo = d;
     }
     this.baseDist = hi;

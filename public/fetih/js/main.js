@@ -127,6 +127,7 @@ async function main() {
     window.__settings = { values, applied: s };
     hud.setGiftStrip(s.giftStrip, s.giftStripTroops);
     hud.setCta(s.cta.text, s.cta.example);
+    hud.setTitle(s.title);
     if (hud.setVisibility(s.show)) resize();
     audio.applyVolumes(urlOpts.mute || s.mute);
     director.enabled = s.director;

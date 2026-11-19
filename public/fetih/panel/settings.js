@@ -63,6 +63,7 @@ const GROUPS = [
       { key: 'show.minimap', kind: 'toggle', label: 'Küçük harita', hint: 'Kamera yakınlaşınca köşede çıkan Türkiye haritası.' },
       { key: 'cta.text', kind: 'text', label: 'Çağrı yazısı', hint: 'Haritanın altındaki kırmızı çağrının yazısı.' },
       { key: 'cta.example', kind: 'text', label: 'Çağrı örneği', hint: 'Çağrının yanındaki örnek kutu (ör. plaka).' },
+      { key: 'title.text', kind: 'text', label: 'Başlık yazısı', hint: 'En üstteki logo. İlk kelime plakanın içinde, gerisi yanında yazar (ör. "PLAKA SAVAŞLARI"). TikTok\'un üst çubuğu çoğunu kapatır; süs içindir.' },
     ],
   },
   {
