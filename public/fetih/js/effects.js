@@ -283,11 +283,11 @@ export class Effects {
     } else if (tier === 2) {
       // Cannon salute: a ring of muzzle flashes and smoke puffs, then a gold shock ring.
       for (let i = 0; i < 6; i++) {
-        const a = (i / 6) * Math.PI * 2; const px = x + Math.cos(a) * 16; const pz = z + Math.sin(a) * 12;
-        this.add.spawn({ sprite: this.sp('fx_flash'), x: px, y: y + 6, z: pz, size: 10, size1: 18, life: 0.3, fadeIn: 0, delay: i * 0.07 });
+        const a = (i / 6) * Math.PI * 2; const px = x + Math.cos(a) * 24; const pz = z + Math.sin(a) * 18;
+        this.add.spawn({ sprite: this.sp('fx_flash'), x: px, y: y + 6, z: pz, size: 16, size1: 30, life: 0.35, fadeIn: 0, delay: i * 0.07 });
         this.norm.spawn({ sprite: this.sp('fx_puff'), x: px, y: y + 6, z: pz, vy: 8, size: 8, size1: 20, life: 1.2, color: 0xdddddd, alpha: 0.8, delay: i * 0.07 });
       }
-      this.add.spawn({ sprite: this.sp('fx_ring_b'), x, y: y + 1, z, size: 8, size1: 90, life: 0.8, color: 0xffb040, fadeIn: 0, delay: 0.45 });
+      this.add.spawn({ sprite: this.sp('fx_ring_b'), x, y: y + 1, z, size: 8, size1: 140, life: 0.9, color: 0xffb040, fadeIn: 0, delay: 0.45 });
       this.add.spawn({ sprite: this.sp('fx_explosion'), x, y: y + 12, z, size: 18, size1: 34, life: 0.5, fadeIn: 0, delay: 0.45 });
     }
     const n = 4 + tier * 5;

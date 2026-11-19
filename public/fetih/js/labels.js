@@ -277,13 +277,15 @@ export class ArmyLabels {
     return r;
   }
 
-  update(armies, camera, w, h, zoom = 1, unitK = 1) {
+  /** busyMin > 0: heavy traffic in the overview, only armies this big (or big gifts) get a counter. */
+  update(armies, camera, w, h, zoom = 1, unitK = 1, busyMin = 0) {
     const seen = new Set();
     // In the overview only sizeable or named armies get a counter (less clutter).
-    const minTroops = zoom > 1.3 ? 0 : 40;
+    const overview = zoom <= 1.3;
+    const minTroops = overview ? Math.max(40, busyMin) : 0;
     for (const a of armies) {
       if (a.appear < 0.2 || a.kind === 'move') continue;
-      if (a.troops < minTroops && !a.nick) continue;
+      if (a.troops < minTroops && !a.big && (!a.nick || (overview && busyMin > 0))) continue;
       let r = this.live.get(a);
       if (!r) {
         r = this._get();
@@ -442,7 +444,8 @@ export class WorldTags {
     // Stack: older tags at the same spot move up out of the way.
     const push = [44, 54, 70, 96][rank] * (this.k || 1);
     for (const it of this.live) if ((it.x - o.x) ** 2 + (it.z - o.z) ** 2 < 40 * 40) it.lift += push;
-    this.live.push({ r, x: o.x, z: o.z, born: this.t, until: this.t + sec, rank, lift: 0 });
+    // Size for keeping the tag inside the map band (measured once).
+    this.live.push({ r, x: o.x, z: o.z, born: this.t, until: this.t + sec, rank, lift: 0, hw: r.el.offsetWidth / 2, hh: r.el.offsetHeight });
   }
 
   _release(i) {
@@ -460,7 +463,15 @@ export class WorldTags {
       if (this.t >= it.until) { this._release(i); continue; }
       it.lift += dt * 14;
       if (!toScreen(it.x, TILE_H + 10, it.z, camera, w, h, this.pt)) continue;
-      it.r.el.style.transform = `translate(${this.pt.x.toFixed(1)}px, ${(this.pt.y - it.lift).toFixed(1)}px) translate(-50%, -100%)`;
+      let x = this.pt.x; let y = this.pt.y - it.lift;
+      const b = this.band;
+      if (b) {
+        // Name tags never leave the map band (anchor: bottom centre of the tag).
+        const m = 4;
+        x = Math.min(Math.max(x, b.x + it.hw + m), b.x + b.w - it.hw - m);
+        y = Math.min(Math.max(y, b.y + it.hh + m), b.y + b.h - m);
+      }
+      it.r.el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translate(-50%, -100%)`;
     }
   }
 

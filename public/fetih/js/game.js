@@ -478,6 +478,7 @@ export class Game {
     if (tierIndex >= 1) this.view.audio.play('sfx_coins', { vol: 0.5, minGap: 0.3 });
     // 100+ coins: the gift is THE visible event for a moment (minor callouts wait).
     if (tierIndex >= 2) this.view.hud.holdCallouts(this.cfg.hud.giftHoldCalloutsSec ?? 1.5);
+    if (tierIndex === 2) { this.view.camera.shake(3); this.view.hud.flash(0.22, team.colorHex); }
     // Small gifts get a name tag at the province; from 100 coins the HUD credit strip is
     // the single credit (no second tag on the map saying the same thing).
     const tagAt = (pv, extra = '') => tierIndex >= 2 ? null : this.view.tags.spawn({
@@ -1088,7 +1089,7 @@ export class Game {
       // "+N kişi" when people join in numbers.
       if (team.joinBurst && this.time - team.joinBurstAt >= 1.2) {
         const n = team.joinBurst; team.joinBurst = 0;
-        if (n >= (this.cfg.engage?.joinBurstMin ?? 3) && this.round.phase === play) {
+        if (n >= (this.cfg.engage?.joinBurstMin ?? 3) && this.round.phase === 'play') {
           const pv = this.prov.get(this.prov.get(team.plate).owner === team.plate ? team.plate : (team.rally || team.plate));
           this.view.floater(pv, `+${fmt(n)} kişi`, team.colorHex, true);
           this.view.effects.sparkle(pv.wx, TILE_H, pv.wz, team.colorHex, Math.min(14, 4 + n), 1.4);

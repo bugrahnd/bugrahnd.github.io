@@ -16,6 +16,11 @@ export const urlOpts = {
   bridgeUrl: bridgeParam(),
 };
 
+/** Host names that reach this PC (the bridge): loopback plus DNS names resolving to 127.0.0.1. */
+export const LOOPBACK_HOSTS = ['localhost', '127.0.0.1', '[::1]', '', 'localtest.me', 'lvh.me', 'local.bugrahnd.com.tr'];
+const LOOPBACK_SUFFIXES = ['.localhost', '.localtest.me', '.lvh.me'];
+export const isLoopbackHost = (h) => LOOPBACK_HOSTS.includes(h) || LOOPBACK_SUFFIXES.some((s) => h.endsWith(s));
+
 /** The forced bridge WebSocket URL, or '' when the page's own host is the bridge (or demo). */
 function bridgeParam() {
   const b = (qs.get('bridge') || '').trim();

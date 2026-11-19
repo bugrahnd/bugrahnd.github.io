@@ -15,7 +15,7 @@ import { BridgeClient } from './net.js';
 import { DemoSim, DEMO_PRESETS } from './demo-sim.js';
 import { Game } from './game.js';
 import { assignTeamColors, hexCss } from './colors.js';
-import { urlOpts } from './util.js';
+import { urlOpts, isLoopbackHost } from './util.js';
 
 const fetchJson = (url) => fetch(url, { cache: 'no-cache' }).then((r) => {
   if (!r.ok) throw new Error(`${url}: ${r.status}`);
@@ -37,7 +37,8 @@ async function main() {
   setMapStretch(config.visual.mapStretch ?? 1);
 
   // Demo mode (static hosting: no bridge). ?demo=1|low|medium|high|chaos, ?demo=0 forces the bridge.
-  const isLocal = ['localhost', '127.0.0.1', '[::1]', ''].includes(location.hostname) || location.hostname.endsWith('.localhost');
+  // The bridge itself (or a DNS name for 127.0.0.1): same-origin bridge, stream layout, no demo.
+  const isLocal = isLoopbackHost(location.hostname);
   const demoParam = urlOpts.demo;
   // Stream mode (?yayin=1 / ?bridge=…): always the bridge, never the demo, on any host.
   const streamBridge = urlOpts.bridgeUrl;
@@ -95,10 +96,14 @@ async function main() {
   const colors = assignTeamColors(provinces);
 
   let W = 1; let H = 1; let band = { x: 0, y: 0, w: 1, h: 1, u: 1 };
+  let busy = false; // event rate above hud.busyEventsPerSec (chaos-level traffic)
+  let lastCalm = true;
   const view = {
     map, effects, plates, hud, audio, camera: rig, director, arrows, tags, commanders,
     roundOverride: urlOpts.roundSec,
     floater(pv, text, colorHex, big = false, size = '') {
+      // Heavy traffic in the overview: only the big floaters (gifts, bursts) are shown.
+      if (!big && busy && rig.zoom <= 1.3) return;
       floaters.spawn(new THREE.Vector3(pv.wx, TILE_H + 8, pv.wz), text, hexCss(colorHex), rig.camera, W, H, big, size);
     },
   };
@@ -106,6 +111,7 @@ async function main() {
   director.fallback = () => game.leaderFront();
   window.__game = game; // handy for debugging from the console
   window.__director = director;
+  window.__scene = scene; window.__renderer = renderer;
 
   // Event source: the bridge WebSocket, or the in-browser demo simulator.
   let net = { connected: false };
@@ -138,6 +144,7 @@ async function main() {
     renderer.setSize(W, H, false);
     band = hud.applyLayout(W, H, urlOpts.layout);
     rig.fit(W, H, band.fit || band);
+    tags.band = band;
     plates.layout(rig.camera, W, H, config.visual.labelSizePx * band.u, band);
     // Map overlays (plates, tags, counters) stay inside the map band.
     // (a clipped box with offset layers is much cheaper to composite than clip-path).
@@ -198,6 +205,7 @@ async function main() {
     if (fpsT >= 1) {
       fps = frames / fpsT; frames = 0; fpsT = 0;
       evRate = game.stats.events - lastEvents; lastEvents = game.stats.events;
+      busy = evRate >= (config.hud.busyEventsPerSec ?? 14);
     }
 
     const zoom = rig.zoom;
@@ -222,8 +230,11 @@ async function main() {
     renderer.setClearColor(0x0b1d2e, 1);
     renderer.render(scene, rig.camera);
     plates.update(rig.camera, W, H, rig.version, rig.zoom);
-    armyLabels.update(game.armies, rig.camera, W, H, rig.zoom, unitK);
+    armyLabels.update(game.armies, rig.camera, W, H, rig.zoom, unitK, busy ? (config.hud.busyArmyMinTroops ?? 150) : 0);
     commanders.update(rig.camera, W, H, unitK, rig.zoom, config.visual.labelSizePx * band.u * 1.6);
+    // Heavy traffic in the overview: secondary plate extras (conqueror names, comeback flags) hide.
+    const calm = !(busy && rig.zoom <= 1.3);
+    if (calm !== lastCalm) { lastCalm = calm; overlay.classList.toggle('busy', !calm); }
     tags.maxNow = rig.zoom > 1.3 ? (config.hud.maxTags ?? 8) : (config.hud.maxTagsOverview ?? 4);
     tags.update(dt, rig.camera, W, H);
 
@@ -241,7 +252,7 @@ async function main() {
         hud.setDebug([
           `FPS ${fps.toFixed(0)}  en kötü kare ${worstMs.toFixed(0)} ms  zoom ${rig.zoom.toFixed(2)}`,
           `çizim ${info.render.calls}  üçgen ${(info.render.triangles / 1000).toFixed(0)}k`,
-          `ordu ${game.armies.length}  figür ${units.figureCount}  kuşatma ${game.sieges.length}  mermi ${game.projectiles.length}`,
+          `ordu ${game.armies.length}  figür ${units.figureCount}+${units.tokenCount}  kuşatma ${game.sieges.length}  mermi ${game.projectiles.length}`,
           `parçacık ${effects.count}  oyuncu ${game.players.size}  bekleyen ${game.pending.size}`,
           `takım ${[...game.teams.values()].filter((t) => t.awake).length}  olay/sn ${evRate}  ws ${net.connected ? 'bağlı' : 'kopuk'}`,
           `bellek ${mem}  geo ${info.memory.geometries}  tex ${info.memory.textures}`,

@@ -793,6 +793,8 @@ html:not(.dbg) .wait-pill.on { display: block; }
 .stream .nudge-msg { line-height: 1.15; }
 .stream .cta-chip.tiny { font-size: calc(var(--u) * 30); }
 #hud.crediting .idle-slot { visibility: hidden; }
+#hud.hinting .idle-slot { visibility: visible; z-index: 9; border-color: var(--gold); }
+.stream .idle-slot .cta-chip.small { max-width: calc(var(--u) * 250); overflow: hidden; text-overflow: ellipsis; }
 .stream .city-row:nth-child(n+4), .stream .gifter-row:nth-child(n+4) { display: none !important; }
 .stream .idle-slot {
   display: flex; align-items: center; justify-content: center; position: absolute; z-index: 4;
@@ -836,3 +838,6 @@ html:not(.dbg) .wait-pill.on { display: block; }
 .stream .debug { top: calc(var(--u) * (var(--sb) + 10)); }
 html.stream:not(.dbg) .audio-unlock { display: none !important; }
 .stream .audio-unlock { top: calc(var(--u) * (var(--st) + 380)); }
+
+/* Chaos-level traffic in the overview (main.js toggles #overlay.busy). */
+#overlay.busy .plate .conq, #overlay.busy .plate .x2, #overlay.busy .plate .cmdn { display: none; }

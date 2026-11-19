@@ -1,7 +1,12 @@
 // Draws armies, siege engines and projectiles with instanced, lock-step animated models.
 // Figures are drawn oversized in the overview (so they read on a phone) and shrink
 // toward natural size as the director camera zooms in.
+// Overview LOD: below visual.lodZoom every figure is drawn as a low-poly "token" (a few
+// dozen triangles, two instanced draw calls per unit type) instead of the skinned model
+// (~2.5k triangles each). Zoomed in, detailed models are used up to
+// visual.maxFiguresDetailed; figures beyond that budget fall back to tokens.
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { Batch, setYawMatrix } from './instancing.js';
 import { TILE_H } from './map.js';
 
@@ -59,20 +64,76 @@ export class UnitRenderer {
     this.base.ship = assets.manifest.models.ship.scale;
     this.m = new THREE.Matrix4();
     this.figureCount = 0;
+    this.tokenCount = 0;
+    // Low-poly tokens sized from each model's bind-pose bounds (model units).
+    this.tokens = {};
+    const teamMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+    const plainMat = new THREE.MeshLambertMaterial({ color: 0xffffff, vertexColors: true });
+    for (const [type, key] of Object.entries(UNIT_MODELS)) {
+      const box = new THREE.Box3();
+      for (const part of assets.model(key).parts) {
+        if (!part.geometry.boundingBox) part.geometry.computeBoundingBox();
+        const b = part.geometry.boundingBox.clone();
+        if (part.bindMatrix) b.applyMatrix4(part.bindMatrix);
+        box.union(b);
+      }
+      const geos = tokenGeometry(type, box);
+      const team = new THREE.InstancedMesh(geos.team, teamMat, cap);
+      team.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(cap * 3), 3);
+      const plain = new THREE.InstancedMesh(geos.plain, plainMat, cap);
+      for (const mesh of [team, plain]) {
+        mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+        mesh.frustumCulled = false; mesh.count = 0; mesh.visible = false;
+        scene.add(mesh);
+      }
+      team.instanceColor.setUsage(THREE.DynamicDrawUsage);
+      this.tokens[type] = { team, plain, n: 0 };
+    }
+    this.col = new THREE.Color();
+  }
+
+  _pushToken(type, m, hex) {
+    const t = this.tokens[type];
+    if (t.n >= t.team.instanceMatrix.count) return false;
+    const i = t.n++;
+    m.toArray(t.team.instanceMatrix.array, i * 16);
+    m.toArray(t.plain.instanceMatrix.array, i * 16);
+    this.col.setHex(hex);
+    t.team.instanceColor.array[i * 3] = this.col.r;
+    t.team.instanceColor.array[i * 3 + 1] = this.col.g;
+    t.team.instanceColor.array[i * 3 + 2] = this.col.b;
+    return true;
+  }
+
+  _endTokens() {
+    for (const t of Object.values(this.tokens)) {
+      for (const mesh of [t.team, t.plain]) {
+        mesh.count = t.n; mesh.visible = t.n > 0;
+        if (t.n) { mesh.instanceMatrix.clearUpdateRanges(); mesh.instanceMatrix.addUpdateRange(0, t.n * 16); mesh.instanceMatrix.needsUpdate = true; }
+      }
+      if (t.n) { t.team.instanceColor.clearUpdateRanges(); t.team.instanceColor.addUpdateRange(0, t.n * 3); t.team.instanceColor.needsUpdate = true; }
+    }
   }
 
   update(dt, armies, sieges, projectiles, zoom = 1) {
-    for (const t of this.templates) {
-      t.mixer.update(dt);
-      t.root.updateMatrixWorld(true);
+    // Overview: tokens only (no skinned models, no skeleton updates).
+    const detailed = zoom >= (this.cfg.lodZoom ?? 1.25);
+    let budget = detailed ? (this.cfg.maxFiguresDetailed ?? 220) : 0;
+    if (detailed) {
+      for (const t of this.templates) {
+        t.mixer.update(dt);
+        t.root.updateMatrixWorld(true);
+      }
     }
+    this.time = (this.time || 0) + dt;
     // Oversized in the overview, closer to natural size when zoomed in.
     const k = this.cfg.unitScale * Math.pow(Math.max(1, zoom), -(this.cfg.unitZoomShrink ?? 0.5));
     const tall = this.cfg.unitTallness ?? 1.2; // counters the top-down foreshortening
     for (const b of Object.values(this.batches)) b.begin();
+    for (const t of Object.values(this.tokens)) t.n = 0;
     this.shipBatch.begin();
     const m = this.m;
-    let figs = 0;
+    let figs = 0; let toks = 0;
     for (const a of armies) {
       if (!a.figs.length) continue;
       const c = Math.cos(a.yaw); const s = Math.sin(a.yaw);
@@ -94,13 +155,23 @@ export class UnitRenderer {
         const sc = this.base[f.type] * k * appear * (f.scale || 1);
         if (sc <= 0.001) continue;
         const yaw = a.yaw + (state === 'fight' ? f.wobble : 0);
-        setYawMatrix(m, x, TILE_H + (f.lift || 0), z, yaw, sc, sc * tall);
-        if (this.batches[`${f.type}|${state}|${f.phase % this.phases}`].push(m, a.colorHex)) figs++;
+        if (budget > 0) {
+          setYawMatrix(m, x, TILE_H + (f.lift || 0), z, yaw, sc, sc * tall);
+          if (this.batches[`${f.type}|${state}|${f.phase % this.phases}`].push(m, a.colorHex)) { figs++; budget--; }
+          continue;
+        }
+        // Token: a little hop while walking, a lunge while fighting.
+        const ph = this.time * (state === 'fight' ? 9 : 7) + f.phase * 1.7 + a.id;
+        const hop = state === 'idle' ? 0 : Math.abs(Math.sin(ph)) * sc * (state === 'fight' ? 0.12 : 0.08);
+        setYawMatrix(m, x, TILE_H + (f.lift || 0) + hop, z, yaw, sc, sc * tall);
+        if (this._pushToken(f.type, m, a.colorHex)) toks++;
       }
     }
     for (const b of Object.values(this.batches)) b.end();
+    this._endTokens();
     this.shipBatch.end();
     this.figureCount = figs;
+    this.tokenCount = toks;
 
     for (const b of Object.values(this.siegeBatches)) b.begin();
     this.flagBatch.begin();
@@ -134,6 +205,45 @@ export class UnitRenderer {
     }
     this.ballBatch.end();
   }
+}
+
+/**
+ * Low-poly stand-in for a unit, fitted to the model's bounds (model faces +Z).
+ * Returns { team, plain }: team-coloured parts (tinted per instance) and the rest
+ * (vertex colours: skin, wood, horse).
+ */
+function tokenGeometry(type, box) {
+  const size = box.getSize(new THREE.Vector3());
+  const H = Math.max(0.001, size.y); const y0 = box.min.y;
+  const team = []; const plain = [];
+  const at = (g, x, y, z, rotX = 0) => { if (rotX) g.rotateX(rotX); g.translate(x, y0 + y, z); return g.index ? g.toNonIndexed() : g; };
+  const paint = (g, hex) => {
+    const c = new THREE.Color(hex); const n = g.attributes.position.count; const a = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) { a[i * 3] = c.r; a[i * 3 + 1] = c.g; a[i * 3 + 2] = c.b; }
+    g.setAttribute('color', new THREE.BufferAttribute(a, 3));
+    return g;
+  };
+  const SKIN = 0xf2c9a0; const STEEL = 0xb8c0c8; const WOOD = 0x8a5a2b; const HORSE = 0x7a4a26;
+  if (type === 'cavalry') {
+    const L = Math.max(size.z, H * 0.8);
+    plain.push(paint(at(new THREE.BoxGeometry(H * 0.2, H * 0.24, L * 0.62), 0, H * 0.42, 0), HORSE));
+    plain.push(paint(at(new THREE.BoxGeometry(H * 0.12, H * 0.24, H * 0.14), 0, H * 0.6, L * 0.32), HORSE));
+    for (const [lx, lz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) plain.push(paint(at(new THREE.BoxGeometry(H * 0.06, H * 0.32, H * 0.06), lx * H * 0.07, H * 0.16, lz * L * 0.22), HORSE));
+    team.push(at(new THREE.CylinderGeometry(H * 0.09, H * 0.12, H * 0.32, 6), 0, H * 0.7, -L * 0.04));
+    plain.push(paint(at(new THREE.IcosahedronGeometry(H * 0.08, 0), 0, H * 0.92, -L * 0.04), SKIN));
+  } else {
+    team.push(at(new THREE.CylinderGeometry(H * 0.15, H * 0.2, H * 0.62, 7), 0, H * 0.31, 0));
+    plain.push(paint(at(new THREE.IcosahedronGeometry(H * 0.13, 0), 0, H * 0.74, 0), SKIN));
+    if (type === 'knight') {
+      plain.push(paint(at(new THREE.ConeGeometry(H * 0.14, H * 0.16, 6), 0, H * 0.88, 0), STEEL));
+      team.push(at(new THREE.BoxGeometry(H * 0.26, H * 0.32, H * 0.05), -H * 0.06, H * 0.36, H * 0.2));
+    } else {
+      plain.push(paint(at(new THREE.BoxGeometry(H * 0.04, H * 1.0, H * 0.04), H * 0.22, H * 0.5, H * 0.04), WOOD));
+      plain.push(paint(at(new THREE.ConeGeometry(H * 0.05, H * 0.12, 4), H * 0.22, H * 1.04, H * 0.04), STEEL));
+    }
+  }
+  const strip = (g) => { g.deleteAttribute('uv'); return g; };
+  return { team: mergeGeometries(team.map(strip)), plain: mergeGeometries(plain.map(strip)) };
 }
 
 /**

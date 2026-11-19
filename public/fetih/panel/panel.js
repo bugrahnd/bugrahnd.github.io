@@ -11,6 +11,9 @@ let status = null;
 // on this computer. Only loopback addresses are accepted, so the panel never sends data elsewhere.
 const LOOPBACK = new Set(['localhost', '127.0.0.1', '[::1]']);
 const DEFAULT_BRIDGE = 'http://127.0.0.1:3000';
+// Public DNS names that resolve to 127.0.0.1 (bridge ALLOWED_HOSTS defaults): the page is then served
+// by the bridge itself, so use the same origin.
+const LOOPBACK_NAMES = /^(([a-z0-9-]+\.)?localtest\.me|([a-z0-9-]+\.)?lvh\.me|local\.bugrahnd\.com\.tr)$/i;
 
 function resolveBridge() {
   const q = new URLSearchParams(location.search).get('bridge');
@@ -21,7 +24,7 @@ function resolveBridge() {
     } catch { /* fall through */ }
     console.warn('Geçersiz ?bridge= değeri (yalnızca 127.0.0.1 / localhost kabul edilir):', q);
   }
-  if (LOOPBACK.has(location.hostname) && (location.protocol === 'http:' || location.protocol === 'https:')) {
+  if ((LOOPBACK.has(location.hostname) || LOOPBACK_NAMES.test(location.hostname)) && location.protocol === 'http:') {
     return location.origin;
   }
   return DEFAULT_BRIDGE;

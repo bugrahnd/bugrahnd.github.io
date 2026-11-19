@@ -587,6 +587,7 @@ export class Hud {
       this.ctaT = 0;
       this.ctaI = (this.ctaI + 1) % CTA_LINES.length;
       this.ctaLine.classList.remove('hint');
+      this.root.classList.remove('hinting');
       this.ctaChip.textContent = CTA_LINES[this.ctaI][0];
       this.ctaText.textContent = CTA_LINES[this.ctaI][1];
       this.ctaLine.animate([{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'none' }], { duration: 300 });
@@ -606,10 +607,29 @@ export class Hud {
     this.hintUntil = this.timeNow + 3.2;
     this.ctaT = 0;
     this.ctaLine.classList.add('hint');
+    this.root.classList.add('hinting');
     this.ctaLine.style.setProperty('--c', hexCss(colorHex));
     this.ctaChip.textContent = example;
     this.ctaText.textContent = `${nick}, emoji ekle! Böyle yaz`;
     this.ctaLine.animate([{ transform: 'scale(0.8)' }, { transform: 'scale(1.06)', offset: 0.5 }, { transform: 'scale(1)' }], { duration: 400 });
+  }
+
+  /** Short personal answer in the tips line ("Zaten İzmir'desin"). */
+  reply(nick, text, colorHex) {
+    this.hintUntil = this.timeNow + 3.5;
+    this.ctaT = 0;
+    this.ctaLine.classList.add('hint');
+    this.root.classList.add('hinting');
+    this.ctaLine.style.setProperty('--c', hexCss(colorHex));
+    this.ctaChip.textContent = nick;
+    this.ctaText.textContent = text;
+    this.ctaLine.animate([{ transform: 'scale(0.8)' }, { transform: 'scale(1.06)', offset: 0.5 }, { transform: 'scale(1)' }], { duration: 400 });
+  }
+
+  /** After a 100+ coin gift: minor callouts wait (and a minor one on screen yields). */
+  holdCallouts(sec) {
+    this.calloutHoldUntil = Math.max(this.calloutHoldUntil || 0, this.timeNow + sec);
+    if (this.callouting && (this.callouting.prio || 0) < 3) this._calloutAnim?.cancel();
   }
 
   /** Feed lines are queued and released one per hud.feedMinGapSec; overflow drops the least important. */
@@ -717,7 +737,8 @@ export class Hud {
     // Only the last-seconds alarms may cut in; everything else waits its turn.
     if (this.callouting && (o.prio || 0) >= 4 && (this.callouting.prio || 0) < 4) { this._calloutAnim?.cancel(); this._showCallout(o); return; }
     const gapOk = this.timeNow - this.lastCalloutEnd >= (this.cfg.hud.calloutMinGapSec ?? 4);
-    if (!this.callouting && gapOk && !this.calloutQueue.length) { this._showCallout(o); return; }
+    const held = this.timeNow < (this.calloutHoldUntil || 0) && (o.prio || 0) < 3;
+    if (!this.callouting && gapOk && !held && !this.calloutQueue.length) { this._showCallout(o); return; }
     o.queuedAt = this.timeNow;
     if (this.calloutQueue.length >= (this.cfg.hud.calloutQueueMax ?? 2)) {
       const low = this.calloutQueue.reduce((m, x, i, arr) => ((x.prio || 0) < (arr[m].prio || 0) ? i : m), 0);
@@ -730,6 +751,7 @@ export class Hud {
 
   _pumpCallout() {
     if (this.callouting || this.announcing || !this.calloutQueue.length) return;
+    if (this.timeNow < (this.calloutHoldUntil || 0) && (this.calloutQueue[0].prio || 0) < 3) return;
     if (this.timeNow - this.lastCalloutEnd < (this.cfg.hud.calloutMinGapSec ?? 4)) return;
     // Stale news is dropped rather than shown late.
     while (this.calloutQueue.length && this.timeNow - this.calloutQueue[0].queuedAt > 10 && (this.calloutQueue[0].prio || 0) < 3) this.calloutQueue.shift();
@@ -826,31 +848,21 @@ export class Hud {
     A.effect.style.display = o.effect ? '' : 'none';
     const dur = (o.sec || 5) * 1000;
     const shorten = this.announceQueue.length > 1 ? 0.6 : 1;
-    // Full-screen moment first, then the card shrinks to a ribbon at the top of the map
-    // band so the battle it started stays visible.
-    const u = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--u')) || 1;
-    const band = { top: this.bandDesign?.y ?? 470, h: this.bandDesign?.h ?? 690 };
-    const cardH = A.card.offsetHeight || 500 * u;
-    const rootTop = A.root.offsetTop; const rootH = A.root.offsetHeight;
-    const centreY = rootTop + rootH / 2;
-    // Ribbon sits below the leader spot and the gift credit strip.
-    const ribbonY = (band.top + MAP_TOP_INSET) * u + cardH * 0.5 * 0.5 + 8 * u;
-    const dy = Math.round(ribbonY - centreY);
+    // Full-screen moment, then the card simply fades: the HUD credit strip (outside the
+    // map band) carries the credit afterwards, so nothing on the map repeats it.
     const hold = o.tierId === 'sultan' ? 0.42 : 0.34;
-    const small = `translateY(${dy}px) scale(0.5)`;
+    const total = dur * shorten * (hold + 0.1);
     const anim = A.card.animate([
       { opacity: 0, transform: 'scale(0.3) rotate(-4deg)' },
-      { opacity: 1, transform: 'scale(1.08) rotate(1deg)', offset: 0.06 },
-      { opacity: 1, transform: 'scale(1)', offset: 0.1 },
-      { opacity: 1, transform: 'scale(1)', offset: hold },
-      { opacity: 1, transform: small, offset: hold + 0.07 },
-      { opacity: 1, transform: small, offset: 0.93 },
-      { opacity: 0, transform: `translateY(${dy}px) scale(0.45)` },
-    ], { duration: dur * shorten, easing: 'ease-out' });
-    A.root.animate([{ opacity: 0 }, { opacity: 1, offset: 0.05 }, { opacity: 1, offset: hold }], { duration: dur * shorten });
+      { opacity: 1, transform: 'scale(1.08) rotate(1deg)', offset: 0.12 },
+      { opacity: 1, transform: 'scale(1)', offset: 0.2 },
+      { opacity: 1, transform: 'scale(1)', offset: 0.8 },
+      { opacity: 0, transform: 'scale(0.85) translateY(-6%)' },
+    ], { duration: total, easing: 'ease-out' });
+    A.root.animate([{ opacity: 0 }, { opacity: 1, offset: 0.1 }, { opacity: 1, offset: 0.85 }, { opacity: 0 }], { duration: total });
     A.root.classList.add('vig');
     clearTimeout(this._vigT);
-    this._vigT = setTimeout(() => A.root.classList.remove('vig'), dur * shorten * hold);
+    this._vigT = setTimeout(() => A.root.classList.remove('vig'), total);
     anim.onfinish = () => this._nextAnnounce();
   }
 
@@ -955,6 +967,8 @@ export class Hud {
     const q = this.creditQueue.find((x) => x.key === o.key);
     if (q) { merge(q); return; }
     const item = { ...o, count: o.count || 1 };
+    // A 100+ coin gift cuts a smaller credit short so it shows right away.
+    if (cur && item.tierIndex >= 2 && (cur.tierIndex || 0) < item.tierIndex) cur.until = Math.min(cur.until, this.timeNow);
     const max = this.cfg.hud.creditQueueMax ?? 6;
     if (this.creditQueue.length >= max) {
       // Drop the smallest (oldest first) unless the new one is even smaller.
@@ -983,7 +997,7 @@ export class Hud {
     if (this.timeNow - this.lastCreditEnd < (this.cfg.hud.creditGapSec ?? 0.25)) return;
     const o = this.creditQueue.shift();
     o.shownAt = this.timeNow;
-    o.until = this.timeNow + this._creditSec(o);
+    o.until = this.timeNow + this._creditSec(o) + (o.extraSec || 0);
     this.crediting = o;
     C.root.style.display = '';
     this.root.classList.add('crediting');

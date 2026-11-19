@@ -190,6 +190,9 @@
     "troopsPerFigure": 12,
     "maxFiguresPerArmy": 8,
     "maxFiguresTotal": 700,
+    "_lod": "Below lodZoom figures are low-poly tokens (cheap); zoomed in, up to maxFiguresDetailed use the animated models, the rest tokens.",
+    "lodZoom": 1.25,
+    "maxFiguresDetailed": 220,
     "animPhases": 2,
     "maxSiegeEngines": 18,
     "maxParticles": 2600,
@@ -268,7 +271,7 @@
     "tiktokZones": { "top": 230, "chatTop": 1250, "chatRight": 720, "bottomBar": 130, "rightColLeft": 900, "rightColTop": 1000 },
     "giftHoldCalloutsSec": 1.5,
     "busyEventsPerSec": 14,
-    "busyArmyMinTroops": 150,
+    "busyArmyMinTroops": 300,
     "commanderBadges": 3,
     "commanderNames": 5
   }
