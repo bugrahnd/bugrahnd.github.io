@@ -1,0 +1,51 @@
+{
+  "name": "bugrahnd.github.io",
+  "version": "1.0.0",
+  "description": "Modern, 3D elementli ve sunset temalı portfolio web sitesi. Three.js ile oluşturulmuş etkileyici 3D geometrik şekiller ve smooth animasyonlar içerir.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "astryx": "node node_modules/@astryxdesign/cli/clients/cli/bin/astryx.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bugrahnd/bugrahnd.github.io.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/bugrahnd/bugrahnd.github.io/issues"
+  },
+  "homepage": "https://github.com/bugrahnd/bugrahnd.github.io#readme",
+  "dependencies": {
+    "@astryxdesign/cli": "^0.7.15",
+    "@astryxdesign/core": "^0.7.15",
+    "@astryxdesign/theme-chocolate": "^0.7.15",
+    "@astryxdesign/theme-neutral": "^0.7.15",
+    "@heroicons/react": "^2.2.0",
+    "@react-three/drei": "^10.7.9",
+    "@react-three/fiber": "^9.8.2",
+    "@stylexjs/stylex": "^0.19.2",
+    "clsx": "^2.1.1",
+    "motion": "^14.13.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "tailwind-merge": "^3.7.0",
+    "three": "^0.187.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/three": "^0.187.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "tailwindcss": "^4.3.5",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8"
+  },
+  "private": true
+}
