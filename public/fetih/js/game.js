@@ -60,6 +60,8 @@ export class Game {
     this.nextArmyId = 1;
     this.passiveAcc = 0;
     this.labelTimer = 0;
+    this.leadProvinces = 0;
+    this.session = this.loadSession();
     this.startRound(true);
   }
 
@@ -75,7 +77,13 @@ export class Game {
   defenseMult(pv) {
     let m = this.cfg.war.defenderBonus;
     if (pv.owner && pv.owner === pv.plate) m *= this.cfg.war.capitalBonus;
+    if (this.isFresh(pv)) m *= this.cfg.war.freshDefenseMult ?? 1;
     return m;
+  }
+
+  /** Captured only a moment ago: shielded so the map changes at a readable pace. */
+  isFresh(pv) {
+    return pv.owner !== 0 && this.time - (pv.capturedAt ?? -1e9) < (this.cfg.war.captureShieldSec ?? 0);
   }
 
   neutralGarrison(p) {
@@ -137,43 +145,82 @@ export class Game {
     const badge = emoteImg ? { t: emoji ? badgeText(emoji) : '★', img: emoteImg } : emoji ? { t: badgeText(emoji) } : null;
     const n = normalizeText(rest);
     const player = this.touchPlayer(u);
+    if (player) { this.memberChat(player, n, badge); return; }
     if (!n) {
-      // Emoji/emote-only message: completes a bare plate sent shortly before.
+      // Emoji/emote-only message: completes a bare plate sent shortly before (gives the badge).
       const bare = this.barePlate.get(u.name);
-      if (!player && badge && bare && this.time - bare.t <= (this.cfg.teams.bareJoinWindowSec ?? 10)) {
+      if (badge && bare && this.time - bare.t <= (this.cfg.teams.bareJoinWindowSec ?? 10)) {
         this.barePlate.delete(u.name);
         this.join(u, bare.plate, badge);
       }
       return;
     }
     const tokens = n.split(' ');
-    if (ATTACK_WORDS.has(tokens[0])) {
-      if (!player) {
-        // Not joined yet: treat "saldır 06" as nothing, but a bare place after it is not a join.
-        return;
-      }
-      const target = this.resolvePlace(tokens.slice(1));
-      if (target) this.vote(player, target);
+    if (ATTACK_WORDS.has(tokens[0])) return; // not joined yet
+    if (badge) {
+      const plate = this.resolvePlace(tokens);
+      if (plate) { this.barePlate.delete(u.name); this.join(u, plate, badge); }
       return;
     }
-    if (player) return; // membership is fixed for the round
-    const plate = this.resolvePlace(tokens);
-    if (!plate) return;
-    if (badge) { this.barePlate.delete(u.name); this.join(u, plate, badge); return; }
-    // Plate without emoji: remember it briefly (an emoji-only follow-up joins), and
-    // tell this viewer exactly what to type (rate limited).
-    this.barePlate.set(u.name, { plate, t: this.time });
-    if (this.barePlate.size > 4000) {
-      for (const [k, v] of this.barePlate) if (this.time - v.t > 15) this.barePlate.delete(k);
+    // A message that is ONLY a plate or city name joins too (no badge).
+    const plate = this.exactPlace(n);
+    if (!plate || this.cfg.engage?.bareJoin === false) return;
+    this.join(u, plate, null);
+  }
+
+  /** The whole message is a place: an alias / city name or a single plate number. */
+  exactPlace(n) {
+    if (this.aliases.has(n)) return this.aliases.get(n);
+    if (/^\d{1,2}$/.test(n)) {
+      const pv = this.prov.get(parseInt(n, 10));
+      if (pv && pv.p.joinByNumber !== false) return pv.plate;
     }
-    const last = this.emojiHintAt.get(u.name) || -1e9;
-    if (this.time - last < 30 || this.time - this.lastEmojiHint < 2.5) return;
-    this.emojiHintAt.set(u.name, this.time);
-    if (this.emojiHintAt.size > 3000) this.emojiHintAt.clear();
-    this.lastEmojiHint = this.time;
-    const pp = this.prov.get(plate).p;
-    const typed = pp.joinByNumber === false ? normalizeText(pp.name) || provCode(pp).toLowerCase() : provCode(pp);
-    this.view.hud.emojiHint(cleanNick(u.nick || u.name, 16), `${typed} 🔥`, this.team(plate).colorHex);
+    return 0;
+  }
+
+  /** Any message from a member does something: votes, badge, or +1 troop. */
+  memberChat(player, n, badge) {
+    const tokens = n ? n.split(' ') : [];
+    if (tokens.length && ATTACK_WORDS.has(tokens[0])) {
+      // Votes still work but are never advertised on screen.
+      const target = this.resolvePlace(tokens.slice(1));
+      if (target) this.vote(player, target);
+    }
+    // "34 🔥" again or an emoji-only message sets / changes the badge.
+    if (badge && (!n || this.exactPlace(n) === player.team)) {
+      player.badge = badge;
+      const team = this.team(player.team);
+      if (team.commander === player) this.updateCommanderBadges();
+    }
+    if (this.round.phase !== 'play') return;
+    const e = this.cfg.engage || {};
+    if (this.time - (player.lastChatTroop ?? -1e9) < (e.chatCooldownSec ?? 4)) return;
+    player.lastChatTroop = this.time;
+    const team = this.team(player.team);
+    if (!team.awake) this.wakeTeam(team, true);
+    const mult = this.actionMult(team);
+    const add = (e.chatTroops ?? 1) * mult;
+    const plate = this.addTroops(team, add);
+    this.view.floater(this.prov.get(plate), `+${fmt(add)}${mult > 1 ? ' ×' + mult : ''}`, team.colorHex, false, 'tiny');
+  }
+
+  /** Multiplier for free actions (likes, chat): finale and comeback stack. */
+  actionMult(team) {
+    return this.finaleMult() * (this.isComeback(team) ? (this.cfg.engage?.comebackMult ?? 2) : 1);
+  }
+
+  finaleMult() {
+    const r = this.round;
+    return r.phase === 'play' && r.left <= (this.cfg.round.finaleSec ?? 30) ? (this.cfg.round.finaleMult ?? 2) : 1;
+  }
+
+  /** Behind: no province, or far behind the leader. */
+  isComeback(team) {
+    if (!team.awake) return false;
+    if (team.provinces === 0) return true;
+    const e = this.cfg.engage || {};
+    const lead = this.leadProvinces || 0;
+    return lead >= (e.comebackMinLead ?? 4) && team.provinces <= lead * (e.comebackShare ?? 0.25);
   }
 
   join(u, plate, badge = null) {
@@ -194,12 +241,15 @@ export class Game {
       }
     }
     // "Ahmet 🔥 İstanbul'a katıldı" at the province (throttled at chaos traffic).
+    // The province flashes so the viewer learns where it is; their name flies to it.
+    const at = this.prov.get(pv.owner === plate || !pv.owner ? plate : (team.rally || plate));
+    this.view.plates.highlight(at.plate, team.colorHex);
     if (this.round.phase === 'play' && this.time - this.lastJoinTag > (this.cfg.hud.joinTagGapSec ?? 0.45)) {
       this.lastJoinTag = this.time;
-      const at = this.prov.get(pv.owner === plate || !pv.owner ? plate : (team.rally || plate));
-      this.view.tags.spawn({ x: at.wx, z: at.wz, nick: player.nick, badge: player.badge, avatar: player.avatar, text: `${dat(team.name)} katıldı`, colorHex: team.colorHex, size: 's', sec: 2.2 });
+      this.view.effects.sparkle(at.wx, TILE_H, at.wz, team.colorHex, 5, 1.2);
+      this.view.tags.spawn({ x: at.wx, z: at.wz, nick: player.nick, badge: player.badge, avatar: player.avatar, text: `${dat(team.name)} katıldı`, colorHex: team.colorHex, size: 's', sec: 2.8, fly: true });
     }
-    this.view.audio.play('sfx_join', { vol: 0.35, minGap: 0.15 });
+    this.view.audio.play('sfx_join', { vol: 0.6, minGap: 0.15 });
     this.refreshMarker(plate);
     // Deliver gifts held while the viewer had not joined.
     const pend = this.pending.get(u.name);
@@ -244,14 +294,18 @@ export class Game {
     if (!player || this.round.phase !== 'play') return;
     player.likes += count;
     const team = this.team(player.team);
-    if (!team.awake) return;
-    if (this.isHucum(team)) return;
-    team.morale += count * this.cfg.morale.perLike;
-    const pv = this.prov.get(team.rally || team.plate);
-    if (this.time - team.lastHeartFx > 0.7) {
+    if (!team.awake) this.wakeTeam(team, true);
+    const pv = this.prov.get(team.provinces ? (team.rally || team.plate) : team.plate);
+    // Sparks at the liker's province (light throttle) + the plate's morale bar fills.
+    if (this.time - team.lastHeartFx > 0.35) {
       team.lastHeartFx = this.time;
       this.view.effects.hearts(pv.wx, TILE_H, pv.wz, Math.min(4, 1 + Math.floor(count / 10)));
+      this.view.effects.sparkle(pv.wx, TILE_H, pv.wz, 0xff5a8a, 2, 0.9);
     }
+    if (this.isHucum(team)) return;
+    const mult = this.actionMult(team);
+    team.morale += count * this.cfg.morale.perLike * mult;
+    this.view.plates.setMorale(team.plate, clamp(team.morale / this.moraleNeed(team), 0, 1), mult > 1);
     if (team.morale >= this.moraleNeed(team)) this.startHucum(team);
   }
 
@@ -268,10 +322,16 @@ export class Game {
 
   applyBonus(player, kind) {
     const team = this.team(player.team);
-    const n = kind === 'follow' ? this.cfg.troops.followBonus : this.cfg.troops.shareBonus;
+    const n = (kind === 'follow' ? this.cfg.troops.followBonus : this.cfg.troops.shareBonus) * this.finaleMult();
     const plate = this.addTroops(team, n);
     const pv = this.prov.get(plate);
-    this.view.floater(pv, `+${n} ${kind === 'follow' ? 'takip' : 'paylaşım'}`, team.colorHex);
+    this.view.floater(pv, `+${n} ${kind === 'follow' ? 'takip' : 'paylaşım'}`, team.colorHex, true);
+    this.view.plates.highlight(plate, team.colorHex);
+    this.view.hud.credit({
+      key: player.name + '|' + kind, nick: player.nick, badge: player.badge, avatar: player.avatar, colorHex: team.colorHex,
+      troops: n, coins: 0, giftName: '', count: 0, team: team.name, code: this.codeOf(team.plate), tierIndex: 1,
+      msg: kind === 'follow' ? 'takip etti, teşekkürler!' : 'yayını paylaştı, teşekkürler!',
+    });
   }
 
   startHucum(team) {
@@ -280,7 +340,8 @@ export class Game {
     team.hucumUntil = this.time + m.hucumSec;
     team.nextAttackAt = this.time;
     this.view.hud.feed(`${team.name} HÜCUM! Moral doldu, ${m.hucumSec} sn boyunca ordular daha hızlı ve güçlü!`, team.colorHex, 'fire');
-    this.view.hud.hucum(team.name, team.colorHex);
+    this.view.hud.callout({ title: `${team.name.toLocaleUpperCase('tr')} HÜCUMDA!`, sub: 'Beğeniler moral doldurdu!', colorHex: team.colorHex, prio: 2, sec: 2.6, kind: 'hucum' });
+    this.view.plates.setMorale(team.plate, 1, false, true);
     this.view.audio.play('sfx_round_start', { vol: 0.6, minGap: 0.5 });
     const pv = this.prov.get(team.rally || team.plate);
     this.view.effects.wake(pv.wx, TILE_H, pv.wz, 0xff5030);
@@ -293,13 +354,8 @@ export class Game {
     team.voters.set(player.name, { target, t: this.time });
     const prev = team.voteTarget;
     this.recountVotes(team);
-    if (team.voteTarget && team.voteTarget !== prev && this.time - team.lastVoteFeed > 8) {
-      team.lastVoteFeed = this.time;
-      const votes = team.voteCount;
-      this.view.hud.feed(`${team.name} hedefini seçti: ${this.nameOf(team.voteTarget)} (${votes} oy)`, team.colorHex, 'target');
-      const pv = this.prov.get(team.voteTarget);
-      this.view.floater(pv, 'HEDEF!', team.colorHex);
-    }
+    // Votes steer the army silently (no on-screen mention).
+    if (team.voteTarget !== prev) team.lastVoteFeed = this.time;
   }
 
   recountVotes(team) {
@@ -337,7 +393,8 @@ export class Game {
   applyGift(player, g) {
     const team = this.team(player.team);
     const tier = this.tierFor(g.coins);
-    const troops = g.total * this.cfg.troops.perCoin * (tier.troopBonus || 1);
+    const fm = this.finaleMult();
+    const troops = g.total * this.cfg.troops.perCoin * (tier.troopBonus || 1) * fm;
     player.coins += g.total; player.totalCoins += g.total;
     team.coins += g.total;
     if (!team.commander || (team.commander !== player && player.coins > team.commander.coins)) {
@@ -352,10 +409,19 @@ export class Game {
     const tagAt = (pv, extra = '') => this.view.tags.spawn({
       x: pv.wx, z: pv.wz, nick: player.nick, badge: player.badge, avatar: player.avatar,
       text: `${g.giftName}${g.count > 1 ? ' ×' + g.count : ''} → +${fmt(troops)} asker${extra}`,
-      colorHex: team.colorHex, size: ['s', 'm', 'l', 'xl', 'xl'][Math.min(4, tierIndex)], sec: [2.2, 2.8, 3.4, 4.5, 5][Math.min(4, tierIndex)],
+      colorHex: team.colorHex, size: ['s', 'm', 'l', 'xl', 'xl'][Math.min(4, tierIndex)], sec: [2.6, 3.2, 3.8, 4.5, 5][Math.min(4, tierIndex)],
     });
+    // Personal credit at a fixed HUD spot (queued, repeats merged) + the province lights up.
+    this.view.hud.credit({
+      key: player.name, nick: player.nick, badge: player.badge, avatar: player.avatar, colorHex: team.colorHex,
+      troops, coins: g.total, giftName: g.giftName, count: g.count, team: team.name, code: this.codeOf(team.plate), tierIndex, x2: fm > 1,
+    });
+    const litAt = team.provinces === 0 ? team.plate : (this.prov.get(team.plate).owner === team.plate ? team.plate : (team.rally || team.plate));
+    this.view.plates.highlight(litAt, team.colorHex, player.nick);
 
     if (tier.mode === 'garrison' || tierIndex === 0) {
+      // A small soldier carrying the gifter's name marches into their province.
+      if (this.parade(team, player, troops)) return;
       const plate = this.addTroops(team, troops);
       const pv = this.prov.get(plate);
       this.view.floater(pv, `+${fmt(troops)}`, team.colorHex, true);
@@ -398,7 +464,7 @@ export class Game {
       let first = null;
       for (const t of targets) {
         const src = this.bestSourceFor(team, t);
-        const a = this.launchArmy(team, src, t, each, { kind: 'gift', types, nick: player.nick, big: true, banner: true, maxFigures: tier.maxFigures, unitKey: 'mixed' });
+        const a = this.launchArmy(team, src, t, each, { kind: 'gift', types, nick: player.nick, giver: player, big: true, banner: true, maxFigures: tier.maxFigures, unitKey: 'mixed' });
         first = first || a;
         this.view.effects.lightning(this.prov.get(t).wx, TILE_H, this.prov.get(t).wz);
       }
@@ -437,7 +503,7 @@ export class Game {
     }
     const unitKey = tier.units ? 'mixed' : (tier.cavalryFromCoins && g.coins >= tier.cavalryFromCoins ? 'cavalry' : tier.unit || 'knight');
     const army = this.launchArmy(team, src, target, troops, {
-      kind: 'gift', types, nick: player.nick, big: tierIndex >= 3, banner: tierIndex >= 3, maxFigures: tier.maxFigures, unitKey,
+      kind: 'gift', types, nick: player.nick, giver: player, big: tierIndex >= 3, banner: tierIndex >= 3, maxFigures: tier.maxFigures, unitKey,
     });
     team.lastGiftArmy = { player, tier, army, t: this.time };
     if (tier.siege) this.launchSieges(team, tier, g, [target], src);
@@ -454,12 +520,46 @@ export class Game {
   giftCamera(tierIndex, tier, x, z) {
     const d = this.view.director;
     if (!d) return;
-    if (tierIndex >= 2) {
-      const hold = tier.announceSec ? tier.announceSec + 0.5 : 3.5;
-      d.force(x, z, tierIndex >= 4 ? 2.3 : tierIndex >= 3 ? 2.5 : 2.8, hold, tierIndex);
-    } else {
-      d.note(x, z, tierIndex === 1 ? 22 : 4);
+    // Only the top two tiers (tier.camera) may zoom; the director enforces the gap.
+    if (tier.camera) {
+      const hold = tier.announceSec ? tier.announceSec : 4.5;
+      d.force(x, z, this.cfg.visual.director?.zoom ?? 1.6, hold, tierIndex);
     }
+  }
+
+  /**
+   * Small gifts: one soldier with the gifter's name marches into the province and
+   * delivers the troops on arrival. Repeats from the same viewer join that soldier.
+   * Returns false when no parade is possible (landless team, too many on the map).
+   */
+  parade(team, player, troops) {
+    const e = this.cfg.engage || {};
+    if (team.provinces === 0) return false;
+    const last = player.paradeArmy;
+    if (last && last.state === 'march' && last.traveled < last.dist * 0.7) {
+      last.troops += troops;
+      this.view.floater(this.prov.get(last.dest), `+${fmt(troops)}`, team.colorHex);
+      return true;
+    }
+    const live = this.armies.reduce((n, a) => n + (a.kind === 'parade' && a.state !== 'done' ? 1 : 0), 0);
+    if (live >= (e.paradeMax ?? 24)) return false;
+    const plate = this.rallyFor(team);
+    const pv = this.prov.get(plate);
+    // Start a short walk away, inside the province when possible.
+    const d = e.paradeDistance ?? 26;
+    let sx = pv.wx - d; let sz = pv.wz;
+    for (let i = 0; i < 12; i++) {
+      const ang = Math.random() * Math.PI * 2;
+      const x = pv.p.labelPoint[0] + Math.cos(ang) * d; const y = pv.p.labelPoint[1] + Math.sin(ang) * d / (this.cfg.visual.mapStretch || 1);
+      if (pointInProvince(x, y, pv.p)) { sx = x; sz = wzOf(y); break; }
+    }
+    const army = this._makeArmy(team, sx, sz, pv.wx, pv.wz, troops, {
+      kind: 'parade', types: 'infantry', unitKey: 'infantry', nick: player.nick, maxFigures: 1, dest: plate, giver: player,
+    });
+    army.speed = Math.max(army.speed, 16);
+    player.paradeArmy = army;
+    this.view.effects.sparkle(sx, TILE_H, sz, team.colorHex, 4, 1.1);
+    return true;
   }
 
   // ---------- troops & territory ----------
@@ -498,14 +598,19 @@ export class Game {
   chooseTarget(team) {
     this.recountVotes(team);
     if (team.voteTarget) return (team.target = team.voteTarget);
-    if (team.target && this.isValidTarget(team, team.target)) {
+    // The AI leaves freshly captured provinces alone (they are shielded anyway).
+    const open = () => {
+      const fr = this.frontier(team).filter((f) => !this.isFresh(this.prov.get(f)));
+      return fr.length ? fr : this.frontier(team);
+    };
+    if (team.target && this.isValidTarget(team, team.target) && !this.isFresh(this.prov.get(team.target))) {
       // Keep the current target for a while unless something much weaker appears.
-      const fr = this.frontier(team);
+      const fr = open();
       let best = team.target; let bestW = this.weakness(team.target) * 0.7;
       for (const f of fr) { const w = this.weakness(f); if (w < bestW) { best = f; bestW = w; } }
       return (team.target = best);
     }
-    const fr = this.frontier(team);
+    const fr = open();
     if (!fr.length) return (team.target = 0);
     let best = 0; let bestW = Infinity;
     for (const f of fr) { const w = this.weakness(f) * (0.9 + Math.random() * 0.2); if (w < bestW) { best = f; bestW = w; } }
@@ -531,7 +636,7 @@ export class Game {
 
   wakeTeam(team, announce) {
     team.awake = true;
-    team.nextAttackAt = this.time + 2 + Math.random() * 3;
+    team.nextAttackAt = this.time + (this.cfg.war.firstAttackDelaySec ?? 2) + Math.random() * 3;
     team.nextRebalanceAt = this.time + this.cfg.war.rebalanceIntervalSec * Math.random();
     const pv = this.prov.get(team.plate);
     if (pv.owner === 0) {
@@ -606,7 +711,7 @@ export class Game {
       speed: (war.speed[unitKey] || 20) * (hucum ? this.cfg.morale.speedMult : 1),
       sx, sz, tx, tz, x: sx, z: sz, dist, traveled: 0, yaw: Math.atan2(dx, dz),
       state: o.gather ? 'gather' : 'march', gatherT: o.gather || 0, appear: 0, figs, nick: o.nick || '',
-      big: !!o.big, banner: !!o.banner, dest: o.dest, from: o.from || 0, fightT: 0, fxT: 0, dustT: Math.random() * 0.3,
+      big: !!o.big, banner: !!o.banner, giver: o.giver || null, dest: o.dest, from: o.from || 0, fightT: 0, fxT: 0, dustT: Math.random() * 0.3,
     };
     this.armies.push(army);
     return army;
@@ -688,14 +793,16 @@ export class Game {
   step(dt) {
     this.time += dt;
     const r = this.round;
+    // Round clocks follow wall-clock time (keep running in a hidden tab / at low FPS).
+    const nowMs = Date.now();
     if (r.phase === 'end') {
-      r.endLeft -= dt;
+      r.endLeft = (r.endAtMs - nowMs) / 1000;
       this.view.hud.setEndCountdown(r.endLeft);
       if (r.endLeft <= 0) this.startRound(false);
       this.stepArmies(dt, true);
       return;
     }
-    r.left -= dt;
+    r.left = (r.endsAtMs - nowMs) / 1000;
     const sec = Math.ceil(r.left);
     if (sec <= 10 && sec >= 1 && sec !== r.lastTick) {
       r.lastTick = sec;
@@ -719,7 +826,29 @@ export class Game {
         this.view.plates.setGarrison(pv.plate, pv.garrison);
         this.view.map.setStrength(pv.plate, pv.garrison);
       }
+      let lead = 0;
+      for (const t of this.teams.values()) lead = Math.max(lead, t.provinces);
+      this.leadProvinces = lead;
+      // Komutan names at the capital: the leading teams after the big top-3 badges.
+      const st = this.standings();
+      const nameSet = new Set(st.slice(this.cfg.hud.commanderBadges ?? 3, (this.cfg.hud.commanderBadges ?? 3) + (this.cfg.hud.commanderNames ?? 5)).map((t) => t.plate));
+      for (const t of this.teams.values()) {
+        if (!t.awake) continue;
+        // Plate extras: morale bar, comeback flag (landless teams only, to avoid clutter).
+        const hucum = this.isHucum(t);
+        this.view.plates.setMorale(t.plate, hucum ? 1 : clamp(t.morale / this.moraleNeed(t), 0, 1), false, hucum);
+        this.view.plates.setComeback(t.plate, t.provinces === 0 && t.memberCount > 0 ? (this.cfg.engage?.comebackMult ?? 2) : 0);
+        const home = this.prov.get(t.plate).owner === t.plate;
+        this.view.plates.setCommander(t.plate, home && t.commander && nameSet.has(t.plate) ? t.commander.nick : null);
+      }
       this.updateCommanderBadges();
+      this.view.hud.setFinale(this.finaleMult() > 1 ? r.left : -1, this.cfg.round.finaleMult ?? 2);
+    }
+    this.impT = (this.impT ?? 0) - dt;
+    if (this.impT <= 0) {
+      this.impT = this.cfg.engage?.imperativeSec ?? 6;
+      const line = this.imperative();
+      if (line) this.view.hud.imperative(line.text, line.colorHex);
     }
   }
 
@@ -743,10 +872,21 @@ export class Game {
       this.view.audio.play('sfx_horn', { vol: 0.7, minGap: 1 });
       return;
     }
-    if (r.left <= 30 && !d.said30) {
+    const fin = this.cfg.round.finaleSec ?? 30;
+    if (r.left <= fin && !d.said30) {
       d.said30 = true;
-      hud.callout({ title: 'SON 30 SANİYE!', sub: lead ? `${lead.name} kazanmak üzere!` : '', colorHex: 0xff4a3a, prio: 4, sec: 2.4, kind: 'alarm' });
+      const m = this.cfg.round.finaleMult ?? 2;
+      hud.callout({ title: `SON ${fin} SANİYE!`, sub: m > 1 ? `HER ŞEY ${m} KAT! Gül at, beğen, yaz!` : (lead ? `${lead.name} kazanmak üzere!` : ''), colorHex: 0xff4a3a, prio: 4, sec: 3.2, kind: 'alarm' });
+      this.view.audio.play('sfx_horn_long', { vol: 0.8, minGap: 1 });
+      hud.flash(0.5, 0xff4a3a);
       return;
+    }
+    // Final seconds: one slow push-in on the leader's front (bypasses the zoom gap).
+    const dc = this.cfg.visual.director || {};
+    if (!d.finalShot && r.left <= (dc.finalSecondsAt ?? 14) && lead) {
+      const f = this.leaderFront() || this.prov.get(lead.plate);
+      const x = f.x ?? f.wx; const z = f.z ?? f.wz;
+      if (this.view.director?.force(x, z, dc.finalSecondsZoom ?? 1.5, Math.max(2, r.left - (dc.easeSec ?? 2.4) * 2 - 2), 9)) d.finalShot = true;
     }
     if (r.left < 12) return; // the big countdown owns the screen
     // New leader (or a periodic reminder of who leads).
@@ -770,15 +910,66 @@ export class Game {
         d.lastRivalCall = this.time;
         const A = this.teams.get(best.a); const B = this.teams.get(best.b);
         hud.rivalry(A.name, A.colorHex, B.name, B.colorHex);
-        this.view.director?.force(best.x, best.z, 2.6, 3.5, 1);
       }
     }
+  }
+
+  /** One short, situation-driven instruction for the viewers (rotates, never repeats twice). */
+  imperative() {
+    const r = this.round;
+    if (r.phase !== 'play') return null;
+    const up = (s) => s.toLocaleUpperCase('tr');
+    const cands = [];
+    const fin = this.cfg.round.finaleSec ?? 30;
+    const st = this.standings();
+    if (r.left <= fin) {
+      cands.push({ k: 'fin', p: 9, text: `SON SANİYELER! HER ŞEY ${this.cfg.round.finaleMult ?? 2} KAT!`, colorHex: 0xff4a3a });
+    }
+    if (this.players.size < (this.cfg.engage?.fewPlayers ?? 6) || st.length < 3) {
+      cands.push({ k: 'join', p: 8, text: 'PLAKANI YAZ, ŞEHRİNİ SEÇ!', colorHex: 0xffd166 });
+    }
+    // A capital under attack: an enemy army is heading for a team's home province.
+    let danger = null;
+    for (const a of this.armies) {
+      if (a.state === 'done' || a.kind === 'move' || a.kind === 'parade') continue;
+      const pv = this.prov.get(a.dest);
+      if (!pv || pv.owner !== pv.plate || pv.owner === a.team) continue;
+      const t = this.teams.get(pv.plate);
+      if (!t.memberCount) continue;
+      if (!danger || a.troops > danger.troops) danger = { t, troops: a.troops };
+    }
+    if (danger) cands.push({ k: 'danger' + danger.t.plate, p: 7, text: `${up(danger.t.name)} TEHLİKEDE! EKRANA BAS!`, colorHex: danger.t.colorHex });
+    // Close to taking the lead.
+    if (st.length >= 2 && st[0].provinces - st[1].provinces <= 1 && st[1].provinces >= 2) {
+      cands.push({ k: 'close' + st[1].plate, p: 6, text: `${up(st[1].name)} LİDERLİĞE ÇOK YAKIN, GÜL AT!`, colorHex: st[1].colorHex });
+    }
+    // The strongest marching attack.
+    let atk = null;
+    for (const a of this.armies) {
+      if (a.state !== 'march' || a.kind === 'move' || a.kind === 'parade') continue;
+      if (!atk || a.troops > atk.troops) atk = a;
+    }
+    if (atk) { const t = this.teams.get(atk.team); cands.push({ k: 'atk' + t.plate, p: 5, text: `${up(t.name)} SALDIRIYOR, GÜL AT!`, colorHex: t.colorHex }); }
+    const behind = st.find((t) => this.isComeback(t) && t.memberCount > 0);
+    if (behind) cands.push({ k: 'reb' + behind.plate, p: 5, text: `${up(behind.name)} İSYANDA! BEĞEN, YAZ: ${this.cfg.engage?.comebackMult ?? 2} KAT!`, colorHex: behind.colorHex });
+    cands.push({ k: 'tap', p: 1, text: 'EKRANA BAS, MORAL DOLDUR!', colorHex: 0xff5a8a });
+    cands.push({ k: 'chat', p: 1, text: 'YAZ: HER MESAJ +1 ASKER!', colorHex: 0x9bf09b });
+    if (st[0]) cands.push({ k: 'lead', p: 1, text: `${up(st[0].name)} ÖNDE! DURDUR ONU!`, colorHex: st[0].colorHex });
+    // Highest priority that was not just shown; urgent lines may repeat after one other.
+    cands.sort((a, b) => b.p - a.p);
+    this.impN = (this.impN || 0) + 1;
+    // Every third line is a general "how to play" one, unless something urgent runs.
+    let pool = cands;
+    if (this.impN % 3 === 0 && cands[0].p < 8) pool = cands.filter((c) => c.p <= 1).sort(() => Math.random() - 0.5);
+    const pick = pool.find((c) => c.k !== this.lastImp) || pool[0];
+    this.lastImp = pick.k;
+    return pick;
   }
 
   updateCommanderBadges() {
     const list = [];
     for (const t of this.standings()) {
-      if (list.length >= 3) break;
+      if (list.length >= (this.cfg.hud.commanderBadges ?? 3)) break;
       if (!t.commander || this.prov.get(t.plate).owner !== t.plate) continue;
       const c = this.view.map.castleWorld(t.plate);
       list.push({ x: c.x, z: c.z, nick: t.commander.nick, badge: t.commander.badge, avatar: t.commander.avatar, colorHex: t.colorHex });
@@ -915,7 +1106,7 @@ export class Game {
         if (a.dustT <= 0 && a.figs.length >= 3) { a.dustT = 0.35; this.view.effects.dust(a.x, TILE_H, a.z); }
         if (t >= 1) {
           const pv = this.prov.get(a.dest);
-          if (pv.owner === a.team) { this.resolve(a); continue; }
+          if (pv.owner === a.team || a.kind === 'parade') { this.resolve(a); continue; }
           a.state = 'fight';
           a.fightT = war.battleSec * (a.big ? 1.4 : 1);
           a.sea = false; // landed: soldiers storm the shore
@@ -942,11 +1133,24 @@ export class Game {
     a.state = 'done';
     const pv = this.prov.get(a.dest);
     const team = this.teams.get(a.team);
+    if (a.kind === 'parade') {
+      const plate = pv.owner === a.team ? pv.plate : this.addTroops(team, a.troops);
+      if (pv.owner === a.team) pv.garrison += a.troops;
+      this.view.floater(this.prov.get(plate), `+${fmt(a.troops)}`, team.colorHex);
+      return;
+    }
     if (pv.owner === a.team) { pv.garrison += a.troops; return; }
     const atk = a.troops * a.power;
     const mult = this.defenseMult(pv);
     const def = pv.garrison * mult;
     if (pv.owner && pv.owner !== a.team) this.noteRivalry(a.team, pv.owner, Math.min(a.troops, pv.garrison) + 10, pv.wx, pv.wz);
+    // Capture shield: a freshly taken province only falls to a big gift army.
+    const shielded = this.isFresh(pv) && !(a.kind === 'gift' && a.big);
+    if (shielded) {
+      pv.garrison = Math.max(1, pv.garrison - (atk / mult) * 0.3);
+      this.view.effects.sparkle(pv.wx, TILE_H, pv.wz, 0x999999, 2);
+      return;
+    }
     if (atk > def) {
       this.capture(pv, team, (atk - def) / a.power, a);
     } else {
@@ -963,7 +1167,15 @@ export class Game {
     const prevTeam = prevOwner ? this.teams.get(prevOwner) : null;
     this.setOwner(pv.plate, team.plate, army ? { x: army.x, z: army.z } : null);
     pv.garrison = Math.max(1, garrison);
+    pv.capturedAt = this.time;
+    // Taken by one viewer's gift army: their name stays on the province for a while.
+    if (army && army.giver) this.view.plates.setConqueror(pv.plate, army.giver.nick, army.giver.badge, this.cfg.engage?.conquerorSec ?? 20);
+    else this.view.plates.setConqueror(pv.plate, null);
     const capital = prevOwner && pv.plate === prevOwner;
+    if (capital) {
+      const dc = this.cfg.visual.director || {};
+      this.view.director?.force(pv.wx, pv.wz, dc.capitalZoom ?? 1.6, 4, 3);
+    }
     const bigOne = capital || (army && (army.big || army.troops > 150)) || (army && army.kind === 'rebel');
     this.view.effects.capture(pv.wx, TILE_H, pv.wz, team.colorHex, bigOne);
     this.view.plates.pulse(pv.plate);
@@ -971,7 +1183,7 @@ export class Game {
     this.view.director?.note(pv.wx, pv.wz, 22 + (capital ? 45 : 0) + (army ? Math.min(40, army.troops / 8) : 0));
     const name = pv.p.name;
     // Big centre-screen callout for the captures that matter (rate limited in the HUD).
-    if (bigOne || this.time - this.lastCaptureCall > (this.cfg.hud.captureCalloutGapSec ?? 6)) {
+    if (capital || this.time - this.lastCaptureCall > (this.cfg.hud.captureCalloutGapSec ?? 6)) {
       this.lastCaptureCall = this.time;
       const title = army && army.kind === 'rebel' ? `${name.toLocaleUpperCase('tr')} ÖZGÜR!` : `${name.toLocaleUpperCase('tr')} DÜŞTÜ!`;
       const sub = army && army.kind === 'rebel' ? 'İsyan başarılı!' : capital ? `${team.name} başkenti aldı!` : `${team.name} fethetti`;
@@ -1068,6 +1280,7 @@ export class Game {
     r.phase = 'play';
     r.duration = this.cfgRoundSec();
     r.left = r.duration;
+    r.endsAtMs = Date.now() + r.duration * 1000;
     r.winner = null;
     r.lastTick = -1;
     r.battleMusic = false;
@@ -1082,9 +1295,9 @@ export class Game {
     this.view.tags?.clear();
     this.view.director?.reset();
     this.rivals.clear();
-    Object.assign(this.drama, { leader: 0, lastLeaderCall: this.time, lastRivalCall: this.time, said60: false, said30: false });
+    Object.assign(this.drama, { leader: 0, lastLeaderCall: this.time, lastRivalCall: this.time, said60: false, said30: false, finalShot: false });
     for (const pv of this.prov.values()) {
-      pv.owner = 0; pv.garrison = this.neutralGarrison(pv.p); pv.burnT = 0;
+      pv.owner = 0; pv.garrison = this.neutralGarrison(pv.p); pv.burnT = 0; pv.capturedAt = -1e9;
       this.view.map.setOwnerColor(pv.plate, NEUTRAL_HEX, !first, 0);
     }
     this.view.map.clearMarkers();
@@ -1102,8 +1315,9 @@ export class Game {
       });
       team.voters.clear();
     }
+    this.view.plates.clearExtras?.();
     for (const p of this.players.values()) {
-      p.coins = 0; p.likes = 0;
+      p.coins = 0; p.likes = 0; p.paradeArmy = null; p.lastChatTroop = -1e9;
       this.teams.get(p.team).memberCount++;
     }
     let woke = 0;
@@ -1140,16 +1354,25 @@ export class Game {
     if (!winner && standings.length) winner = standings[0];
     r.phase = 'end';
     r.endLeft = this.cfg.round.endScreenSec;
+    r.endAtMs = Date.now() + r.endLeft * 1000;
     r.winner = winner;
     for (const a of this.armies) if (a.state !== 'done') a.state = 'done';
     for (const s of this.sieges) s.done = true;
     this.projectiles.length = 0;
     const gifters = this.topGifters(3);
+    if (winner) {
+      this.session.wins[winner.plate] = (this.session.wins[winner.plate] || 0) + 1;
+      this.saveSession();
+    }
+    const members = winner ? [...this.players.values()].filter((p) => p.team === winner.plate)
+      .sort((a, b) => (b.coins - a.coins) || (b.likes - a.likes)).slice(0, 80).map((p) => ({ nick: p.nick, badge: p.badge || null })) : [];
     this.view.hud.showEnd({
       round: r.n,
       winner: winner ? { name: winner.name, plate: winner.plate, code: this.codeOf(winner.plate), colorHex: winner.colorHex, provinces: winner.provinces, commander: winner.commander } : null,
       top: standings.slice(0, 5).map((t) => ({ name: t.name, plate: t.plate, code: this.codeOf(t.plate), colorHex: t.colorHex, provinces: t.provinces, members: t.memberCount })),
       gifters,
+      likers: this.topLikers(3),
+      members,
       sec: this.cfg.round.endScreenSec,
     });
     this.view.audio.playMusic('music_victory');
@@ -1182,6 +1405,37 @@ export class Game {
       .sort((a, b) => b.provinces - a.provinces || b.garrisonSum - a.garrisonSum || b.memberCount - a.memberCount || a.plate - b.plate);
   }
 
+  topLikers(n) {
+    return [...this.players.values()].filter((p) => p.likes > 0).sort((a, b) => b.likes - a.likes).slice(0, n)
+      .map((p) => ({ nick: p.nick, badge: p.badge || null, avatar: p.avatar, likes: p.likes, code: this.codeOf(p.team), team: this.teams.get(p.team).name, colorHex: this.teams.get(p.team).colorHex }));
+  }
+
+  // ---------- session scoreboard (rounds won per city, survives reloads) ----------
+
+  loadSession() {
+    let wins = {};
+    try {
+      const raw = localStorage.getItem(this.cfg.round.sessionStorageKey || 'fetih.session.v1');
+      const d = raw ? JSON.parse(raw) : null;
+      if (d && typeof d.wins === 'object') for (const [k, v] of Object.entries(d.wins)) if (this.prov.has(+k) && v > 0) wins[+k] = Math.floor(v);
+    } catch { wins = {}; }
+    return { wins };
+  }
+
+  saveSession() {
+    try { localStorage.setItem(this.cfg.round.sessionStorageKey || 'fetih.session.v1', JSON.stringify(this.session)); } catch { /* storage blocked */ }
+  }
+
+  resetSession() {
+    this.session = { wins: {} };
+    this.saveSession();
+  }
+
+  sessionBoard() {
+    return Object.entries(this.session.wins).sort((a, b) => b[1] - a[1]).slice(0, 4)
+      .map(([k, v]) => ({ name: this.nameOf(+k), wins: v, colorHex: this.teams.get(+k).colorHex }));
+  }
+
   topGifters(n) {
     const top = [];
     for (const p of this.players.values()) {
@@ -1207,6 +1461,8 @@ export class Game {
     return {
       round: this.round.n, left: this.round.left, phase: this.round.phase, top,
       gifters: this.topGifters(this.cfg.hud.topGifters),
+      likers: this.topLikers(this.cfg.hud.topLikers ?? 2),
+      session: this.sessionBoard(),
       players: this.players.size, teams: standings.length, pending: this.pending.size,
     };
   }

@@ -94,8 +94,8 @@ async function main() {
   const view = {
     map, effects, plates, hud, audio, camera: rig, director, arrows, tags, commanders,
     roundOverride: urlOpts.roundSec,
-    floater(pv, text, colorHex, big = false) {
-      floaters.spawn(new THREE.Vector3(pv.wx, TILE_H + 8, pv.wz), text, hexCss(colorHex), rig.camera, W, H, big);
+    floater(pv, text, colorHex, big = false, size = '') {
+      floaters.spawn(new THREE.Vector3(pv.wx, TILE_H + 8, pv.wz), text, hexCss(colorHex), rig.camera, W, H, big, size);
     },
   };
   const game = new Game({ provinces, aliases, colors, config, view });
@@ -121,8 +121,10 @@ async function main() {
     hud.setConnected(false);
     const bridge = new BridgeClient((msg) => game.handleEvent(msg), (ok) => hud.setConnected(ok));
     net = bridge;
-    // No bridge reachable on first load: fall back to the demo.
-    setTimeout(() => { if (!bridge.connected && !bridge.received && !demo) startDemo(); }, 4000);
+    // On localhost the bridge is the real source: never fall back to fake viewers, keep
+    // reconnecting and show a small waiting state (demo only with ?demo=1). Remote hosts
+    // without ?demo=0 already start in demo mode above.
+    setTimeout(() => { if (!bridge.connected && !bridge.received && !demo) hud.setStatus({ mode: '', connected: false, error: 'Köprü bekleniyor…' }); }, 4000);
   }
 
   function resize() {
@@ -130,8 +132,8 @@ async function main() {
     H = Math.max(1, Math.round(window.visualViewport?.height || window.innerHeight));
     renderer.setSize(W, H, false);
     band = hud.applyLayout(W, H, urlOpts.layout);
-    rig.fit(W, H, band);
-    plates.layout(rig.camera, W, H, config.visual.labelSizePx * band.u);
+    rig.fit(W, H, band.fit || band);
+    plates.layout(rig.camera, W, H, config.visual.labelSizePx * band.u, band);
     // Map overlays (plates, tags, counters) stay inside the map band.
     // (a clipped box with offset layers is much cheaper to composite than clip-path).
     Object.assign(overlay.style, { left: `${band.x}px`, top: `${band.y}px`, width: `${band.w}px`, height: `${band.h}px` });
@@ -170,6 +172,7 @@ async function main() {
     else if (k === 'n') hud.feed(audio.toggleMute() ? 'Ses kapalı' : 'Ses açık', 0xffd166, 'hourglass', true);
     else if (k === 'd') { debug = !debug; hud.toggleDebug(debug); }
     else if (k === 'c') director.enabled = !director.enabled;
+    else if (k === 'x') { game.resetSession(); hud.feed('Oturum skor tablosu sıfırlandı', 0xffd166, 'trophy', true); }
   });
 
   document.getElementById('loading').remove();
@@ -237,7 +240,7 @@ async function main() {
           `parçacık ${effects.count}  oyuncu ${game.players.size}  bekleyen ${game.pending.size}`,
           `takım ${[...game.teams.values()].filter((t) => t.awake).length}  olay/sn ${evRate}  ws ${net.connected ? 'bağlı' : 'kopuk'}`,
           `bellek ${mem}  geo ${info.memory.geometries}  tex ${info.memory.textures}`,
-          'R: yeni tur  E: bitir  M: müzik  N: ses  D: debug  C: kamera',
+          'R: yeni tur  E: bitir  M: müzik  N: ses  D: debug  C: kamera  X: skor sıfırla',
         ].join('\n'));
         worstMs = 0;
       }

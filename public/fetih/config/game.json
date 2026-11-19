@@ -1,8 +1,11 @@
 {
   "_note": "All gameplay and presentation numbers. Edit and reload the page (F5) to apply. Coins = TikTok coin value of a gift.",
   "round": {
-    "durationSec": 600,
+    "durationSec": 240,
     "endScreenSec": 20,
+    "finaleSec": 30,
+    "finaleMult": 2,
+    "sessionStorageKey": "fetih.session.v1",
     "earlyWinShare": 0.55,
     "keepTeamsBetweenRounds": true,
     "forgetIdlePlayersMin": 45
@@ -20,11 +23,25 @@
   },
   "troops": {
     "perCoin": 5,
-    "followBonus": 10,
-    "shareBonus": 15,
+    "followBonus": 20,
+    "shareBonus": 30,
     "passivePerTeamPerSec": 0.4,
     "passivePerProvincePerSec": 0.12,
     "passiveRebelShare": 0.5
+  },
+  "engage": {
+    "_note": "Zero-effort actions. Bare plate/city message joins. Any member chat = chatTroops (once per chatCooldownSec per viewer). Comeback: a team with no province, or at most comebackShare of the leader's provinces (leader >= comebackMinLead), gets likes and chat x comebackMult. 1-coin gifts march as a named soldier (paradeMax at once).",
+    "bareJoin": true,
+    "chatTroops": 1,
+    "chatCooldownSec": 4,
+    "comebackMult": 2,
+    "comebackShare": 0.2,
+    "comebackMinLead": 8,
+    "paradeMax": 24,
+    "paradeDistance": 26,
+    "conquerorSec": 20,
+    "imperativeSec": 6,
+    "fewPlayers": 6
   },
   "gifts": {
     "_note": "Tiers by the coin value of ONE gift (highest matching minCoins wins). Troops = total coins * troops.perCoin * troopBonus.",
@@ -116,7 +133,7 @@
         "legend": "4 cepheye saldırı"
       }
     ],
-    "mergeSameUserArmySec": 2
+    "mergeSameUserArmySec": 4
   },
   "morale": {
     "perLike": 1,
@@ -128,27 +145,31 @@
     "attackIntervalMult": 0.5
   },
   "war": {
-    "attackIntervalSec": 5,
-    "attackJitterSec": 2,
+    "_note": "Pace: attackIntervalSec per team, captureShieldSec = a fresh capture is hard to retake (freshDefenseMult) and the AI leaves it alone, so a province changes hands at most about every 20-30 s.",
+    "attackIntervalSec": 13,
+    "attackJitterSec": 6,
+    "firstAttackDelaySec": 6,
+    "captureShieldSec": 24,
+    "freshDefenseMult": 3,
     "minArmy": 8,
     "sendFraction": 0.65,
     "keepAtHome": 5,
     "attackIfRatio": 0.6,
     "defenderBonus": 1.2,
     "capitalBonus": 1.5,
-    "battleSec": 1.4,
+    "battleSec": 3.2,
     "voteWindowSec": 40,
-    "rebalanceIntervalSec": 7,
+    "rebalanceIntervalSec": 14,
     "rebalanceMin": 25,
     "rebalanceFraction": 0.6,
-    "rebellionIntervalSec": 3,
+    "rebellionIntervalSec": 8,
     "rebellionMin": 5,
     "speed": {
-      "infantry": 20,
-      "knight": 26,
-      "cavalry": 36,
-      "mixed": 26,
-      "ship": 42
+      "infantry": 10,
+      "knight": 13,
+      "cavalry": 17,
+      "mixed": 13,
+      "ship": 22
     },
     "power": {
       "infantry": 1,
@@ -171,22 +192,34 @@
     "cameraAttention": true,
     "decorations": true,
     "showGarrisonOnPlates": true,
-    "labelSizePx": 30,
+    "labelSizePx": 22,
     "unitZoomShrink": 0.4,
     "unitTallness": 1.25,
     "mapStretch": 1.42,
     "fxScale": 1.6,
     "maxArrows": 40,
     "director": {
-      "overviewSec": 6,
+      "_note": "Overview is the default. Zooms only for top-two-tier gifts, a capital falling and the last seconds. minGapSec = overview time between zooms; easeSec = slow move in/out.",
+      "minGapSec": 28,
+      "easeSec": 2.4,
       "holdSec": 4.5,
-      "zoom": 2.4,
-      "maxZoom": 3,
-      "minHeat": 30,
+      "maxHoldSec": 6,
+      "zoom": 1.6,
+      "maxZoom": 1.8,
+      "bypassGapPrio": 9,
+      "capitalZoom": 1.6,
+      "finalSecondsZoom": 1.5,
+      "finalSecondsAt": 14,
+      "autoHeatShots": false,
+      "minHeat": 120,
       "clusterRadius": 90,
-      "heatHalfLifeSec": 4,
-      "idleShotSec": 16
+      "heatHalfLifeSec": 4
     },
+    "fitWidth": 0.9,
+    "shakeScale": 0.35,
+    "plateTroops": "owned",
+    "plateSmallArea": 1500,
+    "plateSmallScale": 0.8,
     "castleZoomShrink": 0.5,
     "fxZoomShrink": 0.85
   },
@@ -197,15 +230,34 @@
     "maxVoices": 24
   },
   "hud": {
+    "_note": "Rate limits: feedMinGapSec between feed lines (queued, feedQueueMax kept), calloutMinGapSec between big centre callouts; credit*Sec = how long a gift credit stays.",
     "feedLines": 5,
+    "feedMinGapSec": 1.4,
+    "feedQueueMax": 4,
     "topCities": 5,
     "topGifters": 3,
-    "floaterMax": 40,
-    "maxTags": 8,
-    "joinTagGapSec": 0.9,
-    "captureCalloutGapSec": 6,
-    "rivalryEverySec": 35,
-    "rivalryMinHeat": 120,
-    "maxTagsOverview": 4
+    "topLikers": 2,
+    "giftStrip": [
+      { "name": "Rose", "coins": 1, "effect": "Asker", "icon": "icon_knight" },
+      { "name": "Hand Hearts", "coins": 100, "effect": "Top ateşi", "icon": "icon_fire" },
+      { "name": "Galaxy", "coins": 1000, "effect": "Büyük ordu", "icon": "icon_sword" },
+      { "name": "Unicorn Fantasy", "coins": 5000, "effect": "Sultan ordusu", "icon": "icon_crown" }
+    ],
+    "floaterMax": 24,
+    "maxTags": 6,
+    "joinTagGapSec": 1.6,
+    "captureCalloutGapSec": 15,
+    "calloutMinGapSec": 4,
+    "calloutQueueMax": 2,
+    "rivalryEverySec": 60,
+    "rivalryMinHeat": 160,
+    "maxTagsOverview": 3,
+    "creditSec": [3.4, 4, 4.8, 6, 7],
+    "creditGapSec": 0.25,
+    "creditQueueMax": 6,
+    "creditMergeSec": 6,
+    "highlightSec": 3,
+    "commanderBadges": 3,
+    "commanderNames": 5
   }
 }

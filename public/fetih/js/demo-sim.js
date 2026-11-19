@@ -1,7 +1,8 @@
 // In-browser audience simulator for demo mode (static hosting, no bridge).
 // Ported from server/simulator.js + server/data.js: emits the same event objects
-// as the bridge WebSocket (chat with "<plate> <emoji>" joins incl. KKTC and bare-plate
-// retries, like, gift with long-tail tiers and streaks, follow, share, join, status).
+// as the bridge WebSocket (chat with bare "<plate>" / "<city>" joins and "<plate> <emoji>"
+// joins incl. KKTC, member chatter and emoji-only badge messages, per-viewer likes, gifts
+// with long-tail tiers and streaks, follow, share, join, status).
 // Avatars are left empty (the HUD draws coloured initials); emotes are inline SVG data URLs.
 
 export const DEMO_PRESETS = { low: 20, medium: 100, high: 400, chaos: 1500 };
@@ -81,7 +82,7 @@ const COMMAND_TEMPLATES = ['saldır {target}', 'saldir {target}', 'SALDIR {targe
 
 const TICK_MS = 200;
 const MEAN_STAY_S = 240;
-const RATE = { chat: 1 / 45, like: 1 / 25, gift: 1 / 150, follow: 1 / 900, share: 1 / 1500 };
+const RATE = { chat: 1 / 25, like: 1 / 20, gift: 1 / 150, follow: 1 / 900, share: 1 / 1500 };
 
 const rnd = Math.random;
 const pick = (a) => a[Math.floor(rnd() * a.length)];
@@ -119,8 +120,10 @@ const typeTarget = (r) => (r === 'kktc' ? 'kktc' : rnd() < 0.85 ? typePlate(r) :
 const regionName = (r) => (r === 'kktc' ? 'KKTC' : PROVINCES[r - 1]);
 function joinText(v) {
   const base = typeRegion(v.plate); const r = rnd();
-  if (r < 0.86) return `${base} ${v.emoji}`;
-  if (r < 0.93) return `${base} ${v.emoji}${rnd() < 0.5 ? v.emoji : pick(EMOJIS)}`;
+  // Most viewers just type the plate or city (bare join, no badge).
+  if (r < 0.5) return base;
+  if (r < 0.88) return `${base} ${v.emoji}`;
+  if (r < 0.94) return `${base} ${v.emoji}${rnd() < 0.5 ? v.emoji : pick(EMOJIS)}`;
   return `${base}${v.emoji}`;
 }
 
@@ -232,9 +235,10 @@ export class DemoSim {
   _chat(v) {
     const r = rnd();
     if (!v.joined) { this._firstMessage(v); return; }
-    if (r < 0.12) { if (rnd() < 0.15) v.plate = randomRegion(); this._join(v); return; }
+    if (r < 0.08) { this._join(v); return; } // "34 🔥" again (badge)
+    if (r < 0.14) { this._emit('chat', v, { text: v.emoji }); return; } // emoji-only: sets the badge
     let text;
-    if (r < 0.4) {
+    if (r < 0.24) {
       let t = randomRegion(0.04); if (t === v.plate) t = randomRegion(0.04);
       text = pick(COMMAND_TEMPLATES).replace('{target}', typeTarget(t));
     } else if (r < 0.55) {

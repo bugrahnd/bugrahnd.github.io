@@ -69,12 +69,16 @@ const BANDS = {
   landscape: { x: 450, y: 100, w: 1020, h: 840 },
 };
 
+// Design units at the top of the map band reserved for the leader spot + gift credit
+// (the map is fitted below it). Keep in sync with .leader-card / .credit in hud.css.
+const MAP_TOP_INSET = 206;
+
 const CTA_LINES = [
-  ['34 🔥', 'yaz → İstanbul ordusuna katıl'],
-  ['ankara 🦅', 'şehir adı da olur'],
-  ['❤️ beğen', '→ moral dolar, HÜCUM!'],
-  ['🎁 hediye', '→ asker, top, büyük ordu'],
-  ['saldır 06', '→ hedefi sen seç'],
+  ['34', 'yaz → İstanbul ordusuna katıl'],
+  ['ankara', 'şehir adı da olur'],
+  ['❤️ ekrana bas', '→ moral dolar, HÜCUM!'],
+  ['💬 her mesaj', '→ +1 asker'],
+  ['🎁 hediye', '→ adınla asker yürür'],
 ];
 
 export class Hud {
@@ -86,7 +90,13 @@ export class Hud {
     this.layout = null;
     this._build();
     this.feedLines = [];
-    this.feedBudget = 2;
+    this.feedQueue = [];
+    this.lastFeedAt = -1e9;
+    this.lastCalloutEnd = -1e9;
+    this.creditQueue = [];
+    this.crediting = null;
+    this.lastCreditEnd = -1e9;
+    this.leaderKey = '';
     this.nudges = new Map(); // name -> { el, until, avatar }
     this.nudgeCooldown = new Map();
     this.announceQueue = [];
@@ -106,6 +116,34 @@ export class Hud {
     // Map band frame (top/bottom gold rules) and full-band flash.
     this.bandEl = el('div', 'band', r);
     this.flashEl = el('div', 'flash', this.bandEl);
+
+    // Round leader (top gifter): permanent spot at the top of the map band, and the
+    // personal gift credit strip right below it (upper-middle of the frame, clear of
+    // TikTok's own top bar and bottom-left chat).
+    const lead = el('div', 'leader-card empty', r);
+    this.lead = { root: lead };
+    this.lead.glow = el('div', 'leader-glow', lead);
+    const lav = el('div', 'leader-av', lead);
+    iconEl(a, 'icon_crown', lav, 'leader-crown');
+    this.lead.av = makeAvatar(lav, 'leader');
+    const lt = el('div', 'leader-text', lead);
+    const ll = el('div', 'leader-label', lt);
+    this.lead.label = el('span', '', ll, 'TURUN LİDERİ');
+    this.lead.newTag = el('span', 'leader-new', ll, 'YENİ LİDER!');
+    this.lead.nick = el('div', 'leader-nick', lt, 'İlk hediyeyi gönder, lider sen ol!');
+    this.lead.sub = el('div', 'leader-sub', lt, '');
+    const lc = el('div', 'leader-total', lead);
+    this.lead.coins = el('div', 'leader-coins', lc, '');
+    el('div', 'leader-coins-l', lc, 'jeton');
+
+    const cr = el('div', 'credit', r);
+    cr.style.display = 'none';
+    this.cred = { root: cr };
+    this.cred.av = makeAvatar(cr, 'credit-av');
+    const ct = el('div', 'credit-text', cr);
+    this.cred.nick = el('div', 'credit-nick', ct);
+    this.cred.msg = el('div', 'credit-msg', ct);
+    this.cred.troops = el('div', 'credit-troops', cr);
 
     // Top bar
     const top = el('div', 'topbar panel-dark', r);
@@ -172,27 +210,56 @@ export class Hud {
       this.gifterRows.push({ row, av, nick, sub, coins });
     }
     this.gifterEmpty = el('div', 'board-empty', glist, 'İlk hediyeyi sen gönder!');
+    // Top likers: recognition for viewers who only tap.
+    const lh = el('div', 'panel-title likers-title', gift);
+    iconEl(a, 'icon_heart', lh);
+    el('span', '', lh, 'EN ÇOK BEĞENENLER');
+    this.likerRows = [];
+    const llist = el('div', 'liker-list', gift);
+    for (let i = 0; i < (this.cfg.hud.topLikers ?? 2); i++) {
+      const row = el('div', 'liker-row', llist);
+      const nick = el('span', 'liker-nick', row);
+      const n = el('span', 'liker-n', row);
+      this.likerRows.push({ row, nick, n });
+    }
+    this.likerEmpty = el('div', 'liker-empty', llist, 'Ekrana bas, adın burada çıksın!');
+
+    // Big situation-driven instruction (middle-upper part of the frame).
+    this.impEl = el('div', 'imperative', r);
+    this.impEl.style.display = 'none';
+    this.impText = el('span', 'imp-text', this.impEl);
+    // Finale "2 KAT" badge with its own countdown.
+    this.finEl = el('div', 'finale', r);
+    this.finEl.style.display = 'none';
+    // Session scoreboard (rounds won per city).
+    this.sessEl = el('div', 'session', r);
+    this.sessEl.style.display = 'none';
 
     // Call to action
     const cta = el('div', 'cta', r);
     const ctaMain = el('div', 'cta-main', cta);
-    el('span', 'cta-a', ctaMain, 'PLAKANI + EMOJİ YAZ:');
-    el('span', 'cta-chip', ctaMain, '34 🔥');
-    el('div', 'cta-sub2', cta, 'ŞEHRİNİ SAVUN, TÜRKİYE\'Yİ FETHET!');
+    el('span', 'cta-a', ctaMain, 'PLAKANI YAZ:');
+    el('span', 'cta-chip', ctaMain, '34');
+    el('div', 'cta-sub2', cta, 'İstersen emoji ekle, rozetin olur: 34 🔥');
     const ctaLine = el('div', 'cta-line', cta);
     this.ctaChip = el('span', 'cta-chip small', ctaLine, CTA_LINES[0][0]);
     this.ctaText = el('span', 'cta-text', ctaLine, CTA_LINES[0][1]);
     this.ctaLine = ctaLine;
 
-    // Gift legend: what each tier does, in two or three words.
+    // Gift strip: four gifts by name, coin value and a two-word effect (hud.giftStrip in
+    // the config; the game's own icons, not TikTok artwork). Other gifts work by coin value.
     const tiers = el('div', 'tiers panel-dark', r);
-    for (const t of this.cfg.gifts.tiers) {
-      const s = el('div', 'tier tier-' + t.id, tiers);
+    const strip = this.cfg.hud.giftStrip || this.cfg.gifts.tiers.map((t) => ({ name: t.label, coins: t.minCoins, effect: t.legend }));
+    strip.slice(0, 4).forEach((g, i) => {
+      const s = el('div', `tier gs${i}`, tiers);
+      const top = el('span', 'tier-name', s);
+      iconEl(a, g.icon || 'icon_gem', top, 'icon tiny');
+      el('span', '', top, String(g.name || ''));
       const c = el('span', 'tier-coins', s);
       iconEl(a, 'icon_coin', c, 'icon tiny');
-      el('span', '', c, `${fmt(t.minCoins)}`);
-      el('span', 'tier-label', s, t.legend || t.label);
-    }
+      el('span', '', c, fmt(Number(g.coins) || 0));
+      el('span', 'tier-label', s, String(g.effect || ''));
+    });
 
     // Feed
     this.feedEl = el('div', 'feed', r);
@@ -238,15 +305,26 @@ export class Hud {
     el('div', 'end-label', wt, 'KAZANAN');
     this.end.winName = el('div', 'end-win-name', wt);
     this.end.winSub = el('div', 'end-win-sub', wt);
+    // Komutan in huge type.
+    const cmd = el('div', 'end-cmd', ec);
+    this.end.cmdAv = makeAvatar(cmd, 'big end-cmd-av');
+    const cmdT = el('div', 'end-cmd-text', cmd);
+    el('div', 'end-label', cmdT, '👑 KOMUTAN');
+    this.end.cmdName = el('div', 'end-cmd-name', cmdT);
+    this.end.cmdEl = cmd;
+    // The winning city's members, scrolling.
+    this.end.membersBox = el('div', 'end-members', ec);
+    this.end.members = el('div', 'end-members-track', this.end.membersBox);
     const cols = el('div', 'end-cols', ec);
     const c1 = el('div', 'end-col', cols);
-    el('div', 'end-col-title', c1, 'İLK 5 ŞEHİR');
-    this.end.cities = el('ol', 'end-cities', c1);
+    el('div', 'end-col-title', c1, 'EN CÖMERTLER');
+    this.end.gifters = el('div', 'end-gifters', c1);
     const c2 = el('div', 'end-col', cols);
-    el('div', 'end-col-title', c2, 'EN CÖMERT 3');
-    this.end.gifters = el('div', 'end-gifters', c2);
+    el('div', 'end-col-title', c2, 'EN ÇOK BEĞENENLER');
+    this.end.likers = el('div', 'end-gifters', c2);
+    this.end.cities = document.createElement('ol'); // kept for data, not shown
     this.end.countdown = el('div', 'end-countdown', ec);
-    el('div', 'end-cta', ec, 'Yeni turda katıl: plakanı + emoji yaz (ör. 34 🔥)');
+    el('div', 'end-cta', ec, 'Yeni turda katıl: plakanı yaz (ör. 34)');
 
     // Audio unlock
     this.audioBtn = el('button', 'audio-unlock', r, 'Sesi açmak için tıkla');
@@ -292,6 +370,9 @@ export class Hud {
     this.bandEl.style.top = `${rect.y - oy}px`;
     this.bandEl.style.width = `${rect.w}px`;
     this.bandEl.style.height = `${rect.h}px`;
+    // The map itself is fitted below the leader spot and credit strip.
+    const inset = MAP_TOP_INSET * u;
+    rect.fit = { x: rect.x, y: rect.y + inset, w: rect.w, h: Math.max(rect.h * 0.5, rect.h - inset) };
     return rect;
   }
 
@@ -371,6 +452,39 @@ export class Hud {
     for (let i = sum.gifters.length; i < this.gifterRows.length; i++) this.gifterRows[i].row.style.display = 'none';
     this.gifterEmpty.style.display = sum.gifters.length ? 'none' : '';
 
+    // Likers
+    const likers = sum.likers || [];
+    this.likerRows.forEach((r, i) => {
+      const l = likers[i];
+      r.row.style.display = l ? '' : 'none';
+      if (!l) return;
+      setName(r.nick, l.nick, l.badge);
+      r.nick.style.color = hexCss(l.colorHex);
+      r.n.textContent = `❤ ${fmt(l.likes)}`;
+    });
+    this.likerEmpty.style.display = likers.length ? 'none' : '';
+
+    // Session scoreboard
+    const ss = sum.session || [];
+    const sk = ss.map((s) => `${s.name}:${s.wins}`).join('|');
+    if (sk !== this._sessK) {
+      this._sessK = sk;
+      this.sessEl.replaceChildren();
+      this.sessEl.style.display = ss.length ? '' : 'none';
+      if (ss.length) {
+        iconEl(this.assets, 'icon_trophy', this.sessEl, 'icon tiny');
+        ss.forEach((s, i) => {
+          if (i) el('span', 'sess-dot', this.sessEl, '·');
+          const e = el('span', 'sess-city', this.sessEl, `${s.name} ${s.wins}`);
+          e.style.color = hexCss(s.colorHex);
+        });
+      }
+    }
+
+    // The instruction line never stacks with big callouts / announcements / countdown.
+    const busy = !!this.callouting || !!this.announcing || this.countEl.style.display !== 'none';
+    if (busy !== this._impHidden) { this._impHidden = busy; this.impEl.classList.toggle('hidden', busy); }
+
     // CTA example line cycles (unless a personal hint is showing).
     this.ctaT += dt;
     if (this.timeNow > this.hintUntil && this.ctaT > 3.2) {
@@ -382,8 +496,10 @@ export class Hud {
       this.ctaLine.animate([{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'none' }], { duration: 300 });
     }
 
-    // Feed budget refill (low-priority lines are rate limited).
-    this.feedBudget = Math.min(3, this.feedBudget + dt * 1.5);
+    this._pumpFeed();
+    this._pumpCallout();
+    this._pumpCredit();
+    this._updateLeader(sum.gifters[0] || null);
 
     // Expire nudges.
     for (const [name, n] of this.nudges) if (this.timeNow > n.until) this.dismissNudge(name);
@@ -400,11 +516,29 @@ export class Hud {
     this.ctaLine.animate([{ transform: 'scale(0.8)' }, { transform: 'scale(1.06)', offset: 0.5 }, { transform: 'scale(1)' }], { duration: 400 });
   }
 
+  /** Feed lines are queued and released one per hud.feedMinGapSec; overflow drops the least important. */
   feed(text, colorHex = 0xffffff, icon = 'sword', important = false) {
-    if (!important) {
-      if (this.feedBudget < 1) return;
-      this.feedBudget -= 1;
+    const q = this.feedQueue;
+    const max = this.cfg.hud.feedQueueMax ?? 4;
+    if (q.length >= max) {
+      const i = q.findIndex((x) => !x.important);
+      if (i >= 0) q.splice(i, 1);
+      else if (!important) return;
+      else q.shift();
     }
+    q.push({ text, colorHex, icon, important });
+    this._pumpFeed();
+  }
+
+  _pumpFeed() {
+    const gap = this.cfg.hud.feedMinGapSec ?? 1.2;
+    if (!this.feedQueue.length || this.timeNow - this.lastFeedAt < gap) return;
+    this.lastFeedAt = this.timeNow;
+    const o = this.feedQueue.shift();
+    this._feedNow(o.text, o.colorHex, o.icon, o.important);
+  }
+
+  _feedNow(text, colorHex, icon, important) {
     const line = el('div', 'feed-line' + (important ? ' important' : ''));
     line.style.setProperty('--c', hexCss(colorHex));
     const ic = FEED_ICONS[icon];
@@ -484,21 +618,33 @@ export class Hud {
       // Big gift announcements own the centre; only urgent callouts wait.
       if ((o.prio || 0) < 3) return;
     }
-    if (this.callouting) {
-      if ((o.prio || 0) > (this.callouting.prio || 0) + 1) { this._calloutAnim?.cancel(); this._showCallout(o); return; }
-      if (this.calloutQueue.length >= 2) {
-        const low = this.calloutQueue.reduce((m, x, i, arr) => ((x.prio || 0) < (arr[m].prio || 0) ? i : m), 0);
-        if ((this.calloutQueue[low].prio || 0) >= (o.prio || 0)) return;
-        this.calloutQueue.splice(low, 1);
-      }
-      this.calloutQueue.push(o);
-      return;
+    // Only the last-seconds alarms may cut in; everything else waits its turn.
+    if (this.callouting && (o.prio || 0) >= 4 && (this.callouting.prio || 0) < 4) { this._calloutAnim?.cancel(); this._showCallout(o); return; }
+    const gapOk = this.timeNow - this.lastCalloutEnd >= (this.cfg.hud.calloutMinGapSec ?? 4);
+    if (!this.callouting && gapOk && !this.calloutQueue.length) { this._showCallout(o); return; }
+    o.queuedAt = this.timeNow;
+    if (this.calloutQueue.length >= (this.cfg.hud.calloutQueueMax ?? 2)) {
+      const low = this.calloutQueue.reduce((m, x, i, arr) => ((x.prio || 0) < (arr[m].prio || 0) ? i : m), 0);
+      if ((this.calloutQueue[low].prio || 0) >= (o.prio || 0)) return;
+      this.calloutQueue.splice(low, 1);
     }
-    this._showCallout(o);
+    this.calloutQueue.push(o);
+    this.calloutQueue.sort((a, b) => (b.prio || 0) - (a.prio || 0));
+  }
+
+  _pumpCallout() {
+    if (this.callouting || this.announcing || !this.calloutQueue.length) return;
+    if (this.timeNow - this.lastCalloutEnd < (this.cfg.hud.calloutMinGapSec ?? 4)) return;
+    // Stale news is dropped rather than shown late.
+    while (this.calloutQueue.length && this.timeNow - this.calloutQueue[0].queuedAt > 10 && (this.calloutQueue[0].prio || 0) < 3) this.calloutQueue.shift();
+    const next = this.calloutQueue.shift();
+    if (next) this._showCallout(next);
   }
 
   _showCallout(o) {
     this.callouting = o;
+    // The instruction line yields immediately (never stacks with a big callout).
+    this.impEl.classList.add('hidden'); this._impHidden = true;
     const C = this.calloutEl;
     C.style.display = '';
     C.className = `callout kind-${o.kind || 'info'}`;
@@ -524,9 +670,8 @@ export class Hud {
     anim.onfinish = () => {
       if (this.callouting !== o) return;
       this.callouting = null;
+      this.lastCalloutEnd = this.timeNow;
       C.style.display = 'none';
-      const next = this.calloutQueue.shift();
-      if (next) this._showCallout(next);
     };
     anim.oncancel = anim.onfinish;
   }
@@ -544,6 +689,7 @@ export class Hud {
 
   countdown(sec) {
     const c = this.countEl;
+    this.impEl.classList.add('hidden'); this._impHidden = true;
     c.style.display = '';
     c.textContent = String(sec);
     c.classList.toggle('last3', sec <= 3);
@@ -570,6 +716,7 @@ export class Hud {
     const o = this.announceQueue.shift();
     if (!o) { this.announcing = null; this.ann.root.style.display = 'none'; return; }
     this.announcing = o;
+    this.impEl.classList.add('hidden'); this._impHidden = true;
     const A = this.ann;
     A.root.style.display = '';
     A.root.className = 'announce ' + (o.tierId === 'sultan' ? 'sultan' : 'ordu');
@@ -590,7 +737,8 @@ export class Hud {
     const cardH = A.card.offsetHeight || 500 * u;
     const rootTop = A.root.offsetTop; const rootH = A.root.offsetHeight;
     const centreY = rootTop + rootH / 2;
-    const ribbonY = band.top * u + cardH * 0.5 * 0.5 + 8 * u;
+    // Ribbon sits below the leader spot and the gift credit strip.
+    const ribbonY = (band.top + MAP_TOP_INSET) * u + cardH * 0.5 * 0.5 + 8 * u;
     const dy = Math.round(ribbonY - centreY);
     const hold = o.tierId === 'sultan' ? 0.42 : 0.34;
     const small = `translateY(${dy}px) scale(0.5)`;
@@ -610,6 +758,157 @@ export class Hud {
     anim.onfinish = () => this._nextAnnounce();
   }
 
+  // ---------- instruction line / finale ----------
+
+  imperative(text, colorHex) {
+    const E = this.impEl;
+    E.style.display = '';
+    if (this.impText.textContent === text) return;
+    this.impText.textContent = text;
+    E.style.setProperty('--c', hexCss(colorHex));
+    E.animate([
+      { opacity: 0, transform: 'translateX(-50%) scale(0.7)' },
+      { opacity: 1, transform: 'translateX(-50%) scale(1.08)', offset: 0.6 },
+      { opacity: 1, transform: 'translateX(-50%) scale(1)' },
+    ], { duration: 380, easing: 'ease-out' });
+  }
+
+  /** left < 0 hides the finale badge. */
+  setFinale(left, mult) {
+    const F = this.finEl;
+    if (left < 0) { if (F.style.display !== 'none') F.style.display = 'none'; return; }
+    if (F.style.display === 'none') {
+      F.style.display = '';
+      F.animate([{ transform: 'scale(2)', opacity: 0 }, { transform: 'scale(1)', opacity: 1 }], { duration: 500, easing: 'ease-out' });
+    }
+    const t = `${mult} KAT! · ${Math.max(0, Math.ceil(left))}`;
+    if (F.textContent !== t) F.textContent = t;
+  }
+
+  // ---------- round leader ----------
+
+  /** g: top gifter summary ({ nick, badge, avatar, coins, code, team, colorHex }) or null. */
+  _updateLeader(g) {
+    const L = this.lead;
+    if (!g) {
+      if (this.leaderKey !== '') {
+        this.leaderKey = '';
+        L.root.classList.add('empty');
+        L.nick.textContent = 'İlk hediyeyi gönder, lider sen ol!';
+        L.sub.textContent = ''; L.coins.textContent = '';
+        L.av.set('', '?', 0xffd166);
+      }
+      return;
+    }
+    const who = `${g.nick}|${g.code}`;
+    const changed = who !== this.leaderKey;
+    L.root.classList.remove('empty');
+    L.root.style.setProperty('--c', hexCss(g.colorHex));
+    setName(L.nick, g.nick, g.badge);
+    L.av.set(g.avatar, g.nick, g.colorHex);
+    const sub = `${g.code} ${g.team}`;
+    if (L.sub.textContent !== sub) L.sub.textContent = sub;
+    const c = fmt(g.coins);
+    if (L.coins.textContent !== c) {
+      L.coins.textContent = c;
+      if (!changed) L.coins.animate([{ transform: 'scale(1.35)' }, { transform: 'scale(1)' }], { duration: 450, easing: 'ease-out' });
+    }
+    if (changed) {
+      const had = this.leaderKey !== '';
+      this.leaderKey = who;
+      // New leader: pop, glow and a "YENİ LİDER!" ribbon for a few seconds.
+      L.root.animate([
+        { transform: 'translateX(-50%) scale(0.7)', opacity: 0.4 },
+        { transform: 'translateX(-50%) scale(1.12)', opacity: 1, offset: 0.35 },
+        { transform: 'translateX(-50%) scale(1)', opacity: 1 },
+      ], { duration: 700, easing: 'ease-out' });
+      L.glow.animate([{ opacity: 1 }, { opacity: 0.8, offset: 0.7 }, { opacity: 0 }], { duration: 3200, easing: 'ease-out' });
+      if (had) {
+        L.root.classList.add('is-new');
+        clearTimeout(this._leadT);
+        this._leadT = setTimeout(() => L.root.classList.remove('is-new'), 4000);
+      }
+    }
+  }
+
+  // ---------- personal gift credits ----------
+
+  _creditSec(o) {
+    const list = this.cfg.hud.creditSec || [3.4, 4, 4.8, 6, 7];
+    const base = list[Math.min(list.length - 1, o.tierIndex || 0)];
+    // Under heavy traffic small credits get shorter, but never below 3 s.
+    return this.creditQueue.length > 2 && (o.tierIndex || 0) < 2 ? Math.max(3, base * 0.85) : base;
+  }
+
+  /** o: { key, nick, badge, avatar, colorHex, troops, coins, giftName, count, team, code, tierIndex } */
+  credit(o) {
+    const mergeSec = this.cfg.hud.creditMergeSec ?? 6;
+    const merge = (into) => {
+      into.troops += o.troops; into.coins += o.coins;
+      if (into.giftName === o.giftName) into.count += o.count; else { into.giftName = 'hediye'; into.count = 0; }
+      into.tierIndex = Math.max(into.tierIndex, o.tierIndex);
+      into.x2 = into.x2 || o.x2;
+    };
+    const cur = this.crediting;
+    if (cur && cur.key === o.key && this.timeNow - cur.shownAt < mergeSec + this._creditSec(cur)) {
+      merge(cur);
+      cur.until = Math.max(cur.until, this.timeNow + Math.min(3, this._creditSec(o)));
+      this._renderCredit(cur, true);
+      return;
+    }
+    const q = this.creditQueue.find((x) => x.key === o.key);
+    if (q) { merge(q); return; }
+    const item = { ...o, count: o.count || 1 };
+    const max = this.cfg.hud.creditQueueMax ?? 6;
+    if (this.creditQueue.length >= max) {
+      // Drop the smallest (oldest first) unless the new one is even smaller.
+      let low = 0;
+      this.creditQueue.forEach((x, i) => { if (x.tierIndex < this.creditQueue[low].tierIndex) low = i; });
+      if (this.creditQueue[low].tierIndex > item.tierIndex) return;
+      this.creditQueue.splice(low, 1);
+    }
+    // Bigger gifts jump ahead of small ones.
+    let at = this.creditQueue.length;
+    while (at > 0 && this.creditQueue[at - 1].tierIndex < item.tierIndex && item.tierIndex >= 2) at--;
+    this.creditQueue.splice(at, 0, item);
+    this._pumpCredit();
+  }
+
+  _pumpCredit() {
+    const C = this.cred;
+    const cur = this.crediting;
+    if (cur && this.timeNow >= cur.until) {
+      this.crediting = null;
+      this.lastCreditEnd = this.timeNow;
+      const anim = C.root.animate([{ opacity: 1, transform: 'translateX(-50%)' }, { opacity: 0, transform: 'translateX(-50%) translateY(-12px)' }], { duration: 220, fill: 'forwards' });
+      anim.onfinish = () => { if (!this.crediting) C.root.style.display = 'none'; anim.cancel(); };
+    }
+    if (this.crediting || !this.creditQueue.length) return;
+    if (this.timeNow - this.lastCreditEnd < (this.cfg.hud.creditGapSec ?? 0.25)) return;
+    const o = this.creditQueue.shift();
+    o.shownAt = this.timeNow;
+    o.until = this.timeNow + this._creditSec(o);
+    this.crediting = o;
+    C.root.style.display = '';
+    this._renderCredit(o, false);
+    C.root.animate([
+      { opacity: 0, transform: 'translateX(-50%) scale(0.8)' },
+      { opacity: 1, transform: 'translateX(-50%) scale(1.05)', offset: 0.6 },
+      { opacity: 1, transform: 'translateX(-50%) scale(1)' },
+    ], { duration: 360, easing: 'ease-out' });
+  }
+
+  _renderCredit(o, bump) {
+    const C = this.cred;
+    C.root.className = `credit tier${Math.min(4, o.tierIndex || 0)}`;
+    C.root.style.setProperty('--c', hexCss(o.colorHex));
+    C.av.set(o.avatar, o.nick, o.colorHex);
+    setName(C.nick, o.nick, o.badge);
+    C.msg.textContent = o.msg || `${o.giftName}${o.count > 1 ? ' ×' + o.count : ''} gönderdi · ${fmt(o.coins)} jeton`;
+    C.troops.textContent = `+${fmt(o.troops)} asker → ${o.team}${o.x2 ? ' (2 KAT!)' : ''}`;
+    if (bump) C.troops.animate([{ transform: 'scale(1.25)' }, { transform: 'scale(1)' }], { duration: 350, easing: 'ease-out' });
+  }
+
   // ---------- end screen ----------
 
   showEnd(d) {
@@ -617,19 +916,30 @@ export class Hud {
     E.root.style.display = '';
     E.title.textContent = `${d.round}. TUR BİTTİ`;
     if (d.winner) {
-      E.winName.textContent = `${d.winner.code} ${d.winner.name}`;
+      E.winName.textContent = d.winner.name.toLocaleUpperCase('tr');
       E.winName.style.color = hexCss(d.winner.colorHex);
-      E.winSub.replaceChildren();
-      E.winSub.append(`${d.winner.provinces} il fethetti`);
-      if (d.winner.commander) {
-        E.winSub.append(' · Komutan: ');
-        const s = el('span', '', E.winSub);
-        setNameBadge(s, d.winner.commander.nick, d.winner.commander.badge);
-      }
+      E.winSub.textContent = `${d.winner.code} · ${d.winner.provinces} il fethetti`;
     } else {
       E.winName.textContent = 'Kazanan yok';
       E.winName.style.color = '';
       E.winSub.textContent = 'Bu turda kimse katılmadı';
+    }
+    const c = d.winner && d.winner.commander;
+    E.cmdEl.style.display = c ? '' : 'none';
+    if (c) {
+      E.cmdAv.set(c.avatar, c.nick, d.winner.colorHex);
+      setNameBadge(E.cmdName, c.nick, c.badge);
+    }
+    // Members scroll past (duplicated once for a seamless loop when long).
+    const mem = d.members || [];
+    E.members.replaceChildren();
+    E.membersBox.style.display = mem.length ? '' : 'none';
+    const addNames = () => mem.forEach((m) => setNameBadge(el('span', 'end-member', E.members), m.nick, m.badge));
+    addNames();
+    E.members.getAnimations().forEach((x) => x.cancel());
+    if (mem.length > 6) {
+      addNames();
+      E.members.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(-50%)' }], { duration: Math.max(8000, mem.length * 900), iterations: Infinity });
     }
     E.cities.replaceChildren();
     for (const t of d.top) {
@@ -650,6 +960,20 @@ export class Hud {
       const sub = el('div', 'gifter-sub', info, `${fmt(g.coins)} jeton · ${g.team}`);
       sub.style.color = hexCss(g.colorHex);
     });
+    E.likers.replaceChildren();
+    const likers = d.likers || [];
+    if (!likers.length) el('div', 'board-empty', E.likers, 'Bu tur beğeni yok');
+    likers.forEach((g, i) => {
+      const row = el('div', 'end-gifter', E.likers);
+      el('div', 'medal m' + (i + 1), row, String(i + 1));
+      makeAvatar(row, 'mid').set(g.avatar, g.nick, g.colorHex);
+      const info = el('div', 'gifter-info', row);
+      setNameBadge(el('div', 'gifter-nick', info), g.nick, g.badge);
+      const sub = el('div', 'gifter-sub', info, `❤ ${fmt(g.likes)} · ${g.team}`);
+      sub.style.color = hexCss(g.colorHex);
+    });
+    this.impEl.style.display = 'none';
+    this.finEl.style.display = 'none';
     E.root.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 600 });
     this.calloutEl.style.display = 'none'; this.callouting = null; this.calloutQueue.length = 0;
     this.countEl.style.display = 'none';

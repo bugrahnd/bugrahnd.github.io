@@ -56,14 +56,20 @@ export class CameraRig {
       }
       return { minX, maxX, minY, maxY };
     };
+    const fitX = this.cfg.fitWidth ?? 0.9;
     let lo = 100; let hi = 20000;
     for (let i = 0; i < 40; i++) {
       const d = (lo + hi) / 2;
       const m = measure(d);
-      const ok = (m.maxX - m.minX) <= halfX * 2 * 0.985 && (m.maxY - m.minY) <= halfY * 2 * 0.985;
+      // Side margin keeps the east/west plates (Hakkari, Edirne) and KKTC inside the frame.
+      const ok = (m.maxX - m.minX) <= halfX * 2 * fitX && (m.maxY - m.minY) <= halfY * 2 * 0.95;
       if (ok) hi = d; else lo = d;
     }
     this.baseDist = hi;
+    // Far plane follows the fitted distance (narrow portrait screens sit far back).
+    cam.near = Math.max(1, hi * 0.02);
+    cam.far = hi * 1.6 + 2000;
+    cam.updateProjectionMatrix();
     const m = measure(hi);
     const midX = (m.minX + m.maxX) / 2; const midY = (m.minY + m.maxY) / 2;
     // Shift the principal point so the projected map lands in rect's centre.
@@ -78,21 +84,19 @@ export class CameraRig {
   }
 
   /** Push in on a world point, hold, and return to the overview. */
-  shot(point, zoom, dur) {
+  shot(point, zoom, dur, ease = 2) {
     const B = this.box;
+    // Slow, symmetric ease in/out (never longer than half the shot).
+    const e = Math.min(ease, dur / 2);
     // Keep the zoomed view mostly over the map.
     const fx = 1 - 1 / zoom;
     const hx = ((B.maxX - B.minX) / 2) * fx; const hz = ((B.maxZ - B.minZ) / 2) * fx;
     const p = new THREE.Vector3(
       clamp(point.x, this.center.x - hx, this.center.x + hx), 0,
       clamp(point.z, this.center.z - hz, this.center.z + hz));
-    const s = this.shotState;
-    if (s && s.k > 0.2) {
-      // Already zoomed: glide to the new point without going out first.
-      this.shotState = { from: this.target.clone(), fromZoom: this.zoom, to: p, zoom, t: 0, dur, inT: 0.8, outT: 1.1, k: s.k, glide: true };
-    } else {
-      this.shotState = { to: p, zoom, t: 0, dur, inT: 0.9, outT: 1.1, k: 0 };
-    }
+    // A shot already running is never replaced (no zoom-to-zoom cuts).
+    if (this.shotState) return;
+    this.shotState = { to: p, zoom, t: 0, dur, inT: e, outT: e, k: 0 };
   }
 
   /** Back-compat alias. */
@@ -102,7 +106,7 @@ export class CameraRig {
   get remaining() { return this.shotState ? this.shotState.dur - this.shotState.t : 0; }
 
   shake(amount) {
-    this.shakeAmp = Math.max(this.shakeAmp, amount);
+    this.shakeAmp = Math.max(this.shakeAmp, amount * (this.cfg.shakeScale ?? 1));
   }
 
   update(dt) {
@@ -115,16 +119,8 @@ export class CameraRig {
       else if (s.t < s.dur - s.outT) k = 1;
       else if (s.t < s.dur) k = 1 - easeInOutCubic((s.t - (s.dur - s.outT)) / s.outT);
       else { k = 0; this.shotState = null; }
-      if (s.glide && s.t < s.inT) {
-        const g = easeInOutCubic(s.t / s.inT);
-        this.target.copy(s.from).lerp(s.to, g);
-        const z = s.fromZoom + (s.zoom - s.fromZoom) * g;
-        this.dist = this.baseDist / z;
-      } else {
-        if (s.glide && s.t >= s.inT) s.glide = false;
-        this.target.copy(this.center).lerp(s.to, k);
-        this.dist = this.baseDist / (1 + (s.zoom - 1) * k);
-      }
+      this.target.copy(this.center).lerp(s.to, k);
+      this.dist = this.baseDist / (1 + (s.zoom - 1) * k);
       s.k = k;
       changed = true;
     } else if (this.target.distanceToSquared(this.center) > 1e-6 || Math.abs(this.dist - this.baseDist) > 1e-3) {

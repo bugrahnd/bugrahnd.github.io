@@ -41,6 +41,11 @@ export class PlateLabels {
       gar.className = 'gar';
       el.append(num);
       if (this.cfg.showGarrisonOnPlates) el.append(gar);
+      // Tiny provinces get a smaller plate so the map colour stays visible around it.
+      const small = (p.area || 1e9) < (this.cfg.plateSmallArea ?? 0);
+      const ps = small ? (this.cfg.plateSmallScale ?? 0.8) : 1;
+      if (small) el.style.setProperty('--ps', String(ps));
+      if ((this.cfg.plateTroops ?? 'owned') === 'owned') el.classList.add('troops-owned');
       this.root.append(el);
       const line = document.createElementNS(SVG_NS, 'line');
       line.setAttribute('class', 'leader');
@@ -49,7 +54,7 @@ export class PlateLabels {
       dot.setAttribute('class', 'leader-dot');
       this.svg.append(line, dot);
       this.items.set(p.plate, {
-        p, el, num, gar, line, dot, chars: code.length,
+        p, el, num, gar, line, dot, chars: code.length, ps,
         // Anchored a little north of the label point; the castle stands just south of it.
         anchor: new THREE.Vector3(p.labelPoint[0], TILE_H, wzOf(p.labelPoint[1] + 3)),
         ox: 0, oy: 0, w: 0, h: 0, lastGar: -1, color: null, cls: 'neutral',
@@ -74,7 +79,87 @@ export class PlateLabels {
   pulse(plate) {
     const it = this.items.get(plate);
     if (!it) return;
-    it.el.animate([{ scale: 1.9 }, { scale: 1 }], { duration: 650, easing: 'ease-out' });
+    // Flag change: a short, modest pop (labels never balloon). Animate the number, not the
+    // positioned plate: the CSS `scale` property would also scale the plate's translate().
+    it.num.animate([{ scale: 1.35 }, { scale: 1 }], { duration: 700, easing: 'ease-out' });
+  }
+
+  /** A viewer joined / gifted for this province: glowing ring so they can find it. */
+  highlight(plate, hex) {
+    const it = this.items.get(plate);
+    if (!it) return;
+    it.el.style.setProperty('--hl', hexCss(hex));
+    it.el.classList.remove('lit');
+    void it.el.offsetWidth; // restart the CSS animation
+    it.el.classList.add('lit');
+    clearTimeout(it.litT);
+    it.litT = setTimeout(() => it.el.classList.remove('lit'), (this.cfg.highlightSec ?? 3) * 1000);
+  }
+
+  _extra(it, key, cls, tag = 'div') {
+    if (!it[key]) { it[key] = document.createElement(tag); it[key].className = cls; it.el.append(it[key]); }
+    return it[key];
+  }
+
+  /** Team morale under its home plate (likes fill it); flash when HÜCUM starts. */
+  setMorale(plate, frac, boosted = false, hucum = false) {
+    const it = this.items.get(plate);
+    if (!it) return;
+    const k = `${frac.toFixed(2)}|${boosted}|${hucum}`;
+    if (it.morK === k) return;
+    it.morK = k;
+    const bar = this._extra(it, 'mor', 'mor');
+    if (!bar.firstChild) bar.append(document.createElement('i'));
+    bar.style.display = frac > 0.01 || hucum ? '' : 'none';
+    bar.firstChild.style.transform = `scaleX(${frac.toFixed(3)})`;
+    bar.classList.toggle('hucum', hucum);
+  }
+
+  /** Comeback multiplier flag ("İSYAN x2"); 0 hides it. */
+  setComeback(plate, mult) {
+    const it = this.items.get(plate);
+    if (!it || it.cbK === mult) return;
+    it.cbK = mult;
+    const f = this._extra(it, 'cb', 'x2');
+    f.textContent = mult ? `İSYAN x${mult}` : '';
+    f.style.display = mult ? '' : 'none';
+  }
+
+  /** Komutan's name at the capital, for the round. */
+  setCommander(plate, nick) {
+    const it = this.items.get(plate);
+    if (!it || it.cmK === nick) return;
+    it.cmK = nick;
+    const s = this._extra(it, 'cm', 'cmdn');
+    s.textContent = nick ? `👑 ${nick}` : '';
+    s.style.display = nick && !it.conq ? '' : 'none';
+  }
+
+  /** "Fetheden: <ad> <emoji>" on a province taken thanks to one viewer's gift. */
+  setConqueror(plate, nick, badge = null, sec = 20) {
+    const it = this.items.get(plate);
+    if (!it) return;
+    clearTimeout(it.conqT);
+    const s = this._extra(it, 'cq', 'conq');
+    if (!nick) { it.conq = false; s.style.display = 'none'; if (it.cm) it.cm.style.display = it.cmK ? '' : 'none'; return; }
+    it.conq = true;
+    s.replaceChildren('Fetheden: ');
+    const n = document.createElement('span');
+    setNameBadge(n, nick, badge);
+    s.append(n);
+    s.style.display = '';
+    if (it.cm) it.cm.style.display = 'none';
+    s.animate([{ opacity: 0, transform: 'translateX(-50%) scale(0.6)' }, { opacity: 1, transform: 'translateX(-50%) scale(1)' }], { duration: 400, easing: 'ease-out' });
+    it.conqT = setTimeout(() => this.setConqueror(plate, null), sec * 1000);
+  }
+
+  clearExtras() {
+    for (const [plate, it] of this.items) {
+      if (it.mor) { it.mor.style.display = 'none'; it.morK = ''; }
+      if (it.cq) this.setConqueror(plate, null);
+      this.setCommander(plate, null);
+      this.setComeback(plate, 0);
+    }
   }
 
   setGarrison(plate, n) {
@@ -86,18 +171,25 @@ export class PlateLabels {
   }
 
   /** Overlap relaxation in screen space, run on resize (overview camera). */
-  layout(camera, w, h, sizePx) {
+  layout(camera, w, h, sizePx, rect = null) {
     this.root.style.setProperty('--plate-size', `${sizePx}px`);
     const list = [...this.items.values()];
     for (const it of list) {
       _v.copy(it.anchor).project(camera);
       it.ax = (_v.x * 0.5 + 0.5) * w;
       it.ay = (-_v.y * 0.5 + 0.5) * h;
-      it.w = sizePx * (it.chars > 2 ? 0.62 * it.chars + 0.4 : 1.5);
-      it.h = sizePx * (this.cfg.showGarrisonOnPlates ? 1.62 : 1.15);
+      const s = sizePx * it.ps;
+      it.w = s * (it.chars > 2 ? 0.55 * it.chars + 0.35 : 1.3);
+      it.h = s * (this.cfg.showGarrisonOnPlates ? 1.5 : 1.1);
       it.x = it.ax; it.y = it.ay;
     }
-    const pad = sizePx * 0.04;
+    const pad = sizePx * 0.03;
+    // Plates stay near their province: a capped nudge, never a long trip across the map.
+    const maxOff = sizePx * 1.1;
+    const cap = (it) => {
+      const dx = it.x - it.ax; const dy = it.y - it.ay; const d = Math.hypot(dx, dy);
+      if (d > maxOff) { it.x = it.ax + (dx / d) * maxOff; it.y = it.ay + (dy / d) * maxOff; }
+    };
     for (let iter = 0; iter < 160; iter++) {
       let moved = false;
       for (let i = 0; i < list.length; i++) {
@@ -117,8 +209,16 @@ export class PlateLabels {
           }
         }
       }
-      for (const it of list) { it.x += (it.ax - it.x) * 0.02; it.y += (it.ay - it.y) * 0.02; }
+      for (const it of list) { it.x += (it.ax - it.x) * 0.02; it.y += (it.ay - it.y) * 0.02; cap(it); }
       if (!moved) break;
+    }
+    // Never clipped by the frame edge.
+    if (rect) {
+      for (const it of list) {
+        const m = 3;
+        it.x = Math.min(rect.x + rect.w - it.w / 2 - m, Math.max(rect.x + it.w / 2 + m, it.x));
+        it.y = Math.min(rect.y + rect.h - it.h / 2 - m, Math.max(rect.y + it.h / 2 + m, it.y));
+      }
     }
     for (const it of list) { it.ox = it.x - it.ax; it.oy = it.y - it.ay; }
     this.lastVersion = -1;
@@ -224,10 +324,11 @@ export class Floaters {
     this.active = 0;
   }
 
-  spawn(worldPos, text, cssColor, camera, w, h, big = false) {
+  spawn(worldPos, text, cssColor, camera, w, h, big = false, size = '') {
     if (this.active >= this.max) return;
     let el = this.pool.pop();
     if (!el) { el = document.createElement('div'); el.className = 'floater'; this.root.append(el); }
+    el.classList.toggle('tiny', size === 'tiny');
     _v.copy(worldPos).project(camera);
     const x = (_v.x * 0.5 + 0.5) * w + (Math.random() - 0.5) * 24;
     const y = (-_v.y * 0.5 + 0.5) * h - 14;
@@ -285,16 +386,20 @@ export class WorldTags {
   _get() {
     let r = this.pool.pop();
     if (!r) {
+      // Outer element is positioned by transform; the pill inside carries the pop-in
+      // scale (a CSS `scale` on the outer one would also scale its translate()).
       const el = document.createElement('div');
       el.className = 'wtag';
+      const pill = document.createElement('div'); pill.className = 'wtag-in';
       const av = makeAvatarEl('tag');
       const txt = document.createElement('div'); txt.className = 'wtag-text';
       const nick = document.createElement('div'); nick.className = 'wtag-nick';
       const msg = document.createElement('div'); msg.className = 'wtag-msg';
       txt.append(nick, msg);
-      el.append(av, txt);
+      pill.append(av, txt);
+      el.append(pill);
       this.root.append(el);
-      r = { el, av, nick, msg };
+      r = { el, pill, av, nick, msg };
     }
     return r;
   }
@@ -325,10 +430,15 @@ export class WorldTags {
     r.msg.style.display = o.text ? '' : 'none';
     r.el.style.display = '';
     const sec = o.sec || 2.4;
-    r.el.animate([
+    r.pill.animate([
       { opacity: 0, scale: 0.4 }, { opacity: 1, scale: 1.12, offset: 0.1 }, { opacity: 1, scale: 1, offset: 0.18 },
       { opacity: 1, scale: 1, offset: 0.85 }, { opacity: 0, scale: 0.9 },
     ], { duration: sec * 1000, easing: 'ease-out' });
+    // Join: the name flies in from the call-to-action area to the province.
+    if (o.fly && this.cam && toScreen(o.x, TILE_H + 10, o.z, this.cam, this.w, this.h, this.pt)) {
+      const dx = this.w / 2 - this.pt.x; const dy = this.h * 0.86 - this.pt.y;
+      r.el.animate([{ translate: `${dx}px ${dy}px` }, { translate: '0 0' }], { duration: 750, easing: 'cubic-bezier(.2,.7,.3,1)' });
+    }
     // Stack: older tags at the same spot move up out of the way.
     const push = [44, 54, 70, 96][rank] * (this.k || 1);
     for (const it of this.live) if ((it.x - o.x) ** 2 + (it.z - o.z) ** 2 < 40 * 40) it.lift += push;
@@ -344,6 +454,7 @@ export class WorldTags {
 
   update(dt, camera, w, h) {
     this.t += dt;
+    this.cam = camera; this.w = w; this.h = h;
     for (let i = this.live.length - 1; i >= 0; i--) {
       const it = this.live[i];
       if (this.t >= it.until) { this._release(i); continue; }
@@ -388,7 +499,7 @@ export class CommanderBadges {
         avatarInto(it.av, d.avatar, d.nick, hexCss(d.colorHex));
         setNameBadge(it.name, d.nick, d.badge);
         it.el.style.setProperty('--c', hexCss(d.colorHex));
-        it.el.animate([{ scale: 0.3, opacity: 0 }, { scale: 1, opacity: 1 }], { duration: 400, easing: 'ease-out' });
+        it.el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 400, easing: 'ease-out' });
       }
       it.x = d.x; it.z = d.z;
       if (!it.on) { it.el.style.display = ''; it.on = true; }
