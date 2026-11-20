@@ -108,27 +108,36 @@ const MAP_TOP_INSET = 206;
 // (= zones.chatTop), and between the side insets (zones.side: a 9:16 stream shown on a
 // taller phone screen is scaled to fill the height and cropped left and right, so the
 // outer `side` units of each edge may not be visible). Rows, top-down from safeTop (keep
-// in sync with the .stream rules in hud.css, which use the same offsets via --st / --sb /
-// --sx / --s-*), x from side (sx) to 1080 - sx:
-//   strip    st+4    h 62   timer (centre), session leader (left), top liker (right)
-//   boards   st+70   h 181  "EN GÜÇLÜ ŞEHİRLER" (3 rows) | "EN CÖMERTLER" (3 rows)
-//   lead     st+255  h 92   round leader (left) | credit / held-gift hint / tips (right)
-//   band     st+351 … sb-224   map; the imperative line overlays its top STREAM_MAP_INSET
-//   tab      sb-232  h 40   "HEDİYELER VE ORDULAR" tab, overlapping the ladder's top edge
-//   gifts    sb-212  h 140  gift ladder, 3 tiles per page    } one unit, x sx … 1080 - sx
-//   cta row  sb-66   h 60   "Katılmak için plakanı yaz: 34" | HÜCUM bar    } (full width: the owner chose to ignore the hearts column)
+// in sync with the .stream rules in hud.css, which read the rows as --s-<row>-y / -h), x from
+// side (sx) to 1080 - sx. Default zones (st 230, sb 1340), all blocks shown, boards filled:
+//   strip    y 234   h 52   timer (centre), session leader (left), top liker (right)
+//   boards   y 298   h 164  "EN GÜÇLÜ ŞEHİRLER" (3 rows) | "EN CÖMERTLER" (3 rows); h 88 while both are empty
+//   lead     y 474   h 86   round leader (left) | credit / held-gift hint / tips (right)
+//   band     y 572 … 1102   map (h 530; 606 with empty boards); the status line overlays its top
+//   tab      y 1114  h 40   "HEDİYELER VE ORDULAR", straddling the ladder's top edge
+//   ladder   y 1138  h 136  gift ladder, 3 tiles per page
+//   cta      y 1286  h 50   "Katılmak için plakanı yaz: 34" | HÜCUM bar (full width: the owner chose to ignore the hearts column)
 // safeBottom (zones.chatTop) defaults to 1340 and is a streamer setting (layout.chatTop), as is
 // the side inset (layout.side): both are tuned against a real phone.
 export const DEFAULT_ZONES = { top: 230, chatTop: 1340, chatRight: 720, bottomBar: 130, rightColLeft: 900, rightColTop: 1000, side: 60 };
-// Row heights incl. their 6-unit gap. Rows of hidden blocks collapse (Hud._streamRows)
-// and the map band grows into them.
-const STREAM_STRIP_H = 70;
-const STREAM_BOARDS_H = 185; // the two titled boards (181 + 4)
-const STREAM_LEAD_H = 96;
-const STREAM_GIFTS_H = 146; // gift ladder height + gap (140 + 6), above the cta row
-const STREAM_CTA_H = 66; // cta row height + gap (the lowest row)
-const STREAM_TAB_H = 12; // reserved for the ladder's heading tab above the ladder frame (it overlaps the band by 10 more)
-const STREAM_MAP_INSET = 58; // imperative line over the top of the band
+// Stream spacing system (design units). One gap between every pair of adjacent rows (and
+// between blocks side by side); the first row starts `edge` below safeTop, the last ends
+// `edge` above safeBottom, and the map band takes everything in between. Rows of hidden
+// blocks drop out (Hud._streamRows) and the band grows into them.
+export const STREAM = {
+  edge: 4,
+  gap: 12,
+  strip: 52,
+  boards: 164, // title + three rows
+  boardsEmpty: 88, // title + one line (both boards empty)
+  lead: 86,
+  tab: 40, // ladder heading tab ...
+  tabAbove: 24, // ... of which this much sits above the ladder's top edge
+  ladder: 136,
+  cta: 50,
+};
+const BOARDS_TWEEN_MS = 520;
+const STREAM_MAP_INSET = 58; // fallback for hud.streamMapInset (map fitted below the status line)
 
 /**
  * Lines in the tips slot: they describe how the game works, they never tell viewers to tap,
@@ -154,6 +163,11 @@ function ctaLines(cfg) {
     ...(chat > 0 ? [['💬 her mesaj', `+${fmt(chat)} asker`]] : []),
   ];
 }
+
+// Longest gift ladder (panel schema gifts.strip.maxCount, game/js/settings.js).
+const GIFT_STRIP_MAX = 16;
+// Announcement tiers (gifts.tiers[].id) shown as the full-screen card.
+const FULL_ANNOUNCE = new Set(['sultan', 'fetih', 'imparatorluk']);
 
 const LEADER_EMPTY = 'Bu turun lideri henüz yok';
 export const DEFAULT_TITLE = 'PLAKA SAVAŞLARI';
@@ -465,7 +479,7 @@ export class Hud {
     if (list !== undefined) this._stripRaw = list;
     list = this._stripRaw;
     const strip = (Array.isArray(list) && list.length ? list : this.cfg.gifts.tiers.map((t) => ({ name: '', coins: t.minCoins, plus: true, effect: t.legend })))
-      .slice(0, 12).map((g) => this._resolveStripEntry(g));
+      .slice(0, GIFT_STRIP_MAX).map((g) => this._resolveStripEntry(g));
     this._stripList = strip;
     const troops = strip.map((g) => (this.troopsFor ? Math.round(this.troopsFor(Math.max(1, Number(g.coins) || 1))) : 0));
     const key = JSON.stringify([strip, troops, this.stripTroops]);
@@ -486,7 +500,8 @@ export class Hud {
       if (name && g.en && giftKey(g.en) !== giftKey(name)) el('span', 'tier-en', head, g.en);
       const c = el('span', 'tier-coins', head);
       iconEl(a, 'icon_coin', c, 'icon tiny');
-      el('span', '', c, `${fmt(coins)}${g.plus ? '+' : ''}`);
+      // The exact price ("10.999", never "10,9B"): it is what viewers see in TikTok's gift box.
+      el('span', '', c, `${coins.toLocaleString('tr-TR')}${g.plus ? '+' : ''}`);
       if (!name) el('span', 'tier-jeton', c, ' jeton');
       const res = el('div', 'tier-res', t);
       if (this.stripTroops && troops[i] > 0) el('span', 'tier-troops', res, `+${fmt(troops[i])} asker`);
@@ -521,6 +536,13 @@ export class Hud {
     } else if (g.name) {
       const en = enName(g.name);
       if (en) out.en = en;
+    } else if (!g.plus && !(Math.floor(Number(g.id)) > 0)) {
+      // A nameless entry ("500 jeton") takes the name and picture of a gift viewers actually
+      // sent at exactly that price (the most recently seen one); until then it shows the price.
+      const coins = Math.floor(Number(g.coins));
+      let best = null;
+      for (const it of this.giftCat.values()) if (it.seen && it.coins === coins && (!best || it.seen > best.seen)) best = it;
+      if (best) { out.id = best.id; out.name = best.tr || best.name; out.en = best.name; }
     }
     return out;
   }
@@ -534,8 +556,10 @@ export class Hud {
     const old = this.giftCat.get(id);
     const icon = safeImageUrl(it.icon) || old?.icon || '';
     const tr = String(it.tr || '') || trName(name);
-    if (old && old.coins === coins && old.name === name && old.icon === icon) return false;
-    this.giftCat.set(id, { id, name, tr, coins, icon });
+    // seen: when viewers last sent it (bridge catalogue `seen`, or now for a live gift event).
+    const seen = Math.max(Number(it.seen) || 0, old?.seen || 0);
+    if (old && old.coins === coins && old.name === name && old.icon === icon && !!old.seen === !!seen) return false;
+    this.giftCat.set(id, { id, name, tr, coins, icon, seen });
     return true;
   }
 
@@ -572,7 +596,7 @@ export class Hud {
   noteGiftIcon(id, name, icon, coins = 0) {
     const safe = safeImageUrl(icon);
     if (!safe) return;
-    if (coins > 0 && this._catPut({ id, name, coins, icon: safe }) && this._stripRaw !== undefined) this.setGiftStrip();
+    if (coins > 0 && this._catPut({ id, name, coins, icon: safe, seen: Date.now() }) && this._stripRaw !== undefined) this.setGiftStrip();
     const tr = trName(name);
     if (tr && giftKey(tr) !== giftKey(name) && this.giftIcons.byName.get(giftKey(tr)) !== safe) {
       this.giftIcons.byName.set(giftKey(tr), safe);
@@ -640,6 +664,23 @@ export class Hud {
     if (animate) this.tierTrack.animate([{ opacity: 0, transform: 'translateX(4%)' }, { opacity: 1, transform: 'none' }], { duration: 320, easing: 'ease-out' });
   }
 
+  /**
+   * Next ladder page in the rotation. With more than three pages the cheap ones come round
+   * more often: the first pages (a third, rounded up) alternate with the rest, e.g. five
+   * pages play 0 2 1 3 0 4 | 0 2 1 3 0 4 … (cheap gifts every 8-12 s instead of every 20 s).
+   */
+  _nextPage() {
+    const n = this.pages.length;
+    if (n <= 3) return this.stripPage + 1;
+    const cheap = Math.ceil(n / 3);
+    const seq = [];
+    for (let i = cheap, k = 0; i < n; i++, k++) seq.push(k % cheap, i);
+    const at = seq.indexOf(this.stripPage, (this._seqI ?? -1) + 1);
+    const cur = at >= 0 ? at : seq.indexOf(this.stripPage);
+    this._seqI = (cur + 1) % seq.length;
+    return seq[this._seqI];
+  }
+
   /** A gift arrived: jump to its ladder step and highlight it for a moment. */
   giftPulse(coins, id = 0, name = '') {
     if (!this.tiles.length || !this._vis('giftStrip')) return;
@@ -678,7 +719,7 @@ export class Hud {
     if (this.pulseUntil || this.pages.length < 2) return;
     this.stripT += dt;
     const sec = this.variant === 'stream' ? (this.cfg.hud.giftStripPageSecStream ?? 4) : (this.cfg.hud.giftStripPageSec ?? 4);
-    if (this.stripT >= sec) this._showPage(this.stripPage + 1, true);
+    if (this.stripT >= sec) this._showPage(this._nextPage(), true);
   }
 
   /** The labelled morale bar: "İSTANBUL HÜCUM %80"; full = "İSTANBUL HÜCUMDA! 12 sn". */
@@ -801,16 +842,16 @@ export class Hud {
     // Stream rows collapse when the streamer hides their blocks; the map band takes the
     // space. Still between safeTop and safeBottom (TikTok header / chat never overlap).
     const R = this._streamRows();
-    doc.style.setProperty('--s-cities', String(R.cities));
-    doc.style.setProperty('--s-gifters', String(R.gifters));
-    doc.style.setProperty('--s-lead', String(R.lead));
-    doc.style.setProperty('--s-bt', String(R.bandTop));
-    doc.style.setProperty('--s-bb', String(R.bandBottom));
-    doc.style.setProperty('--s-cta', String(R.cta));
-    doc.style.setProperty('--s-tiers', String(R.tiers));
-    doc.style.setProperty('--s-tab', String(R.tab));
+    doc.style.setProperty('--s-gap', String(STREAM.gap));
+    for (const [k, v] of Object.entries(R.rows)) {
+      doc.style.setProperty(`--s-${k}-y`, v.y.toFixed(2));
+      doc.style.setProperty(`--s-${k}-h`, v.h.toFixed(2));
+    }
+    doc.style.setProperty('--s-band-y', R.bandTop.toFixed(2));
+    doc.style.setProperty('--s-band-b', R.bandBottom.toFixed(2));
+    this.streamRows = R;
     const b = stream
-      ? { x: 0, y: Z.top + R.bandTop, w: 1080, h: Z.chatTop - R.bandBottom - (Z.top + R.bandTop) }
+      ? { x: 0, y: R.bandTop, w: 1080, h: R.bandBottom - R.bandTop }
       : { ...BANDS[this.layout] };
     b.h += ex;
     this.bandDesign = b;
@@ -834,27 +875,67 @@ export class Hud {
       // Nearly the whole band: only a few units of margin at the top and bottom.
       Object.assign(rect.fit, { x: ox + sx, w: dw * u - 2 * sx, fx: 0.99, fy: this.cfg.hud.streamMapFitY ?? 0.985 });
     }
-    // Ladder pages depend on the strip width at this scale.
-    this._paginate();
+    // Ladder pages depend on the strip width at this scale (only re-paged when that changes:
+    // the boards tween re-runs the layout every frame).
+    const pk = `${u.toFixed(5)}|${variant}|${Z.side}`;
+    if (pk !== this._pageKey) { this._pageKey = pk; this._paginate(); }
     return rect;
   }
 
   /**
-   * Stream layout rows in design units (see the table at the top): offsets from safeTop
-   * for the boards row, the leader row and the map band top; offsets above safeBottom for
-   * the map band bottom and the call to action. All blocks shown = the original layout.
+   * Stream layout rows in design units from the stage top (see the table at the top of the
+   * file): the rows above the map band stack down from safeTop, the ones below it stack up
+   * from safeBottom, one STREAM.gap between neighbours; the band gets the rest. Hidden
+   * blocks drop their row. rows.<id> = { y, h } for the CSS (--s-<id>-y / -h).
    */
   _streamRows() {
-    let y = STREAM_STRIP_H;
-    // The two boards share one row; it collapses only when both are hidden.
-    const cities = y;
-    const gifters = y;
-    if (this._vis('cityBoard') || this._vis('gifterBoard')) y += STREAM_BOARDS_H;
-    const lead = y;
-    if (this._vis('leader') || this._vis('credit')) y += STREAM_LEAD_H;
+    const S = STREAM;
+    const Z = this.zones;
+    const rows = {};
+    let y = Z.top + S.edge;
+    const down = (id, h, on = true) => { rows[id] = { y, h }; if (on) y += h + S.gap; };
+    down('strip', S.strip);
+    // The two boards share one row; it drops out only when both are hidden.
+    down('boards', this._boardsH ?? S.boardsEmpty, this._vis('cityBoard') || this._vis('gifterBoard'));
+    down('lead', S.lead, this._vis('leader') || this._vis('credit'));
+    const bandTop = y;
+    let b = Z.chatTop - S.edge;
+    const up = (id, h, on = true) => { rows[id] = { y: b - h, h }; if (on) b -= h + S.gap; };
+    up('cta', S.cta);
     const gifts = this._vis('giftStrip');
-    const tiers = STREAM_CTA_H + (gifts ? STREAM_GIFTS_H : 0);
-    return { cities, gifters, lead, bandTop: y, bandBottom: tiers + 6 + (gifts ? STREAM_TAB_H : 0), cta: STREAM_CTA_H, tiers, tab: gifts ? STREAM_TAB_H : 0 };
+    up('ladder', S.ladder, false);
+    if (gifts) b -= S.ladder;
+    rows.tab = { y: b - S.tabAbove, h: S.tab };
+    if (gifts) b -= S.tabAbove + S.gap;
+    return { rows, bandTop, bandBottom: b };
+  }
+
+  /**
+   * Boards row height: compact while both boards are empty, full once the first entry of
+   * the round appears. It never shrinks mid-round (only when a new round starts empty),
+   * so the map moves at most once per round; the change is eased over a short tween.
+   */
+  _updateBoardsRow(sum) {
+    const filled = sum.top.length > 0 || sum.gifters.length > 0;
+    if (sum.round !== this._boardsRound) { this._boardsRound = sum.round; this._boardsLatch = filled; }
+    if (filled) this._boardsLatch = true;
+    const full = !!this._boardsLatch;
+    this.root.classList.toggle('boards-empty', !full);
+    if (full === this._boardsFull) return;
+    this._boardsFull = full;
+    const to = full ? STREAM.boards : STREAM.boardsEmpty;
+    const from = this._boardsH ?? STREAM.boardsEmpty;
+    cancelAnimationFrame(this._boardsRaf);
+    if (this.variant !== 'stream' || !this.onRelayout || from === to) { this._boardsH = to; this.onRelayout?.(); return; }
+    const t0 = performance.now();
+    const step = (now) => {
+      const k = Math.min(1, Math.max(0, (now - t0) / BOARDS_TWEEN_MS)); // rAF time can precede t0
+      const e = k < 0.5 ? 2 * k * k : 1 - ((-2 * k + 2) ** 2) / 2; // ease in-out
+      this._boardsH = from + (to - from) * e;
+      this.onRelayout();
+      if (k < 1) this._boardsRaf = requestAnimationFrame(step);
+    };
+    this._boardsRaf = requestAnimationFrame(step);
   }
 
   /** Moves the few nodes that live in different containers per portrait variant. */
@@ -976,6 +1057,7 @@ export class Hud {
     });
     for (let i = sum.gifters.length; i < this.gifterRows.length; i++) this.gifterRows[i].row.style.display = 'none';
     this.gifterEmpty.style.display = sum.gifters.length ? 'none' : '';
+    this._updateBoardsRow(sum);
 
     // Likers
     const likers = sum.likers || [];
@@ -1287,7 +1369,8 @@ export class Hud {
     this.impEl.classList.add('hidden'); this._impHidden = true;
     const A = this.ann;
     A.root.style.display = '';
-    A.root.className = 'announce ' + (o.tierId === 'sultan' ? 'sultan' : 'ordu');
+    const full = FULL_ANNOUNCE.has(o.tierId);
+    A.root.className = 'announce ' + (full ? 'sultan' : 'ordu');
     A.card.style.setProperty('--c', hexCss(o.colorHex));
     A.tier.textContent = o.tier.toLocaleUpperCase('tr') + '!';
     A.av.set(o.avatar, o.nick, o.colorHex);
@@ -1301,7 +1384,7 @@ export class Hud {
     const shorten = this.announceQueue.length > 1 ? 0.6 : 1;
     // Full-screen moment, then the card simply fades: the HUD credit strip (outside the
     // map band) carries the credit afterwards, so nothing on the map repeats it.
-    const hold = o.tierId === 'sultan' ? 0.42 : 0.34;
+    const hold = full ? 0.42 : 0.34;
     const total = dur * shorten * (hold + 0.1);
     const anim = A.card.animate([
       { opacity: 0, transform: 'scale(0.3) rotate(-4deg)' },

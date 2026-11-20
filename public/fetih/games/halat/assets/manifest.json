@@ -1,0 +1,878 @@
+{
+  "meta": {
+    "game": "Halat Çekme",
+    "note": "Paths are relative to games/halat/. Built by tools/halat/build-manifest.mjs from assets/media.json (media) and assets/gen/ (procedural three.js generators). Models come from the generators, so \"models\" is empty; the game falls back to glTF keys only if a generator is missing.",
+    "credits": "assets/CREDITS-media.md",
+    "built": "2026-11-20"
+  },
+  "generators": {
+    "entry": "assets/gen/index.js",
+    "readme": "assets/gen/README.md",
+    "import": "import * as gen from './assets/gen/index.js' (needs the import map entry 'three')",
+    "units": "metres; models face +Z, +Y up, feet at y = 0; pullers are 1.75 tall (declared bounds)",
+    "factories": {
+      "createPuller": {
+        "returns": "model",
+        "looks": "pullerLooks (8)",
+        "clips": [
+          "idle",
+          "run",
+          "pull",
+          "pull_hard",
+          "pull_slip",
+          "cheer",
+          "fall",
+          "sit_dazed"
+        ],
+        "drawCalls": 1,
+        "triangles": "6.1k-7.3k"
+      },
+      "createStrongman": {
+        "returns": "model",
+        "clips": [
+          "idle",
+          "run",
+          "pull",
+          "pull_hard",
+          "pull_slip",
+          "cheer",
+          "fall",
+          "sit_dazed",
+          "flex"
+        ],
+        "drawCalls": 1,
+        "triangles": "7.0k"
+      },
+      "createGiant": {
+        "returns": "model",
+        "clips": [
+          "idle",
+          "run",
+          "pull",
+          "pull_hard",
+          "pull_slip",
+          "cheer",
+          "fall",
+          "sit_dazed",
+          "flex",
+          "stomp"
+        ],
+        "drawCalls": 1,
+        "triangles": "6.6k"
+      },
+      "createTractor": {
+        "returns": "model",
+        "clips": [
+          "idle",
+          "drive",
+          "pull"
+        ],
+        "attach": [
+          "hitch",
+          "exhaust",
+          "seat"
+        ],
+        "drawCalls": 1,
+        "triangles": "9.4k"
+      },
+      "createArena": {
+        "returns": "{ object3D, update(dt), setTeamColors(c1, c2), cheer(k), setDust(k), pitHalf, pitZ, waterY, background, fog, lights, dispose() }",
+        "drawCalls": 12
+      },
+      "createRope": {
+        "returns": "drop-in for js/rope.js: { object3D, handY, update(dt, o), heightAt(x), jerk(a), dispose() }",
+        "drawCalls": 2
+      },
+      "createCrowd": {
+        "returns": "drop-in for js/crowd.js (no counters): { object3D, setColors, setCounts, likes, update(dt), ending, dispose() }",
+        "drawCalls": 1
+      }
+    },
+    "expressions": [
+      "neutral",
+      "determined",
+      "strain",
+      "happy",
+      "joy",
+      "worried",
+      "shock",
+      "dazed",
+      "sad"
+    ],
+    "ropeLine": "GRIP = { x: -0.24 (rope on the right; mirrored clip set for the left), y: 0.62 } in puller model units",
+    "textures": {
+      "tex_grass": "assets/textures/tex_grass.png",
+      "tex_grass_normal": "assets/textures/tex_grass_normal.png",
+      "tex_dirt": "assets/textures/tex_dirt.png",
+      "tex_mud": "assets/textures/tex_mud.png",
+      "tex_mud_normal": "assets/textures/tex_mud_normal.png",
+      "tex_water_normal": "assets/textures/tex_water_normal.png",
+      "tex_rope": "assets/textures/tex_rope.png",
+      "tex_rope_normal": "assets/textures/tex_rope_normal.png",
+      "tex_wood": "assets/textures/tex_wood.png",
+      "tex_canvas_stripes": "assets/textures/tex_canvas_stripes.png",
+      "tex_sky_gradient": "assets/textures/tex_sky_gradient.png"
+    }
+  },
+  "models": {},
+  "textures": {
+    "rope_tex": {
+      "path": "assets/textures/tex_rope.png",
+      "size": [
+        512,
+        64
+      ],
+      "wrap": "RepeatWrapping (S and T)",
+      "repeat": "U along the rope length: repeat = ropeLength / (8 x ropeDiameter) (one tile = 18 strand twists, designed for a tile ~8 diameters long); V = 1 around the circumference (TubeGeometry UVs). Tileable in both U and V.",
+      "colorSpace": "SRGBColorSpace",
+      "note": "braided 3-strand hemp rope: diagonal strands with dark grooves and fibre streaks",
+      "source": "tex_rope"
+    },
+    "ground_tex": {
+      "path": "assets/textures/tex_grass.png",
+      "size": [
+        512,
+        512
+      ],
+      "wrap": "RepeatWrapping (S and T)",
+      "repeat": "about 1 tile per 2-3 m of ground (e.g. repeat 8x8 on a 20 m field)",
+      "colorSpace": "SRGBColorSpace",
+      "note": "stylised flat-painted lawn: posterised green patches, light/dark blade strokes, a few tiny white/yellow/pink flowers",
+      "source": "tex_grass"
+    }
+  },
+  "sprites": {
+    "fx_splash": {
+      "path": "assets/sprites/fx_splash_sheet.png",
+      "frames": 8,
+      "frameSize": [
+        128,
+        128
+      ],
+      "columns": 8,
+      "rows": 1,
+      "fps": 18,
+      "order": "left-to-right",
+      "blending": "normal",
+      "tint": "white/grey texture: multiply by material colour (SpriteMaterial.color) to tint (mud #6b4529, water #7cc8ff)",
+      "note": "splash animation: crown of droplets thrown up and out, centre column rises and collapses, ground ring widens and fades. Origin = bottom centre (ground contact at y ~ 0.86 of the frame). Play once at 18 fps.",
+      "imageSize": [
+        1024,
+        128
+      ],
+      "source": "fx_splash_sheet"
+    },
+    "fx_spark": {
+      "path": "assets/sprites/fx_sparkle.png",
+      "frames": 1,
+      "size": [
+        256,
+        256
+      ],
+      "blending": "additive",
+      "tint": "white: tint gold/yellow",
+      "note": "twinkle sparkle: 4-point star with long thin rays and a soft glow. Pulse scale and rotate slowly.",
+      "imageSize": [
+        256,
+        256
+      ],
+      "source": "fx_sparkle"
+    },
+    "fx_dust": {
+      "path": "assets/sprites/fx_dust.png",
+      "frames": 1,
+      "size": [
+        256,
+        256
+      ],
+      "blending": "normal",
+      "tint": "white/grey texture: multiply by material colour (SpriteMaterial.color) to tint (warm tan #c8a77a for dirt, brown for mud)",
+      "note": "cartoon dust puff for feet / skids: puffy cloud, white with grey underside. Scale 0.6->1.4 and fade out over ~0.5 s. (game/assets fx_dust is a debris texture; this one fits the flat cartoon style better.)",
+      "imageSize": [
+        256,
+        256
+      ]
+    },
+    "fx_dust_sheet": {
+      "path": "assets/sprites/fx_dust_sheet.png",
+      "frames": 8,
+      "frameSize": [
+        128,
+        128
+      ],
+      "columns": 8,
+      "rows": 1,
+      "fps": 16,
+      "order": "left-to-right",
+      "blending": "normal",
+      "tint": "white/grey texture: multiply by material colour (SpriteMaterial.color) to tint",
+      "note": "dust puff animation: pops out, expands, drifts up and dissolves (8 frames, play once at 16 fps). Same style as fx_dust.",
+      "imageSize": [
+        1024,
+        128
+      ]
+    },
+    "fx_smoke": {
+      "path": "assets/sprites/fx_smoke.png",
+      "frames": 1,
+      "size": [
+        256,
+        256
+      ],
+      "blending": "normal",
+      "tint": "white/grey texture: multiply by material colour (SpriteMaterial.color) to tint (grey #8a8a8a for tractor exhaust)",
+      "note": "soft exhaust smoke puff (blurry cloud). Spawn at the exhaust, rise, scale up 0.5->2, fade out.",
+      "imageSize": [
+        256,
+        256
+      ]
+    },
+    "fx_sweat": {
+      "path": "assets/sprites/fx_sweat.png",
+      "frames": 1,
+      "size": [
+        256,
+        256
+      ],
+      "blending": "normal",
+      "tint": "none (coloured: light blue drop, dark blue outline, white highlight)",
+      "note": "single cartoon sweat drop. Spawn 1-3 near the head of straining pullers, fly out sideways and fall.",
+      "imageSize": [
+        256,
+        256
+      ]
+    },
+    "fx_strain_lines": {
+      "path": "assets/sprites/fx_strain_lines.png",
+      "frames": 1,
+      "size": [
+        256,
+        256
+      ],
+      "blending": "normal",
+      "tint": "white strokes with dark outline: tint to red/orange for anger/effort",
+      "note": "comic effort / tension marks: 5 tapered strokes fanning upward from the bottom centre. Place above a puller's head (origin = bottom centre), pulse scale 0.9<->1.1 while straining.",
+      "imageSize": [
+        256,
+        256
+      ]
+    },
+    "fx_mud_blob": {
+      "path": "assets/sprites/fx_mud_blob.png",
+      "frames": 1,
+      "size": [
+        256,
+        256
+      ],
+      "blending": "normal",
+      "tint": "white/grey texture: multiply by material colour (SpriteMaterial.color) to tint (brown #6b4529 mud / blue for water drops)",
+      "note": "single splattered blob/droplet with two satellite drops; use as particle for mud/water spray and as a decal on characters.",
+      "imageSize": [
+        256,
+        256
+      ]
+    },
+    "fx_confetti": {
+      "path": "assets/sprites/fx_confetti.png",
+      "frames": 8,
+      "frameSize": [
+        128,
+        128
+      ],
+      "columns": 4,
+      "rows": 2,
+      "fps": 0,
+      "order": "left-to-right, top-to-bottom",
+      "blending": "normal",
+      "tint": "white with light-grey fold shading: give every particle its own bright colour (instance colour)",
+      "note": "confetti piece atlas (NOT an animation): 0 rectangle, 1 circle, 2 squiggle, 3 star, 4 triangle, 5 curled ribbon, 6 diamond, 7 small rectangle strip. Pick a random cell per particle; spin by rotating and scaling X (cos(t)) for the flutter.",
+      "imageSize": [
+        512,
+        256
+      ]
+    },
+    "fx_star": {
+      "path": "assets/sprites/fx_star.png",
+      "frames": 1,
+      "size": [
+        256,
+        256
+      ],
+      "blending": "normal",
+      "tint": "white/grey texture: multiply by material colour (SpriteMaterial.color) to tint (gold #ffd23f)",
+      "note": "chunky rounded cartoon 5-point star with bevel shading (score pops, dizzy stars, gift bursts).",
+      "imageSize": [
+        256,
+        256
+      ]
+    },
+    "fx_ring": {
+      "path": "assets/sprites/fx_ring.png",
+      "frames": 1,
+      "size": [
+        256,
+        256
+      ],
+      "blending": "additive",
+      "tint": "white: tint per use",
+      "note": "shockwave ring with soft edges (giant step, gift landing, win). Scale 0.2->2 and fade out. Lay flat on the ground (rotate -90 deg X) or billboard.",
+      "imageSize": [
+        256,
+        256
+      ]
+    },
+    "fx_glow": {
+      "path": "assets/sprites/fx_glow.png",
+      "frames": 1,
+      "size": [
+        256,
+        256
+      ],
+      "blending": "additive",
+      "tint": "white: tint per use",
+      "note": "soft radial glow blob (highlights, gift aura, sun glint).",
+      "imageSize": [
+        256,
+        256
+      ]
+    },
+    "fx_heart": {
+      "path": "assets/sprites/fx_heart.png",
+      "frames": 1,
+      "size": [
+        256,
+        256
+      ],
+      "blending": "normal",
+      "tint": "white/grey texture: multiply by material colour (SpriteMaterial.color) to tint (red/pink)",
+      "note": "cartoon heart with bevel shading and a highlight (likes / taps).",
+      "imageSize": [
+        256,
+        256
+      ]
+    },
+    "fx_impact_star": {
+      "path": "assets/sprites/fx_impact_star.png",
+      "frames": 1,
+      "size": [
+        256,
+        256
+      ],
+      "blending": "normal",
+      "tint": "white burst with dark outline: tint yellow/orange",
+      "note": "comic impact burst (\"POW\" star, 12 irregular spikes) for big hits, rope snap, giant steps. Show for 0.15-0.25 s with a scale pop.",
+      "imageSize": [
+        256,
+        256
+      ]
+    }
+  },
+  "audio": {
+    "music_main": {
+      "path": "assets/audio/music_fair.ogg",
+      "loop": true,
+      "duration": 64.873,
+      "channels": 2,
+      "loudnessLUFS": -18.9,
+      "peakDb": -10,
+      "note": "main music loop: RandomMind \"Medieval: Market Day\" (OGA CC0). The MP3 is a loop with encoder delay/padding: head trimmed at 1105 samples (LAME delay), tail at the last non-silent sample, 4 ms declick at the seam.",
+      "seam": {
+        "jump": 0.0003,
+        "medianStep": 0.0077,
+        "p99Step": 0.0367,
+        "headDb": -19.6,
+        "tailDb": -27.1
+      },
+      "source": "music_fair"
+    },
+    "sfx_cheer": {
+      "path": "assets/audio/crowd_cheer_a.ogg",
+      "loop": false,
+      "duration": 6.5,
+      "channels": 1,
+      "loudnessLUFS": -15.2,
+      "peakDb": -1.5,
+      "note": "crowd cheer swell, rises to a peak at ~3 s then fades (FoolBoyMedia \"Crowd Cheer\", first 6.5 s)",
+      "source": "crowd_cheer_a"
+    },
+    "sfx_lose": {
+      "path": "assets/audio/lose_aww.ogg",
+      "loop": false,
+      "duration": 3.056,
+      "channels": 1,
+      "loudnessLUFS": -15.2,
+      "peakDb": -2,
+      "note": "bigger disappointed crowd: three \"aww/oh/groan\" recordings layered with small offsets (phmiller42 + mrrap4food + CHallSmith)",
+      "source": "lose_aww"
+    },
+    "sfx_win": {
+      "path": "assets/audio/win_fanfare.ogg",
+      "loop": false,
+      "duration": 6.6,
+      "channels": 1,
+      "loudnessLUFS": -13.8,
+      "peakDb": -2.2,
+      "note": "victory fanfare, first phrase (RandomMind \"Medieval: Victory Theme\", 0-6.6 s, 0.7 s fade). Combine with crowd_cheer_* for the win moment.",
+      "source": "win_fanfare"
+    },
+    "sfx_whistle": {
+      "path": "assets/audio/whistle_start.ogg",
+      "loop": false,
+      "duration": 1.123,
+      "channels": 1,
+      "loudnessLUFS": -13.8,
+      "peakDb": -7,
+      "note": "referee double blast (two copies of Rosa-Orenes256 \"Referee whistle sound\", 0.1 s apart)",
+      "source": "whistle_start"
+    },
+    "sfx_rope": {
+      "path": "assets/audio/rope_creak_a.ogg",
+      "loop": false,
+      "duration": 1.498,
+      "channels": 1,
+      "loudnessLUFS": -19.4,
+      "peakDb": -2.6,
+      "note": "mooring rope creak under load (Rmutt \"Mooring Rope\" @ 31.7 s)",
+      "source": "rope_creak_a"
+    },
+    "sfx_splash": {
+      "path": "assets/audio/splash_mud.ogg",
+      "loop": false,
+      "duration": 0.847,
+      "channels": 1,
+      "loudnessLUFS": -17.7,
+      "peakDb": -2.3,
+      "note": "body falls into mud: wet splat + mud squelch + soft body thud (Breviceps \"Mud Splat\" + rubberduck mud_04 + Kenney impactSoft_heavy_001)",
+      "source": "splash_mud"
+    },
+    "sfx_tractor": {
+      "path": "assets/audio/tractor_start.ogg",
+      "loop": false,
+      "duration": 2.8,
+      "channels": 1,
+      "loudnessLUFS": -15,
+      "peakDb": -2.7,
+      "note": "tractor rev-up: the idle recording played with a variable-speed curve (0.7x crank -> 1.75x rev -> settles at 1.3x), ~2.8 s",
+      "source": "tractor_start"
+    },
+    "sfx_giant_step": {
+      "path": "assets/audio/giant_step.ogg",
+      "loop": false,
+      "duration": 1,
+      "channels": 1,
+      "loudnessLUFS": -14.8,
+      "peakDb": -2.2,
+      "note": "giant/heavy footstep: body impact + low sub boom + kick (Kenney impactPunch_heavy_000 + impactSoft_heavy_000 + lowFrequency_explosion_001 low-passed + phluidbox kick)",
+      "source": "giant_step"
+    },
+    "sfx_heave_1": {
+      "path": "assets/audio/heave_team.ogg",
+      "loop": false,
+      "duration": 1.614,
+      "channels": 1,
+      "loudnessLUFS": -15.2,
+      "peakDb": -0.9,
+      "note": "group \"hee-haa\" heave shout (stomachache \"heavehgroup\")",
+      "source": "heave_team"
+    },
+    "sfx_heave_2": {
+      "path": "assets/audio/heave_team_b.ogg",
+      "loop": false,
+      "duration": 0.923,
+      "channels": 1,
+      "loudnessLUFS": -14.9,
+      "peakDb": -2.1,
+      "note": "crowd grunting in sync, one metered heave (ShangusBurger \"Crowd Grunting, Exerting, Metered\" @ 8.4 s); can be chained every ~1.35 s",
+      "source": "heave_team_b"
+    },
+    "sfx_gift": {
+      "path": "assets/audio/clap_sting.ogg",
+      "loop": false,
+      "duration": 3.381,
+      "channels": 1,
+      "loudnessLUFS": -18,
+      "peakDb": -1.5,
+      "note": "short applause sting (qubodup \"Well Done\", CC0)",
+      "source": "clap_sting"
+    },
+    "sfx_gift_small": {
+      "path": "assets/audio/stinger_small.ogg",
+      "loop": false,
+      "duration": 0.462,
+      "channels": 1,
+      "loudnessLUFS": -14.9,
+      "peakDb": -2.4,
+      "note": "small gift: short pizzicato flourish + soft confirmation blip (Kenney Music Jingles PIZZI16 + Interface confirmation_001)",
+      "source": "stinger_small"
+    },
+    "sfx_gift_medium": {
+      "path": "assets/audio/stinger_medium.ogg",
+      "loop": false,
+      "duration": 2,
+      "channels": 1,
+      "loudnessLUFS": -14.4,
+      "peakDb": -2.1,
+      "note": "medium gift: pizzicato jingle + punch + DÜM drum (Kenney PIZZI12 + impactPunch_medium_000 + drum_hit)",
+      "source": "stinger_medium"
+    },
+    "sfx_gift_big": {
+      "path": "assets/audio/stinger_big.ogg",
+      "loop": false,
+      "duration": 2,
+      "channels": 1,
+      "loudnessLUFS": -14.4,
+      "peakDb": -2,
+      "note": "big gift: orchestral hit jingle + low boom + DÜM drum + bell (Kenney HIT15 + lowFrequency_explosion_000 + impactBell_heavy_001 + drum_hit)",
+      "source": "stinger_big"
+    },
+    "crowd_loop": {
+      "path": "assets/audio/crowd_loop.ogg",
+      "loop": true,
+      "duration": 30,
+      "channels": 1,
+      "loudnessLUFS": -21,
+      "peakDb": -5.3,
+      "note": "seamless fair crowd walla bed (lwdickens \"county fair crowd walla\", 30 s window, 2 s equal-power tail->head crossfade). Play quietly under everything.",
+      "seam": {
+        "jump": 0.0221,
+        "medianStep": 0.0087,
+        "p99Step": 0.0447,
+        "headDb": -22.3,
+        "tailDb": -21.4
+      }
+    },
+    "crowd_cheer_b": {
+      "path": "assets/audio/crowd_cheer_b.ogg",
+      "loop": false,
+      "duration": 8.581,
+      "channels": 1,
+      "loudnessLUFS": -15,
+      "peakDb": -1.8,
+      "note": "cheering + clapping crowd, sharp rise then natural decay (AlaskaRobotics \"cheering and clapping crowd 1\")"
+    },
+    "crowd_cheer_c": {
+      "path": "assets/audio/crowd_cheer_c.ogg",
+      "loop": false,
+      "duration": 7,
+      "channels": 1,
+      "loudnessLUFS": -15.3,
+      "peakDb": -1.4,
+      "note": "outdoor applause + whistles, shaped into a swell (kyles \"applause cheer ... outdoor show\", 7 s, 0.6 s fade-in, 2.5 s fade-out)"
+    },
+    "crowd_aww": {
+      "path": "assets/audio/crowd_aww.ogg",
+      "loop": false,
+      "duration": 1.946,
+      "channels": 1,
+      "loudnessLUFS": -16,
+      "peakDb": -2.3,
+      "note": "classic short crowd \"aww\" (phmiller42 \"aww.wav\")"
+    },
+    "crowd_aww_b": {
+      "path": "assets/audio/crowd_aww_b.ogg",
+      "loop": false,
+      "duration": 2.806,
+      "channels": 1,
+      "loudnessLUFS": -16.1,
+      "peakDb": -2.1,
+      "note": "group groan / \"ohh\" (CHallSmith \"Group Groan 2\")"
+    },
+    "grunt_m_1": {
+      "path": "assets/audio/grunt_m_1.ogg",
+      "loop": false,
+      "duration": 0.853,
+      "channels": 1,
+      "loudnessLUFS": -14.8,
+      "peakDb": -6.2,
+      "note": "male straining \"nngh\" (craigsmith \"Man Straining\", cut by RMS envelope at 5.7 s)"
+    },
+    "grunt_m_2": {
+      "path": "assets/audio/grunt_m_2.ogg",
+      "loop": false,
+      "duration": 0.965,
+      "channels": 1,
+      "loudnessLUFS": -14.8,
+      "peakDb": -6.3,
+      "note": "male straining, longer (craigsmith \"Man Straining\" @ 8.2 s)"
+    },
+    "grunt_m_3": {
+      "path": "assets/audio/grunt_m_3.ogg",
+      "loop": false,
+      "duration": 0.912,
+      "channels": 1,
+      "loudnessLUFS": -15,
+      "peakDb": -2.2,
+      "note": "male straining (craigsmith \"Man Straining\" @ 11.3 s)"
+    },
+    "grunt_m_4": {
+      "path": "assets/audio/grunt_m_4.ogg",
+      "loop": false,
+      "duration": 0.429,
+      "channels": 1,
+      "loudnessLUFS": -15.4,
+      "peakDb": -1.9,
+      "note": "short pushing grunt (DeqstersLab \"Grunting effort pushing\" @ 0.76 s)"
+    },
+    "grunt_m_5": {
+      "path": "assets/audio/grunt_m_5.ogg",
+      "loop": false,
+      "duration": 0.447,
+      "channels": 1,
+      "loudnessLUFS": -14.9,
+      "peakDb": -3.5,
+      "note": "short pushing grunt (DeqstersLab @ 2.8 s)"
+    },
+    "grunt_m_6": {
+      "path": "assets/audio/grunt_m_6.ogg",
+      "loop": false,
+      "duration": 0.692,
+      "channels": 1,
+      "loudnessLUFS": -15.2,
+      "peakDb": -2.1,
+      "note": "exertion groan (salemaudio \"Short Pained/Exertion Groans\" @ 5.6 s)"
+    },
+    "grunt_f_1": {
+      "path": "assets/audio/grunt_f_1.ogg",
+      "loop": false,
+      "duration": 0.453,
+      "channels": 1,
+      "loudnessLUFS": -14.8,
+      "peakDb": -2.3,
+      "note": "short female effort grunt (Nocturnal_Vanguard \"Female Hurt Grunts & Groans\" @ 3.7 s)"
+    },
+    "grunt_f_2": {
+      "path": "assets/audio/grunt_f_2.ogg",
+      "loop": false,
+      "duration": 0.849,
+      "channels": 1,
+      "loudnessLUFS": -15.1,
+      "peakDb": -2.3,
+      "note": "female effort groan (Nocturnal_Vanguard @ 0.3 s)"
+    },
+    "grunt_f_3": {
+      "path": "assets/audio/grunt_f_3.ogg",
+      "loop": false,
+      "duration": 0.826,
+      "channels": 1,
+      "loudnessLUFS": -14.8,
+      "peakDb": -4.4,
+      "note": "female effort groan (Nocturnal_Vanguard @ 7.3 s)"
+    },
+    "strongman_roar": {
+      "path": "assets/audio/strongman_roar.ogg",
+      "loop": false,
+      "duration": 1.113,
+      "channels": 1,
+      "loudnessLUFS": -14.1,
+      "peakDb": -1.7,
+      "note": "layered strongman effort roar: exertion groan pitched down 18% + straining layer pitched down 10% + low drum thump"
+    },
+    "rope_creak_b": {
+      "path": "assets/audio/rope_creak_b.ogg",
+      "loop": false,
+      "duration": 1.3,
+      "channels": 1,
+      "loudnessLUFS": -19.6,
+      "peakDb": -1.7,
+      "note": "mooring rope creak, shorter (Rmutt @ 55.3 s)"
+    },
+    "rope_creak_c": {
+      "path": "assets/audio/rope_creak_c.ogg",
+      "loop": false,
+      "duration": 1.184,
+      "channels": 1,
+      "loudnessLUFS": -18.2,
+      "peakDb": -2.9,
+      "note": "creaking wood/rope groan (Patrick_Corra \"Creaking wood\" @ 0.4 s)"
+    },
+    "rope_tension_loop": {
+      "path": "assets/audio/rope_tension_loop.ogg",
+      "loop": true,
+      "duration": 17.31,
+      "channels": 1,
+      "loudnessLUFS": -23.3,
+      "peakDb": -2.7,
+      "note": "seamless rope-strain bed: rhythmic rope-friction creaks (Valerie-Vivegnis swing rope, exactly 12 periods of 1.4425 s) + 4 heavy mooring-rope creaks scattered with wrap-around. Fade its volume with rope tension.",
+      "seam": {
+        "jump": 0.0006,
+        "medianStep": 0.0009,
+        "p99Step": 0.0638,
+        "headDb": -49,
+        "tailDb": -51.5
+      }
+    },
+    "rope_snap": {
+      "path": "assets/audio/rope_snap.ogg",
+      "loop": false,
+      "duration": 0.931,
+      "channels": 1,
+      "loudnessLUFS": -24,
+      "peakDb": -1.5,
+      "note": "synthesised rope snap: rising whoosh -> sharp noise crack + falling \"thwip\" chirp, layered with a wooden plank impact (Kenney)"
+    },
+    "whistle_end": {
+      "path": "assets/audio/whistle_end.ogg",
+      "loop": false,
+      "duration": 2.942,
+      "channels": 1,
+      "loudnessLUFS": -14.1,
+      "peakDb": -7.8,
+      "note": "referee long blast: SpliceSound \"Referee whistle blow, gymnasium\" with its steady middle crossfade-extended to ~1.6 s, natural hall tail"
+    },
+    "drum_hit": {
+      "path": "assets/audio/drum_hit.ogg",
+      "loop": false,
+      "duration": 2,
+      "channels": 1,
+      "loudnessLUFS": -16.4,
+      "peakDb": -1.8,
+      "note": "big folk bass drum \"DÜM\" (Sassaby \"Alfaia Hit\", a Brazilian folk bass drum close to a davul) layered with a low kick (phluidbox)"
+    },
+    "drum_tek": {
+      "path": "assets/audio/drum_tek.ogg",
+      "loop": false,
+      "duration": 0.263,
+      "channels": 1,
+      "loudnessLUFS": null,
+      "peakDb": -2.2,
+      "note": "light high \"tek\" stick/rim hit (Kenney impactWood_light, high-passed 350 Hz)"
+    },
+    "drum_roll": {
+      "path": "assets/audio/drum_roll.ogg",
+      "loop": false,
+      "duration": 3.132,
+      "channels": 1,
+      "loudnessLUFS": -14.3,
+      "peakDb": -2.1,
+      "note": "accelerating \"tek\" roll (16 hits, 0.12 s -> 0.035 s apart, crescendo) ending on a big DÜM; built from drum_tek + drum_hit"
+    },
+    "drum_loop": {
+      "path": "assets/audio/drum_loop.ogg",
+      "loop": true,
+      "duration": 8.727,
+      "channels": 1,
+      "loudnessLUFS": -18,
+      "peakDb": -3,
+      "note": "seamless davul pulling rhythm, 110 bpm, 4 bars of 4/4 (DÜM . tek tek DÜM . tek . | x3 + fill), tails wrap around. Sync heave animation to beats 1 and 3 (every 1.0909 s).",
+      "bpm": 110,
+      "seam": {
+        "jump": 0.0045,
+        "medianStep": 0.0012,
+        "p99Step": 0.0096,
+        "headDb": -9.3,
+        "tailDb": -19.9
+      }
+    },
+    "tractor_loop": {
+      "path": "assets/audio/tractor_loop.ogg",
+      "loop": true,
+      "duration": 13.978,
+      "channels": 1,
+      "loudnessLUFS": -19,
+      "peakDb": -6.7,
+      "note": "seamless diesel tractor idle (jmagiera \"MB trac 1400 turbo running idle\", 14 s window, loop length refined by waveform correlation, 0.6 s crossfade). Raise playbackRate (1.0-1.6) for revving.",
+      "seam": {
+        "jump": 0.0086,
+        "medianStep": 0.0221,
+        "p99Step": 0.0933,
+        "headDb": -17.9,
+        "tailDb": -19.7
+      }
+    },
+    "splash_water": {
+      "path": "assets/audio/splash_water.ogg",
+      "loop": false,
+      "duration": 1.648,
+      "channels": 1,
+      "loudnessLUFS": -14.4,
+      "peakDb": -1.8,
+      "note": "big water splash (Thimras \"Ocean splash\") + small splash layer (rubberduck splash_01)"
+    },
+    "splash_small": {
+      "path": "assets/audio/splash_small.ogg",
+      "loop": false,
+      "duration": 0.398,
+      "channels": 1,
+      "loudnessLUFS": null,
+      "peakDb": -2.3,
+      "note": "small wet splash / droplet landing (rubberduck splash_06)"
+    },
+    "ui_tick": {
+      "path": "assets/audio/ui_tick.ogg",
+      "loop": false,
+      "duration": 0.045,
+      "channels": 1,
+      "loudnessLUFS": null,
+      "peakDb": -2.5,
+      "note": "UI tick (Kenney Interface tick_001)"
+    },
+    "ui_click": {
+      "path": "assets/audio/ui_click.ogg",
+      "loop": false,
+      "duration": 0.097,
+      "channels": 1,
+      "loudnessLUFS": null,
+      "peakDb": -2.3,
+      "note": "UI click (Kenney Interface click_001)"
+    },
+    "countdown_beep": {
+      "path": "assets/audio/countdown_beep.ogg",
+      "loop": false,
+      "duration": 0.18,
+      "channels": 1,
+      "loudnessLUFS": null,
+      "peakDb": -7.2,
+      "note": "synthesised countdown beep, 880 Hz with 2nd/3rd harmonics, 0.18 s"
+    },
+    "countdown_go": {
+      "path": "assets/audio/countdown_go.ogg",
+      "loop": false,
+      "duration": 0.6,
+      "channels": 1,
+      "loudnessLUFS": -12.6,
+      "peakDb": -3,
+      "note": "synthesised \"GO!\" tone: one octave+fifth higher (1320 Hz) with octave-below body and slight vibrato, 0.6 s"
+    },
+    "join_pop": {
+      "path": "assets/audio/join_pop.ogg",
+      "loop": false,
+      "duration": 0.16,
+      "channels": 1,
+      "loudnessLUFS": null,
+      "peakDb": -3.7,
+      "note": "synthesised bubbly \"pop\" for a viewer joining: fast 320 -> 1150 Hz sine sweep with a click"
+    },
+    "music_fair_b": {
+      "path": "assets/audio/music_fair_b.ogg",
+      "loop": true,
+      "duration": 90.028,
+      "channels": 2,
+      "loudnessLUFS": -19,
+      "peakDb": -6.6,
+      "note": "alternative music loop: Bobjt \"millennial fair\" (OGA CC0, 90 s, more energetic). Leading/trailing codec silence trimmed, 4 ms declick at the seam.",
+      "seam": {
+        "jump": 0.0001,
+        "medianStep": 0.0101,
+        "p99Step": 0.096,
+        "headDb": -38.4,
+        "tailDb": -24.4
+      }
+    }
+  },
+  "fonts": {
+    "font_display": {
+      "path": "assets/fonts/PaytoneOne-Regular.ttf",
+      "family": "Paytone One",
+      "license": "SIL OFL 1.1",
+      "licenseFile": "assets/fonts/PaytoneOne-OFL.txt",
+      "note": "bold rounded display font (titles, team names, big announcements, countdown); single weight 400. Contains Turkish glyphs (İ ı Ş ş Ğ ğ Ü ü Ö ö Ç ç)."
+    },
+    "font_text": {
+      "path": "assets/fonts/Nunito-Variable.ttf",
+      "family": "Nunito",
+      "license": "SIL OFL 1.1",
+      "licenseFile": "assets/fonts/Nunito-OFL.txt",
+      "note": "rounded text font, VARIABLE weight 200-1000 (use @font-face font-weight: 200 1000). Contains Turkish glyphs."
+    }
+  }
+}

@@ -202,6 +202,8 @@ async function main() {
     const mapK = band.fit ? Math.min(1, Math.max(0.6, band.fit.w / (960 * band.u))) : 1;
     document.documentElement.style.setProperty('--tag-k', String(band.u * mapK));
   };
+  // The HUD re-runs the layout itself when a stream row changes height (boards tween).
+  hud.onRelayout = () => resize();
   window.addEventListener('resize', () => resize());
   window.visualViewport?.addEventListener('resize', () => resize());
   // Phones: no page scroll, pinch zoom or double-tap zoom.

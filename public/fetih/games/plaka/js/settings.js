@@ -70,7 +70,7 @@ export function applySettings(config, base, values = {}) {
   // ---- Hediyeler ----
   const strip = v['gifts.strip'];
   const baseStrip = B.hud.giftStrip || [];
-  if (Array.isArray(strip) && strip.length >= 1 && strip.length <= 12) {
+  if (Array.isArray(strip) && strip.length >= 1 && strip.length <= 16) { // 16 = schema gifts.strip.maxCount
     // Gift ladder from the panel (variable length). The game's own fallback icon comes from
     // the config entry with the same (or the nearest lower) coin value; id / plus from the panel.
     C.hud.giftStrip = strip.map((g) => {

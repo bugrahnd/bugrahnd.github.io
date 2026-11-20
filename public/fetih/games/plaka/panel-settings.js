@@ -35,7 +35,7 @@ const GROUPS = [
   {
     id: 'hediye', title: 'Hediyeler',
     fields: [
-      { key: 'gifts.strip', kind: 'strip', label: 'Hediye merdiveni (haritanın altı)', hint: 'En ucuzdan pahalıya 1-12 hediye; ekranda sayfa sayfa döner. Hediye adı izleyicinin TikTok\'ta gördüğü ad olmalı (boş bırakılırsa jeton değeri yazar). "+N asker" kısmı asker eğrisinden otomatik gelir; etki yazısını siz yazarsınız. Etkiyi jeton değeri belirler, ad değil. "Listeden seç" yayında görülen hediyeleri gösterir: resim, ad ve fiyat hazır gelir.' },
+      { key: 'gifts.strip', kind: 'strip', label: 'Hediye merdiveni (haritanın altı)', hint: 'En ucuzdan pahalıya 1-16 hediye; ekranda sayfa sayfa döner. Hediye adı izleyicinin TikTok\'ta gördüğü ad olmalı (boş bırakılırsa jeton değeri yazar). "+N asker" kısmı asker eğrisinden otomatik gelir; etki yazısını siz yazarsınız. Etkiyi jeton değeri belirler, ad değil. "Listeden seç" yayında görülen hediyeleri gösterir: resim, ad ve fiyat hazır gelir.' },
       { key: 'gifts.heading', kind: 'text', label: 'Merdiven başlığı', hint: 'Yayın görünümünde hediye merdiveninin üstündeki sarı sekme. Açıklayıcı tutun (ör. HEDİYELER VE ORDULAR); "hediye at" gibi emir kipleri TikTok\'ta kısıtlamaya yol açabilir.' },
       { key: 'gifts.showTroops', kind: 'toggle', label: 'Kutularda asker sayısı', hint: 'Açıksa her hediye kutusunda "+N asker" yazar (sayı asker eğrisinden gelir).' },
       { key: 'gifts.curve', kind: 'curve', label: 'Hediye başına asker', hint: 'Tek bir hediyenin jeton değerine göre kaç asker verdiği. Aradaki değerler bu noktalardan hesaplanır; sayılar artan sırada olmalı.' },
@@ -131,7 +131,7 @@ export function mount({ api, root: host, game }) {
   const resetBtn = el('button', '', actions, 'Varsayılana dön'); resetBtn.type = 'button';
   const msgEl = el('span', 'set-msg', actions);
   msgEl.setAttribute('role', 'status'); msgEl.setAttribute('aria-live', 'polite');
-  let schema = null; let defaults = null; let paces = null;
+  let schema = null; let defaults = null; let paces = null; let giftInfo = null;
   let current = {}; // saved overrides from the bridge
   let dirty = false;
   const inputs = new Map(); // key -> { get(), set(v) }
@@ -181,6 +181,10 @@ export function mount({ api, root: host, game }) {
   function previewTroops(coins) {
     const cur = inputs.get('gifts.curve')?.get() || defaults?.['gifts.curve'] || [];
     const pts = CURVE_COINS.map((c, i) => [c, Number(cur[i]) || Number(defaults?.['gifts.curve']?.[i]) || 1]);
+    // Points above 5000 coins: the config's, scaled with the 5000 value (as game/js/settings.js does).
+    const p5 = pts[pts.length - 1][1];
+    const k = giftInfo?.curveBase5000 > 0 ? p5 / giftInfo.curveBase5000 : 1;
+    for (const [x, y] of giftInfo?.curveTail || []) pts.push([x, Math.max(p5, Math.round(y * k))]);
     const c = Math.max(1, coins);
     if (c <= pts[0][0]) return Math.round(pts[0][1] * c / pts[0][0]);
     let i = 1;
@@ -266,6 +270,7 @@ export function mount({ api, root: host, game }) {
       if (g.warn) el('p', 'set-warn', fs, `⚠ ${g.warn}`);
       if (g.intro) el('p', 'hint', fs, g.intro);
       if (g.id === 'tur') buildCommands(fs);
+      if (g.id === 'hediye') buildGiftOverview(fs);
       if (g.id === 'ekran') {
         const row = el('div', 'row wrap', fs);
         const b = el('button', '', row, 'Sade görünüm');
@@ -279,6 +284,104 @@ export function mount({ api, root: host, game }) {
       }
       for (const f of g.fields) buildField(fs, f);
     }
+  }
+
+  // ---------------------------------------------------------------- gift overview
+  // "Hediyeler" table at the top of the gifts section: every ladder entry in price order with
+  // its picture, TikTok name, price, in-game name (the label the owner also types next to the
+  // gift in LIVE Studio, with a copy button), what it does and the troops it gives. It follows
+  // the editor below live (unsaved edits included).
+  let overviewEl = null;
+  const gameUrl = (rel) => (rel ? new URL(rel, import.meta.url).href : '');
+  function injectOverviewCss() {
+    if (document.getElementById('plaka-gift-ov-css')) return;
+    const st = document.createElement('style');
+    st.id = 'plaka-gift-ov-css';
+    st.textContent = `
+.gift-ov { margin: 2px 0 12px; }
+.gift-ov table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.gift-ov th { text-align: left; font-weight: 600; color: #9aa4b8; border-bottom: 1px solid #2a3040; padding: 4px 6px; white-space: nowrap; }
+.gift-ov td { border-bottom: 1px solid #222838; padding: 4px 6px; vertical-align: middle; }
+.gift-ov tr:last-child td { border-bottom: 0; }
+.gift-ov .gov-icon { width: 40px; }
+.gift-ov .gov-icon img { width: 32px; height: 32px; object-fit: contain; display: block; }
+.gift-ov .gov-icon img.own { opacity: .75; }
+.gift-ov .gov-num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.gift-ov .gov-label { white-space: nowrap; }
+.gift-ov .gov-label strong { margin-right: 6px; }
+.gift-ov .gov-name small, .gift-ov .gov-does small { display: block; color: #8a93a6; font-size: 12px; }
+.gift-ov .gov-copied { color: #7fd68a; font-size: 12px; margin-left: 4px; }
+.gift-ov-wrap { overflow-x: auto; }
+`;
+    document.head.append(st);
+  }
+  function buildGiftOverview(parent) {
+    injectOverviewCss();
+    const box = el('div', 'gift-ov', parent);
+    el('h4', '', box, 'Hediye listesi');
+    el('p', 'hint', box, 'Merdivendeki her hediye, fiyat sırasıyla. "Oyundaki adı", LIVE Studio\'da o hediyenin yanına yazacağınız etikettir: "kopyala" ile alıp oraya yapıştırın. Resim ve adı bilinmeyen hediyeler, izleyiciler o fiyatta bir hediye gönderince kendiliğinden dolar.');
+    overviewEl = el('div', 'gift-ov-wrap', box);
+  }
+  /** Gift step (gifts.tiers) for a coin value: the highest minCoins at or below it. */
+  const tierFor = (coins) => {
+    let t = null;
+    for (const x of giftInfo?.tiers || []) if (coins >= x.minCoins && (!t || x.minCoins >= t.minCoins)) t = x;
+    return t;
+  };
+  const ownIcon = (coins) => {
+    let best = null;
+    for (const [c, p] of giftInfo?.icons || []) if (c <= coins && (!best || c >= best[0])) best = [c, p];
+    return gameUrl(best ? best[1] : giftInfo?.fallbackIcon);
+  };
+  async function copyText(text, btn) {
+    let ok = false;
+    try { await navigator.clipboard.writeText(text); ok = true; } catch {
+      const ta = el('textarea', '', document.body); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      ta.select(); try { ok = document.execCommand('copy'); } catch { ok = false; } ta.remove();
+    }
+    const n = btn.nextElementSibling?.classList.contains('gov-copied') ? btn.nextElementSibling : el('span', 'gov-copied');
+    n.textContent = ok ? 'kopyalandı' : 'kopyalanamadı';
+    btn.after(n);
+    setTimeout(() => n.remove(), 1800);
+  }
+  function renderOverview(list) {
+    if (!overviewEl) return;
+    const rows = list.map((g, i) => ({ ...g, i })).filter((g) => g.coins >= 1).sort((a, b) => a.coins - b.coins || a.i - b.i);
+    const showN = inputs.get('gifts.showTroops')?.get() !== false;
+    const tbl = el('table');
+    const hr = el('tr', '', el('thead', '', tbl));
+    for (const h of ['', 'Hediye', 'Jeton', 'Oyundaki adı', 'Ne yapar', 'Asker']) el('th', h === 'Jeton' || h === 'Asker' ? 'gov-num' : '', hr, h);
+    const tb = el('tbody', '', tbl);
+    for (const g of rows) {
+      // Catalogue gift: by id, else by name at the same price, else (no name) the most recently
+      // sent gift at exactly this price, as the game does.
+      let it = g.id ? catalog.items.find((x) => x.id === g.id) : resolveRow(g.name, g.coins, 0)?.item;
+      if (!it && !g.name && !g.plus) it = catalog.items.filter((x) => x.seen && x.coins === g.coins).sort((a, b) => b.seen - a.seen)[0];
+      const tr = el('tr', '', tb);
+      const ic = el('td', 'gov-icon', tr);
+      const img = el('img', '', ic); img.alt = ''; img.referrerPolicy = 'no-referrer'; img.loading = 'lazy';
+      const own = ownIcon(g.coins);
+      if (it?.icon) { img.src = it.icon; img.onerror = () => { img.onerror = null; img.src = own; img.className = 'own'; }; } else { img.src = own; img.className = 'own'; }
+      img.title = it?.icon ? 'TikTok resmi' : 'Oyunun kendi simgesi (TikTok resmi, hediye yayında görülünce gelir)';
+      const nm = el('td', 'gov-name', tr);
+      const shown = g.name || (it ? it.tr || it.name : '');
+      nm.append(shown || `${g.coins.toLocaleString('tr-TR')} jeton`);
+      if (!g.name && !it) el('small', '', nm, 'adı henüz bilinmiyor');
+      else if (it && nameKey(it.name) !== nameKey(shown)) el('small', '', nm, `TikTok: ${it.name}`);
+      el('td', 'gov-num', tr, `${g.coins.toLocaleString('tr-TR')}${g.plus ? '+' : ''}`);
+      const lab = el('td', 'gov-label', tr);
+      el('strong', '', lab, g.effect || '–');
+      if (g.effect) {
+        const b = el('button', 'small', lab, 'kopyala'); b.type = 'button';
+        b.title = 'Oyundaki adı panoya kopyala (LIVE Studio\'da hediyenin etiketine yapıştırın)';
+        b.onclick = () => copyText(g.effect, b);
+      }
+      const t = tierFor(g.coins);
+      const does = el('td', 'gov-does', tr, t?.does || '–');
+      if (t?.label && nameKey(t.label) !== nameKey(g.effect)) el('small', '', does, `Oyundaki adım: ${t.label}`);
+      el('td', 'gov-num', tr, showN ? `+${previewTroops(g.coins).toLocaleString('tr-TR')}` : `(+${previewTroops(g.coins).toLocaleString('tr-TR')})`);
+    }
+    overviewEl.replaceChildren(tbl);
   }
 
   function buildCommands(parent) {
@@ -403,6 +506,7 @@ export function mount({ api, root: host, game }) {
             r.priceNote.style.display = wrong ? '' : 'none';
           }
           addBtn.disabled = rows.length >= s.maxCount;
+          renderOverview(rows.map((r) => ({ name: r.name.value.trim(), coins: Number(r.coins.value), effect: r.effect.value.trim(), id: r.id || r.autoId, plus: r.plus.checked })));
         };
         stripPreview = preview;
         const renumber = () => rows.forEach((r, n) => { r.num.textContent = `${n + 1}.`; r.up.disabled = n === 0; r.down.disabled = n === rows.length - 1; r.del.disabled = rows.length <= s.minCount; });
@@ -552,7 +656,7 @@ export function mount({ api, root: host, game }) {
 
   async function load() {
     const r = await api(`settings${q}`);
-    schema = r.schema; defaults = r.defaults; paces = r.paces; current = r.values || {};
+    schema = r.schema; defaults = r.defaults; paces = r.paces; giftInfo = r.giftInfo || r.extra?.giftInfo || null; current = r.values || {};
     build(); fill(); renderPages(r.pages);
     renderCatalogNote();
     loadCatalog();

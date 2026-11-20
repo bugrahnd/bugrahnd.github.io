@@ -1,0 +1,176 @@
+{
+  "title": "HALAT ÇEKME",
+  "teams": [
+    {
+      "id": 1,
+      "name": "Kırmızı",
+      "color": "#e63946",
+      "key": "1",
+      "words": [
+        "kırmızı",
+        "kirmizi",
+        "kırmızı takım",
+        "red"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Mavi",
+      "color": "#2f7cf6",
+      "key": "2",
+      "words": [
+        "mavi",
+        "mavi takım",
+        "blue"
+      ]
+    }
+  ],
+  "join": {
+    "resetEachRound": false,
+    "allowEmojiSuffix": true
+  },
+  "round": {
+    "lobbySec": 5,
+    "countdownSec": 3,
+    "durationSec": 90,
+    "endingPitSec": 8,
+    "endingTimeSec": 5,
+    "resultSec": 10,
+    "minMembers": 1,
+    "drawEpsilon": 0.01
+  },
+  "force": {
+    "perMember": 1,
+    "memberExponent": 0.6,
+    "neutral": 10,
+    "ropeMaxSpeed": 0.06,
+    "inertiaSec": 1.1,
+    "likeForce": 0,
+    "likeForceSec": 1.5,
+    "chatForce": 0,
+    "chatForceSec": 1.5,
+    "chatCooldownSec": 8,
+    "followForce": 0,
+    "shareForce": 0,
+    "bonusSec": 3
+  },
+  "gifts": {
+    "tierScaleExp": 0.5,
+    "tierScaleMax": 3,
+    "maxHelpersPerGift": 3,
+    "maxHelpersPerTeam": 8,
+    "heldMaxViewers": 500,
+    "heldMaxGifts": 20,
+    "tiers": [
+      {
+        "id": "tug",
+        "label": "Kısa asılma",
+        "min": 1,
+        "kind": "tug",
+        "force": 6,
+        "sec": 1.2
+      },
+      {
+        "id": "helper_s",
+        "label": "Yardımcı çekici",
+        "min": 5,
+        "kind": "helper",
+        "force": 4,
+        "sec": 12,
+        "size": 0.92
+      },
+      {
+        "id": "helper_m",
+        "label": "Güçlü Yardımcı",
+        "min": 10,
+        "kind": "helper",
+        "force": 6,
+        "sec": 15,
+        "size": 1
+      },
+      {
+        "id": "helper_l",
+        "label": "Usta Çekici",
+        "min": 30,
+        "kind": "helper",
+        "force": 12,
+        "sec": 18,
+        "size": 1.08
+      },
+      {
+        "id": "strongman",
+        "label": "Pehlivan",
+        "min": 99,
+        "kind": "strongman",
+        "force": 30,
+        "sec": 25,
+        "units": 1
+      },
+      {
+        "id": "strongman2",
+        "label": "Çifte Pehlivan",
+        "min": 199,
+        "kind": "strongman",
+        "force": 30,
+        "sec": 30,
+        "units": 2
+      },
+      {
+        "id": "tractor",
+        "label": "Traktör",
+        "min": 1000,
+        "kind": "tractor",
+        "force": 120,
+        "sec": 20
+      },
+      {
+        "id": "giant",
+        "label": "Dev",
+        "min": 5000,
+        "kind": "giant",
+        "force": 300,
+        "sec": 25
+      }
+    ]
+  },
+  "visual": {
+    "pullersPerSide": 8,
+    "crowdPerSide": 160,
+    "maxPixelRatio": 1.5,
+    "antialias": true,
+    "shadows": true,
+    "frontX": 3.05,
+    "slotGap": 0.56,
+    "pitHalf": 1.12,
+    "travel": 1.9,
+    "heaveSec": 1.5,
+    "nameTags": true,
+    "crowdCounter": true,
+    "maxParticles": 1400,
+    "slowMo": true,
+    "shake": 1
+  },
+  "camera": {
+    "fov": 50,
+    "pitchDeg": 40,
+    "span": 15.5,
+    "targetY": 0.9,
+    "targetZ": -1.4,
+    "drift": 1,
+    "push": 1,
+    "hero": true,
+    "wide": {
+      "pitchDeg": 19,
+      "span": 10,
+      "targetY": 0.8,
+      "targetZ": 0.1
+    }
+  },
+  "audio": {
+    "master": 0.9,
+    "music": 0.32,
+    "sfx": 0.8,
+    "maxVoices": 24,
+    "duckLevel": 0.35
+  }
+}

@@ -737,14 +737,37 @@ html:not(.dbg) .wait-pill.on { display: block; }
 .tt-zone.z-right .tt-zone-l { top: auto; bottom: calc(var(--u) * 6); }
 
 /* ==========================================================================
-   STREAM layout (portrait, TikTok LIVE safe zones). Rows are offsets from the
-   safe top (--st, TikTok header height) and safe bottom (--sb, where TikTok's
-   chat starts); x stays inside the side insets (--sx: cropped on tall phones).
-   See the table at the top of hud.js. Nothing below 34 design units is meant to
-   be read here; secondary lines are hidden instead of shrunk.
+   STREAM layout (portrait, TikTok LIVE safe zones). Everything sits between
+   the safe top (--st, TikTok header) and the safe bottom (--sb, where TikTok's
+   chat starts), x inside the side insets (--sx: cropped on tall phones).
+
+   Spacing system (hud.js STREAM holds the numbers; keep in sync):
+   - rows, top-down: strip | boards | leader row | MAP BAND | ladder tab + ladder | join line
+   - one gap (--s-gap) between every pair of adjacent rows and between blocks
+     side by side; the first row starts --s-edge below --st, the last ends
+     --s-edge above --sb. hud.js computes every row (--s-<row>-y / -h, design
+     units from the stage top); the map band takes all the height left over.
+   - panel types, one treatment each:
+       wood board  (.panel-dark: strip, boards, ladder)  8-unit frame, 8 inner padding x
+       dark tile   (leader, credit, tips, nudge, join line, HÜCUM bar, status line)
+                   4-unit border, radius 18, 14 inner padding x
+       inner tile  (board rows, ladder tiles, ladder tab)  radius 10-12, 2-3 unit border
+   - single-line text that may ellipsize clips only horizontally
+     (overflow: clip visible), so accents and descenders are never cut.
+   Nothing below 34 design units is meant to be read here except the board rows
+   (30-32, unchanged); secondary lines are hidden instead of shrunk.
    ========================================================================== */
-.stream { --bw: calc(1080 - 2 * var(--sx)); } /* bottom unit width: inset to inset (owner: the ladder ignores the hearts column; ?zones=1 still draws it) */
+.stream {
+  --bw: calc(1080 - 2 * var(--sx)); /* content width: inset to inset (owner: the ladder ignores the hearts column; ?zones=1 still draws it) */
+  --hw: calc((var(--bw) - var(--s-gap, 12)) / 2); /* half row (leader | credit) */
+}
 .stream .panel-dark { border-width: calc(var(--u) * 8); border-image-width: calc(var(--u) * 8); }
+
+/* Single-line texts: ellipsis without cutting glyphs vertically. */
+.stream :is(.sess-city, .liker-nick, .city-name, .city-troops, .gifter-nick, .leader-nick, .leader-sub, .credit-nick, .credit-troops,
+  .nudge-nick, .nudge-msg, .imp-text, .cta-a, .hb-text, .tier-name, .tier-res, .tiers-tab span, .status-text, .cmd-name, .end-cmd-name, .end-city-name, .announce-nick, .callout-sub) {
+  overflow: clip visible; min-width: 0; /* clip (unlike hidden) keeps min-width:auto, so flex items need this to shrink */
+}
 
 /* Title: decoration only, under TikTok's header. */
 .stream .topbar { left: 0; right: 0; top: 0; height: calc(var(--u) * var(--st)); border: 0; border-image: none; filter: none; justify-content: center; align-items: flex-start; padding-top: calc(var(--u) * 104); }
@@ -756,179 +779,199 @@ html:not(.dbg) .wait-pill.on { display: block; }
 .stream .conn { position: absolute; right: calc(var(--u) * 14); top: calc(var(--u) * 14); }
 .stream .wait-pill { top: calc(var(--u) * (var(--st) - 44)); }
 
-/* Strip: session leader | timer | top liker. */
+/* Row 1, strip (wood board): session leader | timer | top liker. */
 .stream .strip {
-  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: calc(var(--u) * 12);
-  position: absolute; left: calc(var(--u) * var(--sx)); right: calc(var(--u) * var(--sx)); top: calc(var(--u) * (var(--st) + 4)); height: calc(var(--u) * 62);
-  padding: 0 calc(var(--u) * 6);
+  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: calc(var(--u) * var(--s-gap, 12));
+  position: absolute; left: calc(var(--u) * var(--sx)); width: calc(var(--u) * var(--bw));
+  top: calc(var(--u) * var(--s-strip-y, 234)); height: calc(var(--u) * var(--s-strip-h, 52));
+  padding: 0 calc(var(--u) * 8);
 }
-.strip-l, .strip-r { min-width: 0; overflow: hidden; }
+.strip-l, .strip-r { min-width: 0; overflow: clip visible; }
 .strip-c { display: flex; justify-content: center; }
-.stream .timer { gap: calc(var(--u) * 8); }
-.stream .timer-text { font-size: calc(var(--u) * 62); min-width: calc(var(--u) * 150); text-align: center; line-height: 1; }
-.stream .timer-icon { width: calc(var(--u) * 42); height: calc(var(--u) * 42); }
+.stream .timer { gap: calc(var(--u) * 10); line-height: 1; }
+.stream .timer-text { font-size: calc(var(--u) * 52); min-width: calc(var(--u) * 128); text-align: center; line-height: 1; }
+.stream .timer-icon { width: calc(var(--u) * 38); height: calc(var(--u) * 38); }
 .stream .round-text { font-size: calc(var(--u) * 34); }
 .stream .session {
   position: static; display: flex; flex-direction: column; align-items: flex-start; gap: 0;
   background: none; border: 0; padding: 0; font-size: calc(var(--u) * 34); line-height: 1.05;
 }
-.stream .sess-city { max-width: 100%; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 calc(var(--u) * 2) 0 #000; }
+.stream .sess-city { max-width: 100%; text-overflow: ellipsis; white-space: nowrap; text-shadow: 0 calc(var(--u) * 2) 0 #000; }
 .stream .likers-title, .stream .liker-empty, .stream .liker-row:nth-child(n+2) { display: none !important; }
 .stream .liker-list { gap: 0; align-items: flex-end; }
 .stream .liker-row { height: auto; background: none; padding: 0; font-size: calc(var(--u) * 34); line-height: 1.05; max-width: 100%; text-shadow: 0 calc(var(--u) * 2) 0 #000; }
 .stream .liker-row .liker-n { order: -1; }
 
-/* Titled boards side by side (the earlier stream layout, inside the side insets):
-   "EN GÜÇLÜ ŞEHİRLER" (rank, plate, city, "N il · N asker · N kişi") | "EN CÖMERTLER". */
-.stream .board { left: calc(var(--u) * var(--sx)); top: calc(var(--u) * (var(--st) + var(--s-cities, 76))); width: calc(var(--u) * 548); height: calc(var(--u) * 181); padding: 0; }
-.stream .gifters { left: calc(var(--u) * (var(--sx) + 554)); right: calc(var(--u) * var(--sx)); top: calc(var(--u) * (var(--st) + var(--s-gifters, 76))); width: auto; height: calc(var(--u) * 181); }
-.stream .board .panel-title, .stream .gifters .panel-title { font-size: calc(var(--u) * 30); height: calc(var(--u) * 34); margin: 0 0 calc(var(--u) * 2); }
-.stream .panel-title .icon { width: calc(var(--u) * 32); height: calc(var(--u) * 32); }
-.stream .city-list, .stream .gifter-list { gap: calc(var(--u) * 3); }
-.stream .city-row { position: relative; height: calc(var(--u) * 41); gap: calc(var(--u) * 8); border-left-width: calc(var(--u) * 6); }
-.stream .rank { font-size: calc(var(--u) * 30); width: calc(var(--u) * 22); }
-.stream .plate-badge { font-size: calc(var(--u) * 30); padding: calc(var(--u) * 2) calc(var(--u) * 5); min-width: calc(var(--u) * 56); border-width: calc(var(--u) * 2); }
-.stream .plate-badge.wide { font-size: calc(var(--u) * 30); padding: calc(var(--u) * 2) calc(var(--u) * 3); }
-.stream .city-info { flex-direction: row; align-items: center; gap: calc(var(--u) * 10); }
-.stream .city-line1 { flex: 1; min-width: 0; }
-.stream .city-name { font-size: calc(var(--u) * 32); }
-.stream .hucum-tag, .stream .commander, .stream .gifter-sub { display: none !important; }
-.stream .city-line2 { font-size: calc(var(--u) * 30); flex: none; gap: calc(var(--u) * 8); }
-.stream .morale { position: absolute; left: calc(var(--u) * 6); right: calc(var(--u) * 6); bottom: calc(var(--u) * 2); height: calc(var(--u) * 4); }
-.stream .gifter-row { height: calc(var(--u) * 41); padding: 0 calc(var(--u) * 8); gap: calc(var(--u) * 8); }
-.stream .gifter-row .avatar.mid { width: calc(var(--u) * 36); height: calc(var(--u) * 36); }
-.stream .gifter-row .avatar-fb { font-size: calc(var(--u) * 22); }
-.stream .medal { width: calc(var(--u) * 32); height: calc(var(--u) * 32); font-size: calc(var(--u) * 22); }
-.stream .gifter-info { display: flex; align-items: center; gap: calc(var(--u) * 8); }
-.stream .gifter-nick { flex: 1; min-width: 0; font-size: calc(var(--u) * 30); }
-.stream .gifter-l2 { flex: none; }
-.stream .gifter-coins { font-size: calc(var(--u) * 30); }
-.stream .board-empty { font-size: calc(var(--u) * 30); padding: calc(var(--u) * 6) 0; line-height: 1.15; }
-.stream .city-row:nth-child(n+4), .stream .gifter-row:nth-child(n+4) { display: none !important; }
-.stream #hud.hide-gifterBoard .board { width: calc(var(--u) * (1080 - 2 * var(--sx))); }
-.stream #hud.hide-cityBoard .gifters { left: calc(var(--u) * var(--sx)); }
-
-/* Lead row: round leader (left) and the credit slot (right): credit > held-gift hint > tips. */
-.stream .leader-card {
-  left: calc(var(--u) * (var(--sx) + 235)); top: calc(var(--u) * (var(--st) + var(--s-lead, 184))); width: calc(var(--u) * 470); height: calc(var(--u) * 92);
-  gap: calc(var(--u) * 14); padding: 0 calc(var(--u) * 18) 0 calc(var(--u) * 12); border-radius: calc(var(--u) * 22);
+/* Row 2, boards (wood boards side by side): "EN GÜÇLÜ ŞEHİRLER" | "EN CÖMERTLER".
+   Three rows each; while both are empty (round start) the row is compact and shows one
+   line per board (hud.js animates the height once when the first entry appears). */
+.stream .board, .stream .gifters {
+  top: calc(var(--u) * var(--s-boards-y, 298)); height: calc(var(--u) * var(--s-boards-h, 164));
+  display: flex; flex-direction: column; padding: 0 calc(var(--u) * 8) calc(var(--u) * 2); overflow: hidden;
 }
-.stream .leader-av { width: calc(var(--u) * 84); height: calc(var(--u) * 84); }
-.stream .leader-crown { width: calc(var(--u) * 46); height: calc(var(--u) * 46); top: calc(var(--u) * -28); }
-.stream .avatar.leader .avatar-fb { font-size: calc(var(--u) * 44); }
+.stream .board { left: calc(var(--u) * var(--sx)); width: calc(var(--u) * 544); }
+.stream .gifters { left: calc(var(--u) * (var(--sx) + 544 + var(--s-gap, 12))); right: auto; width: calc(var(--u) * (var(--bw) - 544 - var(--s-gap, 12))); }
+.stream .board .panel-title, .stream .gifters .panel-title { flex: none; font-size: calc(var(--u) * 30); line-height: 1; height: calc(var(--u) * 32); margin: 0 0 calc(var(--u) * 4); }
+.stream .panel-title .icon { width: calc(var(--u) * 30); height: calc(var(--u) * 30); }
+.stream .city-list, .stream .gifter-list { flex: 1; min-height: 0; gap: calc(var(--u) * 2); }
+.stream .city-row { position: relative; flex: none; height: calc(var(--u) * 36); gap: calc(var(--u) * 8); padding: 0 calc(var(--u) * 8); border-left-width: calc(var(--u) * 6); border-radius: calc(var(--u) * 10); }
+.stream .rank { font-size: calc(var(--u) * 30); line-height: 1; width: calc(var(--u) * 22); }
+.stream .plate-badge { font-size: calc(var(--u) * 30); padding: calc(var(--u) * 1) calc(var(--u) * 5); min-width: calc(var(--u) * 56); border-width: calc(var(--u) * 2); }
+.stream .plate-badge.wide { font-size: calc(var(--u) * 30); padding: calc(var(--u) * 1) calc(var(--u) * 3); }
+.stream .city-info { flex-direction: row; align-items: center; gap: calc(var(--u) * 10); }
+/* The city name keeps up to 58% of the row; the stats line gives way first (troops ellipsize). */
+.stream .city-line1 { flex: 1 0 auto; max-width: 58%; min-width: 0; }
+.stream .city-name { font-size: calc(var(--u) * 32); line-height: 1.05; }
+.stream .hucum-tag, .stream .commander, .stream .gifter-sub { display: none !important; }
+.stream .city-line2 { font-size: calc(var(--u) * 30); line-height: 1.05; flex: 0 1 auto; min-width: 0; margin-left: auto; gap: calc(var(--u) * 8); }
+.stream .city-prov { flex: none; }
+.stream .city-troops { text-overflow: ellipsis; white-space: nowrap; }
+.stream .morale { position: absolute; left: calc(var(--u) * 6); right: calc(var(--u) * 6); bottom: calc(var(--u) * 2); height: calc(var(--u) * 4); }
+.stream .gifter-row { flex: none; height: calc(var(--u) * 36); padding: 0 calc(var(--u) * 8); gap: calc(var(--u) * 8); border-radius: calc(var(--u) * 10); }
+.stream .gifter-row .avatar.mid { width: calc(var(--u) * 32); height: calc(var(--u) * 32); }
+.stream .gifter-row .avatar-fb { font-size: calc(var(--u) * 20); }
+.stream .medal { width: calc(var(--u) * 30); height: calc(var(--u) * 30); font-size: calc(var(--u) * 20); }
+.stream .gifter-info { display: flex; align-items: center; gap: calc(var(--u) * 8); }
+.stream .gifter-nick { flex: 1; min-width: 0; font-size: calc(var(--u) * 30); line-height: 1.05; }
+.stream .gifter-l2 { flex: none; }
+.stream .gifter-coins { font-size: calc(var(--u) * 30); line-height: 1.05; }
+/* Empty board: one line, centred in whatever height the row has. */
+.stream .board-empty { font-size: calc(var(--u) * 30); line-height: 1.1; padding: 0 calc(var(--u) * 4); margin: auto 0; white-space: nowrap; overflow: clip visible; text-overflow: ellipsis; }
+.stream .city-row:nth-child(n+4), .stream .gifter-row:nth-child(n+4) { display: none !important; }
+.stream #hud.hide-gifterBoard .board { width: calc(var(--u) * var(--bw)); }
+.stream #hud.hide-cityBoard .gifters { left: calc(var(--u) * var(--sx)); width: calc(var(--u) * var(--bw)); }
+
+/* Row 3, leader row (dark tiles): round leader | credit > held-gift hint > tips. Both halves
+   are centred boxes (hud.js animates them with translateX(-50%)). */
+.stream .leader-card, .stream .credit, .stream .idle-slot, .stream .nudge {
+  height: calc(var(--u) * var(--s-lead-h, 86)); border-width: calc(var(--u) * 4); border-radius: calc(var(--u) * 18);
+}
+.stream .leader-card {
+  left: calc(var(--u) * (var(--sx) + var(--hw) / 2)); top: calc(var(--u) * var(--s-lead-y, 468)); width: calc(var(--u) * var(--hw));
+  gap: calc(var(--u) * 14); padding: 0 calc(var(--u) * 14) 0 calc(var(--u) * 12);
+}
+/* Crowned avatar: the crown overlaps the ring's top and stays inside the card. */
+.stream .leader-av { width: calc(var(--u) * 58); height: calc(var(--u) * 58); align-self: flex-end; margin-bottom: calc(var(--u) * 6); }
+.stream .leader-crown { width: calc(var(--u) * 34); height: calc(var(--u) * 34); top: calc(var(--u) * -14); }
+.stream .avatar.leader { box-shadow: 0 0 0 calc(var(--u) * 4) #ffd166, 0 0 calc(var(--u) * 14) #ffd166; }
+.stream .avatar.leader .avatar-fb { font-size: calc(var(--u) * 32); }
+.stream .leader-glow { inset: 0; border-radius: calc(var(--u) * 14); }
+.stream .leader-text { line-height: 1.05; }
 .stream .leader-label { display: none; }
 .stream .leader-card.is-new .leader-label { display: flex; }
 .stream .leader-card.is-new .leader-label > span:first-child { display: none; }
-.stream .leader-new { font-size: calc(var(--u) * 34); }
+.stream .leader-new { font-size: calc(var(--u) * 34); line-height: 1.05; }
 .stream .leader-card.is-new .leader-sub { display: none; }
-.stream .leader-nick { font-size: calc(var(--u) * 42); line-height: 1.1; }
-.stream .leader-sub { font-size: calc(var(--u) * 34); }
-.stream .leader-coins { font-size: calc(var(--u) * 48); }
+.stream .leader-nick { font-size: calc(var(--u) * 38); line-height: 1.05; }
+.stream .leader-sub { font-size: calc(var(--u) * 34); line-height: 1.05; }
+.stream .leader-coins { font-size: calc(var(--u) * 44); }
 .stream .leader-coins-l { display: none; }
-.stream .leader-card.empty { width: calc(var(--u) * 470); }
-.stream .leader-card.empty .leader-nick { font-size: calc(var(--u) * 34); white-space: normal; line-height: 1.1; }
+.stream .leader-card.empty { width: calc(var(--u) * var(--hw)); }
+.stream .leader-card.empty .leader-nick { font-size: calc(var(--u) * 34); white-space: normal; line-height: 1.08; }
 
 .stream .credit {
-  left: calc(var(--u) * (1080 - var(--sx) - 240)); top: calc(var(--u) * (var(--st) + var(--s-lead, 184))); width: calc(var(--u) * 480); max-width: none; height: calc(var(--u) * 92); z-index: 7;
-  display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: 1fr 1fr; column-gap: calc(var(--u) * 14); align-items: center;
-  padding: calc(var(--u) * 6) calc(var(--u) * 18) calc(var(--u) * 6) calc(var(--u) * 10); border-radius: calc(var(--u) * 22);
+  left: calc(var(--u) * (1080 - var(--sx) - var(--hw) / 2)); top: calc(var(--u) * var(--s-lead-y, 468)); width: calc(var(--u) * var(--hw)); max-width: none; z-index: 7;
+  display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto auto; align-content: center; column-gap: calc(var(--u) * 14); row-gap: 0; align-items: center;
+  padding: 0 calc(var(--u) * 14) 0 calc(var(--u) * 10);
 }
 .stream .credit-av { grid-row: 1 / span 2; }
-.stream .avatar.credit-av { width: calc(var(--u) * 80); height: calc(var(--u) * 80); }
-.stream .avatar.credit-av .avatar-fb { font-size: calc(var(--u) * 42); }
+.stream .avatar.credit-av { width: calc(var(--u) * 60); height: calc(var(--u) * 60); }
+.stream .avatar.credit-av .avatar-fb { font-size: calc(var(--u) * 32); }
 .stream .credit-text { display: contents; }
 .stream .credit-msg { display: none; }
-.stream .credit-nick { max-width: none; font-size: calc(var(--u) * 40); align-self: end; line-height: 1.1; white-space: nowrap; }
-.stream .credit-troops, .stream .credit.tier3 .credit-troops, .stream .credit.tier4 .credit-troops { font-size: calc(var(--u) * 34); align-self: start; line-height: 1.15; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.stream .credit-gift { width: calc(var(--u) * 40); height: calc(var(--u) * 40); vertical-align: -0.25em; }
-.stream .nudges { left: calc(var(--u) * var(--sx)); right: auto; top: calc(var(--u) * (var(--st) + var(--s-lead, 184))); width: calc(var(--u) * 470); z-index: 8; }
-.stream .nudge { height: calc(var(--u) * 92); gap: calc(var(--u) * 10); }
-.stream .nudge .avatar.mid { width: calc(var(--u) * 64); height: calc(var(--u) * 64); }
+.stream .credit-nick { max-width: none; font-size: calc(var(--u) * 38); line-height: 1.05; white-space: nowrap; }
+.stream .credit-troops, .stream .credit.tier3 .credit-troops, .stream .credit.tier4 .credit-troops { font-size: calc(var(--u) * 34); line-height: 1.05; text-overflow: ellipsis; white-space: nowrap; }
+.stream .credit-gift { width: calc(var(--u) * 36); height: calc(var(--u) * 36); vertical-align: -0.2em; }
+
+/* Held gift ("jeton bekliyor"): takes the leader card's place, same box. */
+.stream .nudges { left: calc(var(--u) * var(--sx)); right: auto; top: calc(var(--u) * var(--s-lead-y, 468)); width: calc(var(--u) * var(--hw)); z-index: 8; }
+.stream .nudge { gap: calc(var(--u) * 12); padding: 0 calc(var(--u) * 14) 0 calc(var(--u) * 12); }
+.stream .nudge .avatar.mid { width: calc(var(--u) * 58); height: calc(var(--u) * 58); }
 .stream .nudge:not(:last-child) { display: none; }
-.stream .nudge-nick, .stream .nudge-coins, .stream .nudge-msg { font-size: calc(var(--u) * 34); }
+.stream .nudge-nick, .stream .nudge-coins, .stream .nudge-msg { font-size: calc(var(--u) * 34); line-height: 1.05; }
 .stream .nudge-l1 { gap: calc(var(--u) * 8); }
-.stream .nudge-msg { line-height: 1.2; }
-.stream .cta-chip.tiny { font-size: calc(var(--u) * 34); }
-.stream .nudge.likes { width: calc(var(--u) * (1080 - 2 * var(--sx))); }
+.stream .cta-chip.tiny { font-size: calc(var(--u) * 34); line-height: 1; }
+.stream .nudge.likes { width: calc(var(--u) * var(--bw)); }
+
+/* Tips slot: an emoji chip and at most two lines (clamped with an ellipsis); a personal
+   reply shows the nickname chip on the first line and the answer on the second. */
 #hud.crediting .idle-slot { visibility: hidden; }
 #hud.hinting .idle-slot { visibility: visible; z-index: 9; border-color: var(--gold); background: rgb(14, 9, 4); }
 .stream .idle-slot {
   display: flex; align-items: center; justify-content: center; position: absolute; z-index: 4;
-  left: calc(var(--u) * (1080 - var(--sx) - 480)); top: calc(var(--u) * (var(--st) + var(--s-lead, 184))); width: calc(var(--u) * 480); height: calc(var(--u) * 92);
-  background: rgba(14, 9, 4, 0.84); border: calc(var(--u) * 4) solid rgba(255, 209, 102, 0.7); border-radius: calc(var(--u) * 22);
-  padding: 0 calc(var(--u) * 12); overflow: hidden;
+  left: calc(var(--u) * (1080 - var(--sx) - var(--hw))); top: calc(var(--u) * var(--s-lead-y, 468)); width: calc(var(--u) * var(--hw));
+  background: rgba(14, 9, 4, 0.84); border-style: solid; border-color: rgba(255, 209, 102, 0.7);
+  padding: 0 calc(var(--u) * 14);
 }
-.stream .idle-slot .cta-line { font-size: calc(var(--u) * 34); gap: 0 calc(var(--u) * 10); white-space: normal; flex-wrap: wrap; justify-content: center; text-align: center; line-height: 1.15; }
-.stream .idle-slot .cta-chip.small { font-size: calc(var(--u) * 34); max-width: calc(var(--u) * 300); overflow: hidden; text-overflow: ellipsis; }
-.stream .idle-slot .cta-text { white-space: normal; }
+.stream .idle-slot .cta-line {
+  font-size: calc(var(--u) * 34); line-height: 1.1; gap: calc(var(--u) * 12); white-space: normal; flex-wrap: nowrap;
+  justify-content: center; align-items: center; text-align: left; width: 100%;
+}
+.stream .idle-slot .cta-chip.small { flex: none; font-size: calc(var(--u) * 34); line-height: 1.1; max-width: 45%; overflow: clip visible; text-overflow: ellipsis; }
+.stream .idle-slot .cta-text {
+  white-space: normal; min-width: 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2;
+  overflow: hidden; padding: calc(var(--u) * 3) 0; margin: calc(var(--u) * -3) 0; /* room for the last line's descenders */
+}
+.stream .idle-slot .cta-line.hint { flex-direction: column; align-items: center; gap: calc(var(--u) * 2); text-align: center; }
+.stream .idle-slot .cta-line.hint .cta-chip.small { max-width: 100%; }
+.stream .idle-slot .cta-line.hint .cta-text { -webkit-line-clamp: 1; line-clamp: 1; }
 
-/* Map band overlays. */
-.stream .imperative { top: calc(var(--u) * (var(--st) + var(--s-bt, 294) + 4)); max-width: calc(var(--u) * (1080 - 2 * var(--sx))); padding: calc(var(--u) * 1) calc(var(--u) * 24); }
-.stream .imp-text { font-size: calc(var(--u) * 40); }
-.stream .finale { top: calc(var(--u) * (var(--st) + var(--s-bt, 294) + 66)); font-size: calc(var(--u) * 46); }
-.stream .pops { top: calc(var(--u) * (var(--st) + var(--s-bt, 294) + 200)); }
-.stream .callout { left: calc(var(--u) * var(--sx)); right: calc(var(--u) * var(--sx)); top: calc(var(--u) * (var(--st) + var(--s-bt, 294) + 120)); }
-.stream .countdown { top: calc(var(--u) * (var(--st) + var(--s-bt, 294) + 52)); font-size: calc(var(--u) * 300); }
-.stream .announce { top: calc(var(--u) * (var(--st) + var(--s-bt, 294))); height: calc(var(--u) * (var(--sb) - var(--s-bb, 172) - var(--st) - var(--s-bt, 294))); }
-.stream .announce-card { width: calc(var(--u) * (1080 - 2 * var(--sx))); }
+/* Map band overlays: the status line sits inside the band, one small step below its top rule. */
+.stream .imperative {
+  top: calc(var(--u) * (var(--s-band-y, 566) + 14)); max-width: calc(var(--u) * var(--bw));
+  padding: calc(var(--u) * 2) calc(var(--u) * 24); border-width: calc(var(--u) * 4); border-radius: calc(var(--u) * 18);
+}
+.stream .imp-text { font-size: calc(var(--u) * 40); line-height: 1.1; }
+.stream .finale { top: calc(var(--u) * (var(--s-band-y, 566) + 80)); font-size: calc(var(--u) * 46); }
+.stream .pops { top: calc(var(--u) * (var(--s-band-y, 566) + 200)); }
+.stream .callout { left: calc(var(--u) * var(--sx)); right: calc(var(--u) * var(--sx)); top: calc(var(--u) * (var(--s-band-y, 566) + 120)); }
+.stream .countdown { top: calc(var(--u) * (var(--s-band-y, 566) + 52)); font-size: calc(var(--u) * 300); }
+.stream .announce { top: calc(var(--u) * var(--s-band-y, 566)); height: calc(var(--u) * (var(--s-band-b, 1096) - var(--s-band-y, 566))); }
+.stream .announce-card { width: calc(var(--u) * var(--bw)); }
 .stream .announce.sultan { top: calc(var(--u) * var(--st)); height: calc(var(--u) * (var(--sb) - var(--st))); }
-.stream .minimap { left: calc(var(--u) * var(--sx)); top: calc(var(--u) * (var(--sb) - var(--s-bb, 172) - 8)); transform: translateY(-100%); width: calc(var(--u) * 260); }
+.stream .minimap { left: calc(var(--u) * var(--sx)); top: calc(var(--u) * (var(--s-band-b, 1096) - 12)); transform: translateY(-100%); width: calc(var(--u) * 260); }
 
-/* Bottom unit, under the map and above TikTok's chat, left of the hearts column:
-   [ call to action | HÜCUM bar ] over the gift ladder, same left and right edges. */
-.stream .cta {
-  left: calc(var(--u) * var(--sx)); right: auto; width: calc(var(--u) * var(--bw)); top: calc(var(--u) * (var(--sb) - var(--s-cta, 166))); height: calc(var(--u) * 60);
-  border-width: calc(var(--u) * 4); border-radius: calc(var(--u) * 18); padding: 0 calc(var(--u) * 10);
-}
-.stream #hud.hb-on .cta { width: calc(var(--u) * (var(--bw) * 0.53 - 4)); }
-.stream .cta-main { gap: calc(var(--u) * 10); max-width: 100%; }
-.stream .cta-a { font-size: calc(var(--u) * 30); overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.stream .cta-main .cta-chip { font-size: calc(var(--u) * 34); padding: 0 calc(var(--u) * 12); border-width: calc(var(--u) * 3); }
-.stream .hucum-bar {
-  left: calc(var(--u) * (var(--sx) + var(--bw) * 0.53 + 4)); width: calc(var(--u) * (var(--bw) * 0.47 - 4));
-  top: calc(var(--u) * (var(--sb) - var(--s-cta, 166))); height: calc(var(--u) * 60); border-radius: calc(var(--u) * 18);
-}
-.stream .hb-text { font-size: calc(var(--u) * 34); line-height: calc(var(--u) * 52); padding: 0 calc(var(--u) * 10); }
-/* Gift ladder: the prominent block of the bottom panel, directly under the map band (the
-   call-to-action row sits below it). Three tiles per page, three big lines each: name /
-   picture + price / "+N asker". --s-tiers = ladder top above the safe bottom; the heading
-   tab overlaps the ladder's top edge. */
-.stream .tiers {
-  left: calc(var(--u) * var(--sx)); right: auto; width: calc(var(--u) * var(--bw));
-  top: calc(var(--u) * (var(--sb) - var(--s-tiers, 212))); height: calc(var(--u) * 140);
-  padding: calc(var(--u) * 14) calc(var(--u) * 6) calc(var(--u) * 2); gap: calc(var(--u) * 6);
-}
+/* Ladder heading tab: straddles the ladder's own top edge (the one deliberate overlap). */
 .tiers-tab { display: none; }
 .stream .tiers-tab {
   display: flex; align-items: center; gap: calc(var(--u) * 8); position: absolute; z-index: 6;
-  left: calc(var(--u) * (var(--sx) + 18)); top: calc(var(--u) * (var(--sb) - var(--s-tiers, 212) - 22));
-  height: calc(var(--u) * 40); max-width: calc(var(--u) * (var(--bw) - 36)); padding: 0 calc(var(--u) * 18) 0 calc(var(--u) * 12);
-  background: linear-gradient(180deg, #ffd166, #f0a020); color: #2a1300; border-radius: calc(var(--u) * 14);
+  left: calc(var(--u) * (var(--sx) + 18)); top: calc(var(--u) * var(--s-tab-y, 1108));
+  height: calc(var(--u) * var(--s-tab-h, 40)); max-width: calc(var(--u) * (var(--bw) - 36)); padding: 0 calc(var(--u) * 16) 0 calc(var(--u) * 12);
+  background: linear-gradient(180deg, #ffd166, #f0a020); color: #2a1300; border-radius: calc(var(--u) * 12);
   border: calc(var(--u) * 3) solid #2a1300;
-  font-family: var(--font-display); font-size: calc(var(--u) * 32); font-weight: 900; line-height: 1; white-space: nowrap; overflow: hidden;
+  font-family: var(--font-display); font-size: calc(var(--u) * 34); font-weight: 900; line-height: 1; white-space: nowrap; overflow: clip visible;
   box-shadow: 0 calc(var(--u) * 3) calc(var(--u) * 10) rgba(0, 0, 0, 0.5);
 }
 .stream .tiers-tab .icon { width: calc(var(--u) * 30); height: calc(var(--u) * 30); flex: none; }
-.stream .tiers-tab span { overflow: hidden; text-overflow: ellipsis; }
-.stream .tier-row { gap: calc(var(--u) * 6); }
+.stream .tiers-tab span { text-overflow: ellipsis; }
+
+/* Ladder (wood board): three tiles per page, three lines each: name / picture + price /
+   "+N asker". The top padding leaves room for the tab's lower part. */
+.stream .tiers {
+  left: calc(var(--u) * var(--sx)); right: auto; width: calc(var(--u) * var(--bw));
+  top: calc(var(--u) * var(--s-ladder-y, 1132)); height: calc(var(--u) * var(--s-ladder-h, 136));
+  padding: calc(var(--u) * 8) calc(var(--u) * 8) calc(var(--u) * 4); gap: calc(var(--u) * 8);
+}
+.stream .tier-row { gap: calc(var(--u) * 8); }
 .stream .tier {
-  flex: 1 1 0; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); /* picture | price, centred as a pair */ grid-template-rows: auto auto auto;
+  flex: 1 1 0; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); /* picture | price | spacer: the price is centred, the picture beside it */ grid-template-rows: auto auto auto;
   column-gap: calc(var(--u) * 6); row-gap: 0; align-items: center; justify-items: start; align-content: center;
-  padding: calc(var(--u) * 2) calc(var(--u) * 8); line-height: 1.04; overflow: hidden;
-  background: rgba(0, 0, 0, 0.62); border: calc(var(--u) * 3) solid rgba(255, 255, 255, 0.38); border-radius: calc(var(--u) * 14);
+  padding: 0 calc(var(--u) * 8); line-height: 1; overflow: hidden;
+  background: rgba(0, 0, 0, 0.62); border: calc(var(--u) * 3) solid rgba(255, 255, 255, 0.38); border-radius: calc(var(--u) * 12);
 }
 .stream .tier.r2 { border-color: rgba(255, 179, 71, 0.8); }
 .stream .tier.r3, .stream .tier.r4 { border-color: rgba(255, 155, 230, 0.85); }
-.stream .tier-head { display: contents; font-size: calc(var(--u) * 36); }
-.stream .tier-name { grid-column: 1 / span 2; grid-row: 1; justify-self: stretch; text-align: center; max-width: 100%; overflow: hidden; text-overflow: ellipsis; font-size: calc(var(--u) * 36); }
-.stream .tier-img { grid-column: 1; grid-row: 2; width: calc(var(--u) * 40); height: calc(var(--u) * 40); justify-self: end; }
-.stream .tier-coins { grid-column: 2; grid-row: 2; gap: calc(var(--u) * 3); font-size: calc(var(--u) * 38); font-family: var(--font-display); }
+.stream .tier-head { display: contents; font-size: calc(var(--u) * 34); }
+.stream .tier-name { grid-column: 1 / -1; grid-row: 1; justify-self: stretch; text-align: center; max-width: 100%; text-overflow: ellipsis; white-space: nowrap; font-size: calc(var(--u) * 34); line-height: 1; }
+.stream .tier-img { grid-column: 1; grid-row: 2; width: calc(var(--u) * 34); height: calc(var(--u) * 34); justify-self: end; }
+.stream .tier-coins { grid-column: 2; grid-row: 2; gap: calc(var(--u) * 3); font-size: calc(var(--u) * 34); line-height: 1; font-family: var(--font-display); }
 .stream .tier.long-name .tier-name { font-size: calc(var(--u) * 32); }
 .stream .tier.noname .tier-img { grid-row: 1 / span 2; }
 .stream .tier.noname .tier-coins { grid-row: 1 / span 2; }
-.stream .tier .icon.tiny { width: calc(var(--u) * 30); height: calc(var(--u) * 30); }
+.stream .tier-coins { white-space: nowrap; }
+.stream .tier .icon.tiny { width: calc(var(--u) * 28); height: calc(var(--u) * 28); }
 .stream .tier-jeton { display: none; }
-.stream .tier-res { grid-column: 1 / span 2; grid-row: 3; justify-self: stretch; text-align: center; font-size: calc(var(--u) * 38); overflow: hidden; text-overflow: ellipsis; }
+.stream .tier-res { grid-column: 1 / -1; grid-row: 3; justify-self: stretch; text-align: center; font-size: calc(var(--u) * 34); line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
 .stream .tier-troops { color: #7dff7d; text-shadow: 0 calc(var(--u) * 2) 0 #000; }
 /* "+N asker" on the tile; the effect word only when the number is hidden. */
 .stream .tier-troops + .tier-label { display: none; }
@@ -937,21 +980,40 @@ html:not(.dbg) .wait-pill.on { display: block; }
 .stream .tier-dots i { width: calc(var(--u) * 12); height: calc(var(--u) * 12); }
 .stream .tier-dots { gap: calc(var(--u) * 6); }
 
+/* Last row, join line (dark tile) | HÜCUM bar while it shows. */
+.stream .cta {
+  left: calc(var(--u) * var(--sx)); right: auto; width: calc(var(--u) * var(--bw));
+  top: calc(var(--u) * var(--s-cta-y, 1286)); height: calc(var(--u) * var(--s-cta-h, 50));
+  border-width: calc(var(--u) * 4); border-radius: calc(var(--u) * 18); padding: 0 calc(var(--u) * 14);
+}
+.stream #hud.hb-on .cta { width: calc(var(--u) * (var(--bw) * 0.53 - var(--s-gap, 12) / 2)); }
+.stream .cta-main { gap: calc(var(--u) * 12); max-width: 100%; }
+.stream .cta-a { font-size: calc(var(--u) * 34); line-height: 1.05; text-overflow: ellipsis; min-width: 0; }
+.stream #hud.hb-on .cta-a { font-size: calc(var(--u) * 30); } /* half width: the one place the join text steps down */
+.stream .cta-main .cta-chip { font-size: calc(var(--u) * 34); line-height: 1; padding: calc(var(--u) * 1) calc(var(--u) * 12) 0; border-width: calc(var(--u) * 3); }
+.stream .hucum-bar {
+  left: calc(var(--u) * (var(--sx) + var(--bw) * 0.53 + var(--s-gap, 12) / 2)); width: calc(var(--u) * (var(--bw) * 0.47 - var(--s-gap, 12) / 2));
+  top: calc(var(--u) * var(--s-cta-y, 1286)); height: calc(var(--u) * var(--s-cta-h, 50)); border-width: calc(var(--u) * 4); border-radius: calc(var(--u) * 18);
+}
+.stream .hb-text { font-size: calc(var(--u) * 34); line-height: calc(var(--u) * (var(--s-cta-h, 50) - 8)); padding: 0 calc(var(--u) * 10); }
+
 /* Below the safe bottom: nothing for viewers. */
 .stream .feed { display: none; }
 .stream .debug { top: calc(var(--u) * (var(--sb) + 10)); }
 html.stream:not(.dbg) .audio-unlock { display: none !important; }
-.stream .audio-unlock { top: calc(var(--u) * (var(--st) + var(--s-bt, 294) + 12)); }
+.stream .audio-unlock { top: calc(var(--u) * (var(--s-band-y, 566) + 12)); }
 
 /* Streamer settings (panel "Ekran"): hidden HUD blocks. In the stream layout hud.js
-   collapses the freed rows (--s-* offsets) and the map band grows into them. */
+   drops the freed rows and the map band grows into them. */
 #hud.hide-cityBoard .board, #hud.hide-gifterBoard .gifters, #hud.hide-likers .likers,
 #hud.hide-leader .leader-card, #hud.hide-credit .credit, #hud.hide-credit .idle-slot,
 #hud.hide-imperative .imperative, #hud.hide-giftStrip .tiers, #hud.hide-giftStrip .tiers-tab, #hud.hide-session .session,
 #hud.hide-minimap .minimap, #hud.hide-hucumBar .hucum-bar { display: none !important; }
+/* One half of the leader row hidden: the other is centred. */
 .stream #hud.hide-credit .leader-card, .stream #hud.hide-credit .leader-card.empty { left: calc(var(--u) * 540); width: calc(var(--u) * 640); }
+.stream #hud.hide-credit .nudges { left: calc(var(--u) * 220); width: calc(var(--u) * 640); }
 .stream #hud.hide-leader .credit { left: calc(var(--u) * 540); }
-.stream #hud.hide-leader .idle-slot { left: calc(var(--u) * 300); }
+.stream #hud.hide-leader .idle-slot { left: calc(var(--u) * (540 - var(--hw) / 2)); }
 
 /* Chaos-level traffic in the overview (main.js toggles #overlay.busy). */
 #overlay.busy .plate .conq, #overlay.busy .plate .x2, #overlay.busy .plate .cmdn { display: none; }

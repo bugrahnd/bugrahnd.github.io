@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Halat Çekme · HUD testi</title>
+<link rel="icon" href="data:,">
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: radial-gradient(ellipse at 50% 40%, #2b4a2a 0%, #16261a 60%, #0a120c 100%); }
+  #placeholder {
+    position: fixed; pointer-events: none;
+    background: repeating-linear-gradient(90deg, rgba(120, 90, 50, 0.55) 0 40px, rgba(100, 72, 40, 0.55) 40px 80px), linear-gradient(180deg, #4f8f4a, #2f5e2f);
+    display: flex; align-items: center; justify-content: center; color: rgba(255, 255, 255, 0.35); font: 700 16px sans-serif;
+  }
+  #placeholder::after { content: ''; position: absolute; left: 44%; right: 44%; top: 20%; bottom: 20%; background: radial-gradient(ellipse, #000 30%, #3a2410 100%); border-radius: 40%; }
+  #hud { position: fixed; inset: 0; }
+  #ctl { position: fixed; right: 4px; bottom: 4px; z-index: 10; display: flex; flex-wrap: wrap; gap: 3px; max-width: 340px; justify-content: flex-end; }
+  #ctl button { font: 600 11px sans-serif; padding: 3px 6px; opacity: 0.55; }
+  #ctl button:hover { opacity: 1; }
+  .shot #ctl { display: none; }
+</style>
+</head>
+<body>
+<div id="placeholder">3B sahne</div>
+<div id="hud"></div>
+<div id="ctl"></div>
+<script type="module">
+  import { mountHud } from './js/hud/index.js';
+  import { createMockGame, MOCK_LADDER } from './js/hud/mock-game.js';
+
+  const q = new URLSearchParams(location.search);
+  if (q.get('shot') === '1') document.documentElement.classList.add('shot');
+  const scene = q.get('scene');
+  const game = createMockGame({ speed: Number(q.get('speed')) || 1, autoplay: !scene });
+  const ph = document.getElementById('placeholder');
+  window.addEventListener('halat:layout', (e) => {
+    const b = e.detail.band;
+    Object.assign(ph.style, { left: b.x + 'px', top: b.y + 'px', width: b.w + 'px', height: b.h + 'px' });
+  });
+  // no ladder of its own: the HUD shows its default ladder (pictures from game.giftCatalog);
+  // ?ladder=mock uses the mock's own short ladder instead
+  const config = {
+    teams: [{ name: 'Kırmızı', color: '#e8402a' }, { name: 'Mavi', color: '#2f7bf0' }],
+    ...(q.get('ladder') === 'mock' ? { gifts: { ladder: MOCK_LADDER.map((g) => ({ ...g, icon: game.icons[g.id] })) } } : {}),
+  };
+  const hud = mountHud(document.getElementById('hud'), game, { config, manifest: {}, layout: {} });
+  window.hud = hud; window.game = game;
+  if (scene) game.scene(scene);
+
+  const scenes = ['auto', 'lobby', 'countdown', 'play', 'danger', 'credits', 'strongman', 'tractor', 'giant', 'result-pit', 'result-time', 'draw', 'disconnected'];
+  const ctl = document.getElementById('ctl');
+  for (const s of scenes) {
+    const b = document.createElement('button');
+    b.textContent = s;
+    b.onclick = () => { if (s === 'auto') { game.stop(); game.start(); } else game.scene(s); };
+    ctl.append(b);
+  }
+</script>
+</body>
+</html>

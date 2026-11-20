@@ -1,0 +1,28 @@
+{
+  "id": "halat",
+  "title": "Halat Çekme",
+  "description": "İki takım halatı kendi tarafına çeker; izleyiciler 1 ya da 2 yazıp takımına katılır, hediyeler takımına yardımcı, pehlivan, traktör ve dev olarak güç verir. Kaybeden takım çamurlu çukura düşer.",
+  "status": "hazir",
+  "order": 2,
+  "entry": "index.html",
+  "vendor": ["three"],
+  "settings": { "module": "settings.mjs" },
+  "panel": { "module": "panel-settings.js" },
+  "commands": [
+    { "name": "restartRound", "label": "Turu yeniden başlat", "confirm": "Tur şimdi baştan başlasın mı? Halat ortaya döner (takımlar kalır)." },
+    { "name": "endRound", "label": "Turu bitir", "confirm": "Tur şimdi bitsin mi? Halatın durduğu taraf kazanır." },
+    { "name": "clearTeams", "label": "Takımları temizle", "danger": true, "confirm": "Bütün takımlar ve oyuncular silinsin mi? İzleyiciler yeniden 1 ya da 2 yazmalı. Günlük skor kalır." },
+    { "name": "resetSession", "label": "Günlük skoru sıfırla", "danger": true, "confirm": "Günlük skor (kaç tur kazanıldı) sıfırlansın mı?" }
+  ],
+  "sim": {
+    "kind": "teams",
+    "joinHint": "1 / 2 ya da takım adı yazılır (ör. kırmızı)",
+    "teams": [
+      { "key": "kirmizi", "label": "Kırmızı", "words": ["1", "1", "1", "kırmızı", "kirmizi", "KIRMIZI", "Kırmızı"] },
+      { "key": "mavi", "label": "Mavi", "words": ["2", "2", "2", "mavi", "MAVİ", "Mavi"] }
+    ],
+    "emoji": false,
+    "chatter": ["hadi kırmızı", "hadi mavi", "çek çek çek", "asılın!", "kim kazanıyor?", "traktör gelsin", "çukura az kaldı", "pehlivan nerede", "gg", "efsane"]
+  },
+  "features": ["tiktokZones", "audio", "giftCatalog", "giftLadder", "demo"]
+}

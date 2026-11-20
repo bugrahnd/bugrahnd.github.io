@@ -51,44 +51,88 @@
     {
       "id": "halat",
       "title": "Halat Çekme",
-      "description": "İki takım halatı kendi tarafına çeker; izleyiciler takımını yazıp katılır, hediyeler takımına güç verir.",
-      "status": "yakinda",
+      "description": "İki takım halatı kendi tarafına çeker; izleyiciler 1 ya da 2 yazıp takımına katılır, hediyeler takımına yardımcı, pehlivan, traktör ve dev olarak güç verir. Kaybeden takım çamurlu çukura düşer.",
+      "status": "hazir",
       "order": 2,
       "url": "games/halat/index.html",
-      "panelModule": null,
-      "hasSettings": false,
-      "commands": [],
+      "panelModule": "games/halat/panel-settings.js",
+      "hasSettings": true,
+      "commands": [
+        {
+          "name": "restartRound",
+          "label": "Turu yeniden başlat",
+          "confirm": "Tur şimdi baştan başlasın mı? Halat ortaya döner (takımlar kalır).",
+          "danger": false
+        },
+        {
+          "name": "endRound",
+          "label": "Turu bitir",
+          "confirm": "Tur şimdi bitsin mi? Halatın durduğu taraf kazanır.",
+          "danger": false
+        },
+        {
+          "name": "clearTeams",
+          "label": "Takımları temizle",
+          "confirm": "Bütün takımlar ve oyuncular silinsin mi? İzleyiciler yeniden 1 ya da 2 yazmalı. Günlük skor kalır.",
+          "danger": true
+        },
+        {
+          "name": "resetSession",
+          "label": "Günlük skoru sıfırla",
+          "confirm": "Günlük skor (kaç tur kazanıldı) sıfırlansın mı?",
+          "danger": true
+        }
+      ],
       "sim": {
         "kind": "teams",
-        "joinHint": "Takım adı yazılır (ör. kırmızı)",
+        "joinHint": "1 / 2 ya da takım adı yazılır (ör. kırmızı)",
         "teams": [
           {
             "key": "kirmizi",
             "label": "Kırmızı",
             "words": [
+              "1",
+              "1",
+              "1",
               "kırmızı",
               "kirmizi",
               "KIRMIZI",
-              "k"
+              "Kırmızı"
             ]
           },
           {
             "key": "mavi",
             "label": "Mavi",
             "words": [
+              "2",
+              "2",
+              "2",
               "mavi",
-              "Mavi",
               "MAVİ",
-              "m"
+              "Mavi"
             ]
           }
         ],
-        "emoji": false
+        "emoji": false,
+        "chatter": [
+          "hadi kırmızı",
+          "hadi mavi",
+          "çek çek çek",
+          "asılın!",
+          "kim kazanıyor?",
+          "traktör gelsin",
+          "çukura az kaldı",
+          "pehlivan nerede",
+          "gg",
+          "efsane"
+        ]
       },
       "features": [
         "tiktokZones",
         "audio",
-        "giftCatalog"
+        "giftCatalog",
+        "giftLadder",
+        "demo"
       ]
     }
   ]
