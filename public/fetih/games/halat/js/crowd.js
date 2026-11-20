@@ -115,8 +115,10 @@ export class Crowd {
 export class GenCrowd {
   constructor(scene, config, gen) {
     this.cfg = config;
-    // Thin front groups, kept well in front of the lane so they never merge with the pullers.
-    this.inner = gen.createCrowd({ visual: config.visual, frontShare: 0.22, frontZ: [4.5, 5.1], backZ: [3.7, 5.4] });
+    // All team fans stand behind the far rope barrier (never between the lane and the camera, so
+    // they never merge with the pullers), at most 80 per side (the rest is the counter) and in
+    // muted team colours so the pullers stay the brightest figures.
+    this.inner = gen.createCrowd({ visual: config.visual, perSide: Math.min(80, config.visual.crowdPerSide || 80), frontShare: 0, backZ: [3.9, 5.7] });
     scene.add(this.inner.object3D);
     this.colors = [0xe63946, 0x2f7cf6];
     this.counters = [makeCounter(scene), makeCounter(scene)];
@@ -129,7 +131,12 @@ export class GenCrowd {
   get ending() { return this.inner.ending; }
   set ending(v) { this.inner.ending = v; }
 
-  setColors(c1, c2) { this.colors = [c1, c2]; this.inner.setColors(c1, c2); this.counterVals = [-1, -1]; }
+  setColors(c1, c2) {
+    this.colors = [c1, c2];
+    const mute = (c) => _c.setHex(c).lerp(new THREE.Color(0x8a8f86), 0.3).getHex();
+    this.inner.setColors(mute(c1), mute(c2));
+    this.counterVals = [-1, -1];
+  }
   setCounts(a, b, totals) { this.inner.setCounts(a, b); this.totals = totals || [a, b]; }
   likes(teamId, count) { this.inner.likes(teamId, count); }
   cheerTeam(teamId, k) { const i = teamId === 1 ? 0 : 1; this.inner.cheer[i] = Math.min(1.6, this.inner.cheer[i] + k); }
@@ -143,7 +150,7 @@ export class GenCrowd {
       const total = this.totals?.[s] ?? 0;
       const c = this.counters[s];
       if (total !== this.counterVals[s]) { this.counterVals[s] = total; drawCounter(c, total, this.colors[s]); }
-      c.sprite.visible = v.crowdCounter && total > 0;
+      c.sprite.visible = v.crowdCounter && total > 0 && !this.hideCounters;
       c.sprite.position.set((s === 0 ? -1 : 1) * (v.frontX + 1.6), 2.5 + Math.sin(this.t * 2) * 0.05, -4.2);
     }
   }

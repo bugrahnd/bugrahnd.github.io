@@ -44,7 +44,7 @@ export class HalatScene {
     // ---- arena, sky and lights (generator first) ----
     let arena = null;
     if (gen && typeof gen.createArena === 'function') {
-      try { arena = gen.createArena({ teamColors: startColors, visual: config.visual, title: config.title }); } catch (e) { console.warn('[halat] createArena hata verdi; yedek arena', e); arena = null; }
+      try { arena = gen.createArena({ teamColors: startColors, visual: config.visual, title: config.title, frontGap: 5 }); } catch (e) { console.warn('[halat] createArena hata verdi; yedek arena', e); arena = null; }
     }
     this.shadows = false;
     if (arena) {
@@ -75,7 +75,7 @@ export class HalatScene {
         rope = gen.createRope({ handY: gen.ROPE_Y ?? 0.62 });
         scene.add(rope.object3D);
         // A bigger centre marker (knot + flag) that reads on a phone.
-        if (rope.marker) rope.marker.scale.setScalar(1.7);
+        if (rope.marker) rope.marker.scale.setScalar(1.45);
         rope.object3D.traverse((o) => { if (o.isMesh) o.castShadow = this.shadows; });
         this.ropeHandY = gen.ROPE_Y ?? 0.62;
       } catch (e) { console.warn('[halat] createRope hata verdi; yedek halat', e); rope = null; }
@@ -212,7 +212,9 @@ export class HalatScene {
   _slotPos(f) {
     const v = this.cfg.visual;
     const shift = this._giantOf(f.team) ? GIANT_SHIFT : 0;
-    const zs = f.slot % 2 === 0 ? 1 : -1;
+    // Even slots behind the rope, odd ones in front: the captain (slot 0) is never hidden and a
+    // pehlivan (slot 1) stands on the camera side.
+    const zs = f.slot % 2 === 0 ? -1 : 1;
     return { x: side(f.team) * (v.frontX + shift + f.slot * v.slotGap), z: zs * this._lateral(f) };
   }
 
@@ -320,12 +322,12 @@ export class HalatScene {
       f.key = `g:${e.id}`; f.team = e.teamId; f.kind = 'giant'; f.player = e.player; f.effect = e;
       dressFigure(f, f.key);
       this._dressKind(f);
-      f.x = side(e.teamId) * (v.frontX + v.pullersPerSide * v.slotGap + 3.5); f.z = -1.4;
+      f.x = side(e.teamId) * (v.frontX + Math.min(v.pullersPerSide, 6) * v.slotGap + 4.5); f.z = -1.4;
       f.state = 'enter';
       f.tagUntil = this.t + 8;
       this.giants.set(e.id, f);
       // Hero framing: follow the giant's walk to the front.
-      this.rig.heroAt(side(e.teamId) * (v.frontX + 2.4), 1.4, -0.4, 5.2, 0.86);
+      this.rig.heroAt(() => (f.active ? f.x * 0.75 : 0), 1.5, -0.4, 5.6, 0.86);
       this.audio.duck(4);
       this.audio.play('drum_roll', { vol: 0.8, minGap: 1 });
     } else if (e.kind === 'tractor') {
@@ -439,7 +441,7 @@ export class HalatScene {
     if (this.cfg.visual.slowMo) {
       // The decisive moment: a slow-motion beat on the edge of the pit.
       this.slowUntil = this.t + (pit ? 1.4 : 0.7);
-      this.rig.heroAt(ls * (this.cfg.visual.pitHalf + 0.6), 0.7, 0.3, pit ? 3.2 : 2.2, 0.66);
+      this.rig.heroAt(ls * (this.cfg.visual.pitHalf + 0.6), 0.7, 0.3, pit ? 2.6 : 1.8, 0.66);
       this.audio.play('drum_hit', { vol: 0.9, minGap: 0 });
     }
     this.rig.shake(0.4);
@@ -448,15 +450,7 @@ export class HalatScene {
     const ws = side(e.teamId);
     this._after(0.5, () => this.audio.play('sfx_cheer', { vol: 1 }));
     this._after(0.9, () => this.audio.play('sfx_win', { vol: 0.9 }));
-    this._after(pit ? 1.6 : 0.9, () => {
-      // Confetti over the winners and the stands jump.
-      const c = this.colors[e.teamId - 1];
-      const cols = [c, lighten(c, 0.5), 0xffd166, 0xffffff, c];
-      this.effects.confetti(ws * (this.cfg.visual.frontX + 1.6) + this.offset, 3.2, 0.2, 3.2, 110, cols);
-      this.effects.confetti(0, 4.2, -0.5, 4.5, 60, cols);
-      this.arena.cheer(1.5);
-      this.crowd.cheerTeam?.(e.teamId, 1.2);
-    });
+    void ws; // confetti and the stands' cheer follow in update() when the camera turns to the winners
     this.arena.cheer(1.0);
   }
 
@@ -578,6 +572,7 @@ export class HalatScene {
     const t0 = st.teams[0]; const t1 = st.teams[1];
     const inLine = [this.lines.get(1).size, this.lines.get(2).size];
     this.crowd.setCounts(Math.max(0, t0.members - inLine[0]), Math.max(0, t1.members - inLine[1]), [t0.members, t1.members]);
+    this.crowd.hideCounters = !!this.rig.hero;
     this.crowd.update(dt, this.rig.camera);
     this.arena.update(dt);
     this.effects.update(dt);
@@ -599,11 +594,23 @@ export class HalatScene {
     if (this.ending && this.ending.winner) {
       // First the losers' edge of the pit (the falls), then the winners celebrating.
       const ws = side(this.ending.winner);
-      const tPit = this.ending.by === 'pit' ? 3.0 : 2.0;
-      endRope = this.ending.t < tPit ? ws * 0.85 : 0; // rope toward the winners = losers at the pit
-      if (this.ending.t >= tPit) {
-        const k = clamp((this.ending.t - tPit) / 1.5, 0, 1);
-        focusX += (ws * (v.frontX + 1.0) + offset * 0.5) * k * k * (3 - 2 * k);
+      // Real time (slow motion stretches ending.t): the falls, then the winners.
+      this.ending.rt = (this.ending.rt || 0) + dtReal;
+      const tPit = this.ending.by === 'pit' ? 2.6 : 1.8;
+      endRope = this.ending.rt < tPit ? ws * 0.85 : 0; // rope toward the winners = losers at the pit
+      if (this.ending.rt >= tPit) {
+        const k = clamp((this.ending.rt - tPit) / 1.2, 0, 1);
+        focusX += (ws * 2.2 + offset * 0.2) * k * k * (3 - 2 * k);
+        // Confetti over the winners (two bursts) as the camera turns to them.
+        const bursts = this.ending.bursts || 0;
+        if (bursts < 2 && this.ending.rt >= tPit + bursts * 1.1) {
+          this.ending.bursts = bursts + 1;
+          const c = this.colors[this.ending.winner - 1];
+          const cols = [c, lighten(c, 0.5), 0xffd166, 0xffffff, c];
+          const cx = ws * 2.6 + offset * 0.6;
+          this.effects.confetti(cx, 3.6, 0.3, 3.6, 120, cols);
+          if (!bursts) { this.arena.cheer(1.5); this.crowd.cheerTeam?.(this.ending.winner, 1.2); this.audio.play('crowd_cheer_c', { vol: 0.8, minGap: 1 }); }
+        }
       }
     } else if (this.ending) endRope = 0;
     this.rig.update(dtReal, { rope: endRope, offset, focusX, zoomOut, ending: !!this.ending });
@@ -636,7 +643,7 @@ export class HalatScene {
     switch (f.state) {
       case 'enter': {
         if (!target) { this._leave(f); break; }
-        const speed = f.kind === 'giant' ? 2.6 : 5.5;
+        const speed = f.kind === 'giant' ? 3.0 : 5.5;
         if (this._runTo(f, target.x, target.z, speed, dt)) {
           f.state = 'slot'; f.yaw = faceYaw;
           this._arrive(f);
@@ -741,6 +748,7 @@ export class HalatScene {
       this.effects.spark(f.headX || f.x, (f.headY || 2.2) - 0.4, f.headZ || f.z, 0xffe08a, 10, 1);
       this.rig.shake(0.18);
       this.audio.play('strongman_roar', { vol: 0.85, minGap: 0.4 });
+      if (!this.rig.hero) this.rig.heroAt(f.x, 1.1, f.z, 2.4, 0.88);
       f.tagUntil = Math.max(f.tagUntil, this.t + 4);
     }
     if (f.kind === 'giant') {
@@ -767,7 +775,7 @@ export class HalatScene {
     let mode = 'idle'; let leanT = 0; let amp = 0;
     if (this.ending && this.ending.winner === f.team) {
       // Winners: keep pulling while losers fall, then cheer.
-      if (this.ending.t > (this.ending.by === 'pit' ? 2.0 : 1.3)) mode = 'cheer';
+      if ((this.ending.rt || 0) > (this.ending.by === 'pit' ? 2.4 : 1.6)) mode = 'cheer';
       else { mode = 'pull'; leanT = 0.45; }
     } else if (this.ending && this.ending.draw) {
       mode = 'idle';

@@ -59,7 +59,11 @@ async function main() {
 
   // Streamer settings: this game's keys + the stream-wide zones and volumes.
   const settings = new GameSettings(flatFromConfig(config));
-  const applySettings = () => game.applySettings(settings.all());
+  const applySettings = () => {
+    const v = settings.all();
+    if (urlOpts.roundSec) v['round.durationSec'] = urlOpts.roundSec; // ?round=N (testing) wins
+    game.applySettings(v);
+  };
   applySettings();
 
   const demoPreset = DEMO_PRESETS[mode.demoPreset] ? mode.demoPreset : 'medium';
@@ -135,6 +139,9 @@ async function main() {
       onConnection(ok) { game.setConnected(ok); },
     });
     console.info(`[halat] köprü: ${mode.wsUrl}${mode.stream ? ' (yayın modu)' : ''}`);
+    // Leaving the page (game switch in the player shell): drop the socket at once so the panel's
+    // page count stays right.
+    window.addEventListener('pagehide', () => { try { net.close(); } catch { /* closed */ } });
   }
 
   // ---- resize ----

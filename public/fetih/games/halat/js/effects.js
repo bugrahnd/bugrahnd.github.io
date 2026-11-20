@@ -223,7 +223,7 @@ export class Effects {
       this.normal.spawn({
         sprite: sp, x: x + rand(-spread, spread), y: y + rand(0, 2), z: z + rand(-spread * 0.5, spread * 0.5),
         vx: rand(-1, 1), vy: rand(-0.5, 2.5), vz: rand(-0.6, 0.6), g: 1.6, drag: 1.2,
-        life: rand(2.2, 3.6), size: rand(0.12, 0.2), color: pick(colors), alpha: 1, rv: rand(-9, 9), delay: rand(0, 0.8), floor: 0.02,
+        life: rand(2.4, 3.8), size: rand(0.22, 0.34), color: pick(colors), alpha: 1, rv: rand(-9, 9), delay: rand(0, 0.8), floor: 0.02,
       });
     }
   }

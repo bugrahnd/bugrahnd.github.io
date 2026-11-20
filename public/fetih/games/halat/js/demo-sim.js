@@ -32,9 +32,10 @@ const GIFTS = [
   { giftId: 7316, giftName: 'Unicorn Fantasy', coins: 5000, streak: false, w: 1.5 },
   { giftId: 6149, giftName: 'Interstellar', coins: 10000, streak: false, w: 0.4 },
 ];
-// Probability of the coin band of one gift (long tail).
+// Probability of the coin band of one gift (long tail). Pehlivan-sized gifts (99+) stay rare
+// so a demo round shows one or two of them, not a line full of strongmen.
 const BANDS = [
-  { min: 1, max: 1, p: 0.72 }, { min: 5, max: 30, p: 0.21 }, { min: 99, max: 999, p: 0.06 },
+  { min: 1, max: 1, p: 0.74 }, { min: 5, max: 30, p: 0.225 }, { min: 99, max: 999, p: 0.02 },
   { min: 1000, max: 4999, p: 0.0075 }, { min: 5000, max: Infinity, p: 0.0025 },
 ];
 
@@ -159,8 +160,8 @@ export class DemoSim {
   }
 
   _gift(v) {
-    // Big gifters roll the upper bands (99+) three times as often.
-    const ws = BANDS.map((b, i) => b.p * (v.giftK > 2 && i >= 2 ? 3 : 1));
+    // Big gifters roll the upper bands (99+) a bit more often.
+    const ws = BANDS.map((b, i) => b.p * (v.giftK > 2 && i >= 2 ? 1.5 : 1));
     let r = rnd() * ws.reduce((a, b) => a + b, 0);
     let band = BANDS[0];
     for (let i = 0; i < BANDS.length; i++) { r -= ws[i]; if (r < 0) { band = BANDS[i]; break; } }

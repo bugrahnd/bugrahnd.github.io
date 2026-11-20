@@ -79,7 +79,8 @@ export class CameraRig {
       if (u >= 1) this.hero = null;
       else {
         const k = smooth(clamp(Math.min(u / 0.2, (1 - u) / 0.3), 0, 1));
-        tx += (h.x - tx) * k * 0.85;
+        const hx = typeof h.x === 'function' ? h.x() : h.x; // a function follows a moving subject
+        tx += (hx - tx) * k * 0.85;
         ty += (h.y - ty) * k * 0.6;
         tz += (h.z - tz) * k * 0.5;
         dist *= 1 - (1 - (h.k ?? 0.7)) * k;

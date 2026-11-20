@@ -48,7 +48,7 @@ function prism(w, h, L) {
  * { object3D, update(dt), setTeamColors(c1, c2), cheer(k), setDust(k), pitHalf, pitZ, waterY,
  *   background, fog, lights: { hemi, sun }, ready, meshes, dispose() }
  */
-export function createArena({ teamColors = [0xe63946, 0x2f7cf6], visual = {}, title = 'HALAT ÇEKME', seed = 11 } = {}) {
+export function createArena({ teamColors = [0xe63946, 0x2f7cf6], visual = {}, title = 'HALAT ÇEKME', seed = 11, frontGap = 0 } = {}) {
   const v = { ...DEFAULTS, ...visual };
   const ph = v.pitHalf, pz = 2.7, waterY = -0.42;
   const laneEnd = v.frontX + v.slotGap * v.pullersPerSide + 4.2;
@@ -511,6 +511,7 @@ export function createArena({ teamColors = [0xe63946, 0x2f7cf6], visual = {}, ti
   const front = makeCrowdMesh(120);
   let kf = 0;
   for (const [cx, n] of [[-22, 7], [-17.5, 9], [-12.8, 6], [-9.5, 8], [-4.6, 5], [-2.2, 4], [2.6, 6], [6.0, 7], [10.5, 9], [14.8, 5], [18.2, 8], [22.6, 6]]) {
+    if (Math.abs(cx) < frontGap) continue; // keep the middle of the front fence clear (the pullers stay the biggest thing in frame)
     for (let j = 0; j < n; j++) {
       const p = randomPerson(r);
       const x = cx + (r() - 0.5) * 2.4;

@@ -93,7 +93,7 @@ export const DEFAULT_TEXTS = {
 const DEFAULT_TIMING = { creditMs: 3200, creditMinMs: 3000, joinPopMs: 2600, giftPopMs: 1800, ladderPageMs: 4500, perPage: 3 };
 const POPS_PER_TEAM = 1; // one slot per side along the band's top edge
 const CREDIT_H = 64;
-const SPECIAL_MS = { strongman: 2600, tractor: 3300, giant: 4300 };
+const SPECIAL_MS = { strongman: 3400, tractor: 3800, giant: 4300 };
 
 function tpl(s, vars) {
   return String(s ?? '').replace(/\{(\w+)\}/g, (m, k) => (vars[k] !== undefined ? vars[k] : m));
@@ -291,6 +291,9 @@ class HalatHud {
   _build() {
     const S = this.stage;
     const T = this.texts;
+
+    // 0. soft vignette under everything: the eye goes to the rope in the action band
+    this.vignette = el('div', 'hh-vignette', S);
 
     // 1. logo (top zone, decoration)
     this.logo = el('div', 'hh-abs hh-logo', S);

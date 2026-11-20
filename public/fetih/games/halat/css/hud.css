@@ -44,6 +44,11 @@
 .hh-giant { z-index: 40 !important; }
 .hh-wait { z-index: 50 !important; }
 .hh-hidden { display: none !important; }
+.hh-vignette {
+  position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; z-index: 0; pointer-events: none;
+  background: radial-gradient(ellipse 78% 30% at 50% 45%, transparent 62%, rgba(28, 20, 8, 0.22) 100%),
+    linear-gradient(180deg, transparent 72%, rgba(20, 14, 6, 0.18) 100%);
+}
 
 .hh-wood {
   background:

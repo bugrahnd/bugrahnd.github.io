@@ -132,7 +132,10 @@ class GenFigures {
     inst.cur = null; inst.curName = '';
     if (inst.crown) inst.crown.visible = false;
     if (!this.pool.has(inst.key)) this.pool.set(inst.key, []);
-    this.pool.get(inst.key).push(inst);
+    const list = this.pool.get(inst.key);
+    // Bounded pool: spare instances beyond a few per look are freed (their bone texture too).
+    if (list.length >= 6) { inst.mixer.uncacheRoot(inst.root); try { inst.model.dispose(); } catch { /* gone */ } return; }
+    list.push(inst);
   }
 
   _play(inst, mode, phase) {
