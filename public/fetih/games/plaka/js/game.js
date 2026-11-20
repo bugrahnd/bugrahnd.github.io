@@ -747,12 +747,23 @@ export class Game {
       return new Array(n).fill(unit);
     };
 
+    // A thin capital keeps part of a big gift (war.giftHomeShare at most), the rest attacks.
+    const armyTroops = troops - this.giftHomeTopUp(team, troops);
+
     if (tier.mode === 'multi') {
-      const targets = this.frontier(team).sort((a, b) => this.weakness(a) - this.weakness(b)).slice(0, tier.maxTargets || 3);
-      if (!targets.length) { this.addTroops(team, troops); return; }
-      const each = troops / targets.length;
+      // Distinct targets, shielded ones last; each army gets what it needs to win
+      // (war.attackMargin) and the rest is shared evenly (survivors roll on, see advance()).
+      const targets = this.frontier(team)
+        .sort((a, b) => (this.isFresh(this.prov.get(a)) - this.isFresh(this.prov.get(b))) || this.weakness(a) - this.weakness(b))
+        .slice(0, tier.maxTargets || 3);
+      if (!targets.length) { this.addTroops(team, armyTroops); return; }
+      const power = this.cfg.war.power.mixed ?? 1;
+      const needs = targets.map((t) => (this.weakness(t) * (this.cfg.war.attackMargin ?? 1.5)) / power + this.cfg.war.minArmy);
+      const needSum = needs.reduce((s, n) => s + n, 0);
+      const extra = Math.max(0, armyTroops - needSum) / targets.length;
       let first = null;
-      for (const t of targets) {
+      for (const [i, t] of targets.entries()) {
+        const each = needSum > armyTroops ? (armyTroops * needs[i]) / needSum : needs[i] + extra;
         const src = this.bestSourceFor(team, t);
         const a = this.launchArmy(team, src, t, each, { kind: 'gift', types, nick: player.nick, giver: player, big: true, banner: true, maxFigures: tier.maxFigures, minFigures: tier.minFigures, unitKey: 'mixed' });
         first = first || a;
@@ -773,7 +784,7 @@ export class Game {
     // Single army toward the team's current target.
     const target = this.chooseTarget(team);
     if (!target) {
-      const plate = this.addTroops(team, troops);
+      const plate = this.addTroops(team, armyTroops);
       const pv = this.prov.get(plate);
       this.view.floater(pv, `+${fmtShort(troops)}`, team.colorHex, true);
       tagAt(pv);
@@ -786,13 +797,13 @@ export class Game {
     const last = team.lastGiftArmy;
     if (last && last.player === player && last.tier === tier && this.time - last.t < this.cfg.gifts.mergeSameUserArmySec
       && last.army.state === 'march' && last.army.traveled < last.army.dist * 0.4) {
-      last.army.troops += troops;
+      last.army.troops += armyTroops;
       last.t = this.time;
       this.view.floater(this.prov.get(src), `+${fmtShort(troops)}`, team.colorHex);
       return;
     }
     const unitKey = tier.units ? 'mixed' : (tier.cavalryFromCoins && g.coins >= tier.cavalryFromCoins ? 'cavalry' : tier.unit || 'knight');
-    const army = this.launchArmy(team, src, target, troops, {
+    const army = this.launchArmy(team, src, target, armyTroops, {
       kind: 'gift', types, nick: player.nick, giver: player, big: tierIndex >= 3, banner: tierIndex >= 3, maxFigures: tier.maxFigures, minFigures: tier.minFigures, unitKey,
     });
     team.lastGiftArmy = { player, tier, army, t: this.time };
@@ -916,7 +927,20 @@ export class Game {
     return best || this.rallyFor(team);
   }
 
+  /** Part of a gift that fills a thin (or threatened) capital up to its reserve; returns it. */
+  giftHomeTopUp(team, troops) {
+    const cap = this.prov.get(team.plate);
+    if (cap.owner !== team.plate) return 0;
+    const want = this.reserveFor(cap, team, this.teamTroops(team) + troops) - cap.garrison;
+    const take = Math.floor(clamp(want, 0, troops * (this.cfg.war.giftHomeShare ?? 0.25)));
+    cap.garrison += take;
+    return take;
+  }
+
   rallyFor(team) {
+    // A capital under attack (or below its reserve) gets new troops first.
+    const cap = this.prov.get(team.plate);
+    if (cap.owner === team.plate && team.provinces > 1 && cap.garrison < this.reserveFor(cap, team)) return (team.rally = team.plate);
     const t = team.target && this.isValidTarget(team, team.target) ? team.target : this.chooseTarget(team);
     if (t) return (team.rally = this.bestSourceFor(team, t));
     const own = this.ownedBy(team);
@@ -1003,6 +1027,8 @@ export class Game {
       sx, sz, tx, tz, x: sx, z: sz, dist, traveled: 0, yaw: Math.atan2(dx, dz),
       state: o.gather ? 'gather' : 'march', gatherT: o.gather || 0, appear: 0, figs, nick: o.nick || '',
       big: !!o.big, banner: !!o.banner, giver: o.giver || null, dest: o.dest, from: o.from || 0, fightT: 0, fxT: 0, dustT: Math.random() * 0.3,
+      // Look of the army, reused when its survivors march on (momentum).
+      o: { types: o.types, unitKey: o.unitKey, nick: o.nick, giver: o.giver, big: o.big, banner: o.banner, maxFigures: o.maxFigures, minFigures: o.minFigures },
     };
     this.armies.push(army);
     return army;
@@ -1366,10 +1392,19 @@ export class Game {
         }
         continue;
       }
+      if (this.time >= (team.nextDefendAt || 0)) {
+        team.nextDefendAt = this.time + (war.defendCheckSec ?? 1);
+        this.defendCapital(team);
+        // Border reinforcement is for teams with troops to spare (keeps ordinary play calm).
+        if ((team.surplus || 0) > (war.frontTroops ?? 400)) this.defendBorders(team);
+      }
       if (this.time >= team.nextAttackAt) {
         const hucum = this.isHucum(team);
-        team.nextAttackAt = this.time + (war.attackIntervalSec * (hucum ? this.cfg.morale.attackIntervalMult : 1)) + Math.random() * war.attackJitterSec;
         this.tryAttack(team, hucum);
+        // A team far stronger than one ordinary army attacks more often (war.frontTroops,
+        // war.minIntervalMult); ordinary teams keep the calm base interval.
+        const k = this.cadenceMult(team.surplus || 0);
+        team.nextAttackAt = this.time + (war.attackIntervalSec * (hucum ? this.cfg.morale.attackIntervalMult : 1) + Math.random() * war.attackJitterSec) * k;
       }
       if (this.time >= team.nextRebalanceAt) {
         team.nextRebalanceAt = this.time + war.rebalanceIntervalSec;
@@ -1378,25 +1413,289 @@ export class Game {
     }
   }
 
-  tryAttack(team, hucum) {
-    const war = this.cfg.war;
-    const target = this.chooseTarget(team);
-    if (!target) return;
-    const src = this.bestSourceFor(team, target);
-    const sp = this.prov.get(src);
-    if (sp.owner !== team.plate) return;
-    const avail = sp.garrison - war.keepAtHome;
-    const send = Math.floor(avail * war.sendFraction);
-    if (send < war.minArmy) return;
-    const voted = team.voteTarget === target;
-    const power = war.power.infantry * (hucum ? this.cfg.morale.powerMult : 1);
-    if (!voted && !hucum && send * power < this.weakness(target) * war.attackIfRatio) return;
-    sp.garrison -= send;
-    const unit = hucum ? 'knight' : 'infantry';
-    this.launchArmy(team, src, target, send, { kind: 'attack', types: unit, unitKey: unit });
+  // ---------- war: strength, reserves, fronts ----------
+
+  /** All troops of a team: garrisons it holds plus its armies on the map. */
+  teamTroops(team) {
+    let n = 0;
+    for (const pv of this.prov.values()) if (pv.owner === team.plate) n += pv.garrison;
+    for (const a of this.armies) if (a.team === team.plate && a.state !== 'done') n += a.troops;
+    return n;
   }
 
-  /** Move troops from interior provinces toward the front. */
+  /** Attack strength of enemy armies heading for a province (troops x power). */
+  incomingAtk(plate, teamPlate) {
+    let n = 0;
+    for (const a of this.armies) {
+      if (a.dest !== plate || a.team === teamPlate || a.state === 'done' || a.kind === 'parade') continue;
+      n += a.troops * a.power;
+    }
+    return n;
+  }
+
+  /**
+   * Troops a province keeps when its team attacks. Every province: war.keepAtHome, more when
+   * enemy armies are on the way. The capital also covers part of the adjacent enemy garrisons
+   * (war.capitalThreatShare) and a share of the team's whole strength (war.capitalReserveShare),
+   * so a big team never strips its home.
+   */
+  reserveFor(pv, team, total = null) {
+    const war = this.cfg.war;
+    const mult = this.defenseMult(pv);
+    const inc = this.incomingAtk(pv.plate, team.plate);
+    let r = Math.max(war.keepAtHome, (inc * (war.defendMargin ?? 1.25)) / mult);
+    if (pv.plate === team.plate) {
+      let adj = 0;
+      for (const n of pv.adj) { const q = this.prov.get(n); if (q.owner && q.owner !== team.plate) adj += q.garrison; }
+      const tot = total ?? this.teamTroops(team);
+      r = Math.max(r, war.keepAtHome + (adj * (war.capitalThreatShare ?? 0.35)) / mult, tot * (war.capitalReserveShare ?? 0.08));
+    }
+    return r;
+  }
+
+  /** Simultaneous fronts: 1 for an ordinary team, +1 per doubling of surplus over war.frontTroops. */
+  frontCount(surplus) {
+    const war = this.cfg.war;
+    const per = war.frontTroops ?? 400;
+    return clamp(1 + Math.floor(Math.log2(1 + surplus / per)), 1, war.maxFronts ?? 5);
+  }
+
+  /** Attack interval multiplier: 1 up to war.frontTroops of surplus, shorter above (floor war.minIntervalMult). */
+  cadenceMult(surplus) {
+    const war = this.cfg.war;
+    const per = war.frontTroops ?? 400;
+    if (surplus <= per) return 1;
+    return Math.max(war.minIntervalMult ?? 0.35, Math.pow(per / surplus, 0.35));
+  }
+
+  /**
+   * One attack tick. An ordinary team behaves as before (one army, sendFraction of the best
+   * source near the chosen target). A team with surplus troops opens several fronts at once,
+   * each army sized to beat its target, departures staggered (war.staggerSec). A target the
+   * team cannot afford falls back to one it can, so troops never sit idle in one garrison.
+   */
+  tryAttack(team, hucum) {
+    const war = this.cfg.war;
+    const total = this.teamTroops(team);
+    const avail = new Map();
+    let surplus = 0;
+    for (const pv of this.prov.values()) {
+      if (pv.owner !== team.plate) continue;
+      const a = Math.max(0, pv.garrison - this.reserveFor(pv, team, total));
+      avail.set(pv.plate, a);
+      surplus += a;
+    }
+    team.surplus = surplus;
+    const fronts = this.frontCount(surplus);
+    const power = war.power.infantry * (hucum ? this.cfg.morale.powerMult : 1);
+    let live = 0;
+    const inbound = new Map();
+    for (const a of this.armies) {
+      if (a.team !== team.plate || a.state === 'done' || a.kind === 'parade') continue;
+      live++;
+      if (a.kind !== 'move') inbound.set(a.dest, (inbound.get(a.dest) || 0) + a.troops * a.power);
+    }
+    const maxArmies = war.maxArmiesPerTeam ?? 10;
+    if (live >= maxArmies) return;
+    const cands = [];
+    // A lost capital comes first, then the chosen (voted / sticky) target, then the rest by weakness.
+    if (this.prov.get(team.plate).owner !== team.plate && this.isValidTarget(team, team.plate)) cands.push(team.plate);
+    const first = this.chooseTarget(team);
+    if (first && !cands.includes(first)) cands.push(first);
+    // Cheapest relative to the troops next to it first: strong stacks attack where they stand.
+    const nearAvail = (f) => { let m = 1; for (const n of this.prov.get(f).adj) m = Math.max(m, avail.get(n) || 0); return m; };
+    const rest = this.frontier(team).filter((f) => !cands.includes(f))
+      .map((f) => [f, (this.weakness(f) / nearAvail(f)) * (0.9 + Math.random() * 0.2)]).sort((x, y) => x[1] - y[1]);
+    // An ordinary team (one front) only tries its chosen target, as before; a team with
+    // troops to spare falls back to targets it can afford.
+    if (fronts > 1 || surplus > (war.frontTroops ?? 400) * 0.5) for (const [f] of rest) cands.push(f);
+    let launched = 0;
+    const unit = hucum ? 'knight' : 'infantry';
+    for (const t of cands) {
+      if (launched >= fronts || live >= maxArmies) break;
+      const tp = this.prov.get(t);
+      const w = this.weakness(t);
+      if ((inbound.get(t) || 0) >= w * 1.3 + war.minArmy) continue; // already on its way
+      let src = 0; let best = 0;
+      for (const n of tp.adj) { const a = avail.get(n); if (a !== undefined && a > best) { best = a; src = n; } }
+      if (!src) continue;
+      // One front: sendFraction of the source (as before). More fronts share the source,
+      // but each army is at least big enough to win (war.attackMargin).
+      let send = Math.floor((best * war.sendFraction) / Math.max(1, fronts - launched));
+      const need = Math.ceil((w * (war.attackMargin ?? 1.5)) / power) + war.minArmy;
+      if (send < need) send = Math.min(Math.floor(best * war.sendFraction), need);
+      if (send < war.minArmy) continue;
+      const voted = team.voteTarget === t;
+      const ratio = launched === 0 ? war.attackIfRatio : (war.extraFrontRatio ?? 1.2);
+      const enough = (n) => (this.isFresh(tp) ? n * power >= w * (war.shieldBreakRatio ?? 4) : voted || hucum || n * power >= w * ratio);
+      const gather = launched * (war.staggerSec ?? 0.7);
+      if (enough(send)) {
+        this.prov.get(src).garrison -= send;
+        avail.set(src, best - send);
+        inbound.set(t, (inbound.get(t) || 0) + send * power);
+        this.launchArmy(team, src, t, send, { kind: 'attack', types: unit, unitKey: unit, gather });
+        launched++; live++;
+        continue;
+      }
+      // No single neighbour is strong enough: all adjacent own provinces attack together
+      // (a strong team surrounding a small one still takes it).
+      const srcs = tp.adj.filter((n) => (avail.get(n) || 0) * war.sendFraction >= war.minArmy);
+      if (srcs.length < 2 || live + srcs.length > maxArmies) continue;
+      const parts = srcs.map((n) => Math.floor(avail.get(n) * war.sendFraction));
+      const sum = parts.reduce((s, n) => s + n, 0);
+      if (sum * power < w * 1.1 || !enough(sum)) continue;
+      const group = srcs.map((n, i) => {
+        this.prov.get(n).garrison -= parts[i];
+        avail.set(n, avail.get(n) - parts[i]);
+        live++;
+        return this.launchArmy(team, n, t, parts[i], { kind: 'attack', types: unit, unitKey: unit, gather: 0.01 });
+      });
+      // Departures timed so the armies arrive together (battles resolve per army).
+      const eta = group.map((a) => a.dist / a.speed);
+      const last = Math.max(...eta);
+      for (const [i, a] of group.entries()) a.gatherT = gather + last - eta[i];
+      inbound.set(t, (inbound.get(t) || 0) + sum * power);
+      launched++;
+    }
+  }
+
+  /**
+   * Capital defence (every war.defendCheckSec): when enemy armies head for the capital and the
+   * garrison would not hold, own armies that just left it turn back and adjacent provinces
+   * send what they can spare. A big team also tops a thin capital back up to its reserve.
+   */
+  defendCapital(team) {
+    const war = this.cfg.war;
+    const cap = this.prov.get(team.plate);
+    if (cap.owner !== team.plate) return;
+    const inc = this.incomingAtk(cap.plate, team.plate);
+    let ownIn = 0;
+    for (const a of this.armies) if (a.team === team.plate && a.dest === cap.plate && a.state !== 'done') ownIn += a.troops;
+    const mult = this.defenseMult(cap);
+    let need;
+    if (inc > 0) {
+      need = (inc * (war.defendMargin ?? 1.25)) / mult - cap.garrison - ownIn;
+    } else {
+      const reserve = this.reserveFor(cap, team);
+      if (reserve < (war.frontTroops ?? 400) || cap.garrison >= reserve * 0.5) return;
+      need = reserve * 0.8 - cap.garrison - ownIn;
+    }
+    if (need < 1) return;
+    if (inc > 0) {
+      for (const a of this.armies) {
+        if (need <= 0) break;
+        if (a.team !== team.plate || a.from !== cap.plate || a.kind === 'move' || a.kind === 'parade') continue;
+        if ((a.state !== 'march' && a.state !== 'gather') || a.traveled > a.dist * 0.5) continue;
+        this.recall(a, cap);
+        need -= a.troops;
+      }
+    }
+    this.pullFromNeighbours(team, cap, need, this.teamTroops(team));
+  }
+
+  /** Adjacent own provinces send what they can spare (above their reserve) to `pv`. */
+  pullFromNeighbours(team, pv, need, total) {
+    const war = this.cfg.war;
+    const nbrs = pv.adj.map((n) => this.prov.get(n)).filter((q) => q.owner === team.plate).sort((x, y) => y.garrison - x.garrison);
+    for (const q of nbrs) {
+      if (need <= 0) break;
+      const spare = Math.floor(q.garrison - this.reserveFor(q, team, total));
+      if (spare < war.minArmy) continue;
+      const n = Math.min(spare, Math.ceil(need));
+      q.garrison -= n;
+      this.launchArmy(team, q.plate, pv.plate, n, { kind: 'move', types: 'infantry', unitKey: 'infantry', maxFigures: 4 });
+      need -= n;
+    }
+  }
+
+  /**
+   * Border defence (same tick as the capital): an own province with enemy armies on the way
+   * that would fall gets the spare troops of its own neighbours (interior first by size).
+   */
+  defendBorders(team) {
+    const war = this.cfg.war;
+    let total = -1;
+    const seen = new Set();
+    for (const a of this.armies) {
+      if (a.state === 'done' || a.team === team.plate || a.kind === 'parade' || seen.has(a.dest)) continue;
+      const pv = this.prov.get(a.dest);
+      if (pv.owner !== team.plate || pv.plate === team.plate) continue;
+      seen.add(a.dest);
+      const inc = this.incomingAtk(pv.plate, team.plate);
+      let ownIn = 0;
+      for (const x of this.armies) if (x.team === team.plate && x.dest === pv.plate && x.state !== 'done') ownIn += x.troops;
+      const need = (inc * (war.defendMargin ?? 1.25)) / this.defenseMult(pv) - pv.garrison - ownIn;
+      if (need < war.minArmy) continue;
+      if (total < 0) total = this.teamTroops(team);
+      this.pullFromNeighbours(team, pv, need, total);
+    }
+  }
+
+  /** Turn a marching army around toward an own province (it becomes a move). */
+  recall(a, pv) {
+    a.sx = a.x; a.sz = a.z; a.tx = pv.wx; a.tz = pv.wz;
+    const dx = a.tx - a.sx; const dz = a.tz - a.sz;
+    a.dist = Math.max(1, Math.hypot(dx, dz)); a.traveled = 0; a.yaw = Math.atan2(dx, dz);
+    a.dest = pv.plate; a.kind = 'move'; a.state = 'march'; a.gatherT = 0; a.sea = false;
+  }
+
+  /**
+   * Momentum: an attack / gift army that took (or reached) a province leaves a sensible
+   * garrison there (war.momentumHoldShare, at least war.momentumHoldMin and the province's
+   * reserve) and the rest marches on to the weakest adjacent target it clearly beats, after a
+   * short pause (war.momentumPauseSec). Small armies (under war.momentumMin left over) stay.
+   * Returns the troops that stay in the province.
+   */
+  advance(pv, team, a, troops) {
+    const war = this.cfg.war;
+    if (war.momentum === false || !a || (a.kind !== 'attack' && a.kind !== 'gift') || this.round.phase !== 'play') return troops;
+    // Enough stays to hold off the strongest adjacent enemy garrison (war.momentumHoldThreat).
+    let adjMax = 0;
+    for (const n of pv.adj) { const q = this.prov.get(n); if (q.owner && q.owner !== team.plate) adjMax = Math.max(adjMax, q.garrison); }
+    const hold = Math.max(war.momentumHoldMin ?? 15, troops * (war.momentumHoldShare ?? 0.08), adjMax * (war.momentumHoldThreat ?? 0.6), this.reserveFor(pv, team));
+    const rest = Math.floor(troops - hold);
+    if (rest < (war.momentumMin ?? 120)) return troops;
+    let live = 0;
+    const inbound = new Map();
+    for (const x of this.armies) {
+      if (x.team !== team.plate || x.state === 'done' || x === a) continue;
+      if (x.kind !== 'parade') live++;
+      if (x.kind !== 'move' && x.kind !== 'parade') inbound.set(x.dest, (inbound.get(x.dest) || 0) + x.troops * x.power);
+    }
+    const maxArmies = (war.maxArmiesPerTeam ?? 10) + 2;
+    if (live >= maxArmies) return troops;
+    const cands = [];
+    for (const n of pv.adj) {
+      const q = this.prov.get(n);
+      if (q.owner === team.plate) continue;
+      const w = this.weakness(n);
+      if ((inbound.get(n) || 0) >= w * 1.3 + war.minArmy) continue;
+      if (rest * a.power < w * (this.isFresh(q) ? (war.shieldBreakRatio ?? 4) : (war.momentumRatio ?? 1.5))) continue;
+      // Enemy capitals and the team's own lost capital are worth a detour.
+      cands.push({ n, w, score: w * (0.85 + Math.random() * 0.3) * (n === team.plate ? 0.2 : q.owner === n ? 0.7 : 1) });
+    }
+    if (!cands.length) return troops;
+    cands.sort((x, y) => x.score - y.score);
+    // A big army forks: one more branch per war.momentumSplitTroops it carries (max 3 per
+    // hop, within maxArmiesPerTeam); each branch gets what its target needs plus an equal share.
+    const split = war.momentumSplitTroops ?? 0;
+    let k = split > 0 ? Math.min(3, cands.length, 1 + Math.floor(rest / split), maxArmies - live) : 1;
+    const needOf = (c) => (c.w * (war.momentumRatio ?? 1.5)) / a.power;
+    while (k > 1 && cands.slice(0, k).reduce((s, c) => s + needOf(c), 0) > rest) k--;
+    const picked = cands.slice(0, Math.max(1, k));
+    const needSum = picked.reduce((s, c) => s + needOf(c), 0);
+    const extra = (rest - needSum) / picked.length;
+    const o = a.o || {};
+    let sent = 0;
+    for (const [i, c] of picked.entries()) {
+      const n = i === picked.length - 1 ? rest - sent : Math.floor(needOf(c) + extra);
+      sent += n;
+      this.launchArmy(team, pv.plate, c.n, n, { ...o, kind: a.kind, gather: (war.momentumPauseSec ?? 1.2) + i * (war.staggerSec ?? 0.7) });
+    }
+    return troops - rest;
+  }
+
+  /** Move troops from interior provinces toward the front (the capital keeps its reserve). */
   rebalance(team) {
     const war = this.cfg.war;
     const own = this.ownedBy(team);
@@ -1416,18 +1715,23 @@ export class Game {
       }
     }
     let moves = 0;
+    const total = this.teamTroops(team);
     for (const plate of own) {
       const d = dist.get(plate);
       if (!d) continue; // border province (0) or unreachable
       const pv = this.prov.get(plate);
-      if (pv.garrison < war.rebalanceMin) continue;
+      // The capital only sends what it holds above its reserve.
+      const keep = plate === team.plate ? this.reserveFor(pv, team, total) : 0;
+      if (pv.garrison - keep < war.rebalanceMin) continue;
       let next = 0;
       for (const n of pv.adj) if (dist.get(n) === d - 1) { next = n; break; }
       if (!next) continue;
-      const n = Math.floor(pv.garrison * war.rebalanceFraction);
+      const n = Math.floor((pv.garrison - keep) * war.rebalanceFraction);
       pv.garrison -= n;
       this.launchArmy(team, plate, next, n, { kind: 'move', types: 'infantry', unitKey: 'infantry', maxFigures: 4 });
-      if (++moves >= 2) break;
+      // A big empire moves more at once, so spread-out troops reach the front.
+      const big = (team.surplus || 0) > (war.frontTroops ?? 400);
+      if (++moves >= (big ? Math.max(1 + this.frontCount(team.surplus), Math.ceil(own.length / 4)) : 2)) break;
     }
   }
 
@@ -1488,16 +1792,20 @@ export class Game {
       this.view.floater(this.prov.get(plate), `+${fmtShort(a.troops)}`, team.colorHex);
       return;
     }
-    if (pv.owner === a.team) { pv.garrison += a.troops; return; }
+    // Reached an own province (another army took it first): the big ones roll on.
+    if (pv.owner === a.team) { pv.garrison += this.advance(pv, team, a, a.troops); return; }
     const atk = a.troops * a.power;
     const mult = this.defenseMult(pv);
     const def = pv.garrison * mult;
     if (pv.owner && pv.owner !== a.team) this.noteRivalry(a.team, pv.owner, Math.min(a.troops, pv.garrison) + 10, pv.wx, pv.wz);
-    // Capture shield: a freshly taken province only falls to a big gift army.
-    const shielded = this.isFresh(pv) && !(a.kind === 'gift' && a.big);
+    // Capture shield: a freshly taken province only falls to a big gift army or an
+    // overwhelming one (war.shieldBreakRatio x its shielded defence).
+    const shielded = this.isFresh(pv) && !(a.kind === 'gift' && a.big) && !(atk > def * (this.cfg.war.shieldBreakRatio ?? 4));
     if (shielded) {
       pv.garrison = Math.max(1, pv.garrison - (atk / mult) * 0.3);
       this.view.effects.sparkle(pv.wx, TILE_H, pv.wz, 0x999999, 2);
+      // The army is not wasted: its survivors (war.shieldBounceKeep) walk back home.
+      this.bounceBack(a, team, a.troops * (this.cfg.war.shieldBounceKeep ?? 0.6));
       return;
     }
     if (atk > def) {
@@ -1511,12 +1819,24 @@ export class Game {
     }
   }
 
+  /** Survivors of a bounced attack return to an own province next to the target. */
+  bounceBack(a, team, troops) {
+    troops = Math.floor(troops);
+    // Small bounced armies scatter as before; only a real force walks home.
+    if (troops < (this.cfg.war.momentumMin ?? 120) || team.provinces === 0) return;
+    const pv = this.prov.get(a.dest);
+    let home = a.from && this.prov.get(a.from).owner === team.plate ? a.from : 0;
+    if (!home) for (const n of pv.adj) if (this.prov.get(n).owner === team.plate) { home = n; break; }
+    if (!home) { this.addTroops(team, troops); return; }
+    this.launchArmy(team, pv.plate, home, troops, { kind: 'move', types: 'infantry', unitKey: 'infantry', maxFigures: 4 });
+  }
+
   capture(pv, team, garrison, army) {
     const prevOwner = pv.owner;
     const prevTeam = prevOwner ? this.teams.get(prevOwner) : null;
     this.setOwner(pv.plate, team.plate, army ? { x: army.x, z: army.z } : null);
-    pv.garrison = Math.max(1, garrison);
     pv.capturedAt = this.time;
+    pv.garrison = Math.max(1, this.advance(pv, team, army, garrison));
     // Taken by one viewer's gift army: their name stays on the province for a while.
     if (army && army.giver) this.view.plates.setConqueror(pv.plate, army.giver.nick, army.giver.badge, this.cfg.engage?.conquerorSec ?? 20);
     else this.view.plates.setConqueror(pv.plate, null);

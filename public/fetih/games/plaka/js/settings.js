@@ -60,6 +60,12 @@ export function applySettings(config, base, values = {}) {
   C.war.attackJitterSec = +(B.war.attackJitterSec * pace.attackMult).toFixed(2);
   C.war.battleSec = +(B.war.battleSec * pace.battleMult).toFixed(2);
   C.war.speed = Object.fromEntries(Object.entries(B.war.speed).map(([k, s]) => [k, +(s * pace.speedMult).toFixed(2)]));
+  // The pause before a winning army marches on follows the battle time.
+  if (typeof B.war.momentumPauseSec === 'number') C.war.momentumPauseSec = +(B.war.momentumPauseSec * pace.battleMult).toFixed(2);
+
+  // ---- Savaş ----
+  C.war.momentum = isBool(v['war.momentum']) ? v['war.momentum'] : B.war.momentum !== false;
+  C.war.maxFronts = isNum(v['war.maxFronts'], 1, 8) ? Math.round(v['war.maxFronts']) : B.war.maxFronts;
 
   // ---- Hediyeler ----
   const strip = v['gifts.strip'];

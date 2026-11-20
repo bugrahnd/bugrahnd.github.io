@@ -28,6 +28,8 @@ const GROUPS = [
     id: 'hiz', title: 'Hız',
     fields: [
       { key: 'pace', kind: 'pace', label: 'Oyun hızı', hint: 'Saldırı sıklığı, ordu hızı ve savaş süresi birlikte değişir.' },
+      { key: 'war.momentum', kind: 'toggle', label: 'Büyük ordular ilerlesin', hint: 'Açıksa savaşı kazanan büyük ordu fethettiği ilde yeterli asker bırakır, kalanıyla kısa bir moladan sonra sıradaki komşuya yürür. Kapalıysa her ordu aldığı ilde kalır.' },
+      { key: 'war.maxFronts', kind: 'num', label: 'Güçlü şehrin en çok cephesi', unit: 'cephe', hint: 'Çok asker toplayan bir şehir aynı anda en fazla bu kadar komşuya saldırır (sıradan şehirler hep tek cephe). Düşük = daha sakin harita.' },
     ],
   },
   {
