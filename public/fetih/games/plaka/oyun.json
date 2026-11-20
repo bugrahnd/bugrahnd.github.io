@@ -1,0 +1,23 @@
+{
+  "id": "plaka",
+  "title": "Plaka Savaşları",
+  "description": "İzleyiciler plakasını ya da il adını yazıp şehrine katılır; hediyeler orduya dönüşür, şehirler Türkiye haritasında birbirini fetheder.",
+  "status": "hazir",
+  "order": 1,
+  "files": "../../game",
+  "entry": "index.html",
+  "vendor": ["three"],
+  "settings": { "module": "settings.mjs" },
+  "panel": { "module": "panel-settings.js" },
+  "commands": [
+    { "name": "restartRound", "label": "Turu yeniden başlat", "confirm": "Tur şimdi baştan başlasın mı? Haritadaki fetihler sıfırlanır (takımlar kalır)." },
+    { "name": "endRound", "label": "Turu bitir", "confirm": "Tur şimdi bitsin mi? O anki lider kazanan sayılır." },
+    { "name": "clearMap", "label": "Haritayı temizle", "danger": true, "confirm": "Harita tamamen temizlensin mi? Bütün takımlar ve oyuncular silinir, izleyiciler yeniden plaka yazmalı. Günlük skor kalır." },
+    { "name": "resetSession", "label": "Günlük skoru sıfırla", "danger": true, "confirm": "Günlük skor (kaç tur kazanıldı) sıfırlansın mı?" }
+  ],
+  "sim": {
+    "kind": "plates",
+    "joinHint": "Plaka ya da il adı + emoji (ör. 34 🔥)"
+  },
+  "features": ["tiktokZones", "audio", "giftCatalog", "giftLadder", "demo"]
+}

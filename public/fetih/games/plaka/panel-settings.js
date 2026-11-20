@@ -1,7 +1,12 @@
-// "Oyun ayarları" section: edits the streamer overrides stored by the bridge
-// (GET/POST /api/settings, POST /api/settings/reset) and sends one-shot commands
-// (POST /api/command). The bridge pushes saved settings to every connected game page.
-const $ = (id) => document.getElementById(id);
+// Plaka Savaşları panel module ("Plaka Savaşları ayarları" in the panel's Ayarlar area).
+// Loaded by the panel through games/plaka/oyun.json -> panel.module. It edits this game's
+// overrides stored by the bridge (GET/POST /api/settings?game=plaka, POST /api/settings/reset?game=plaka)
+// and sends one-shot round commands (POST /api/command { name, game: "plaka" }). The bridge pushes
+// saved settings to every connected Plaka Savaşları page. Stream-wide settings (TikTok zones,
+// volumes) are in the panel's "Yayın ayarları", not here.
+//
+// Panel module contract (see games/README.md): export mount({ api, root, game }) returning
+// { onRemote(msg), onGifts(msg), onState(state), destroy() }.
 
 const PACE_LABEL = { sakin: 'Sakin', normal: 'Normal', hizli: 'Hızlı' };
 const CURVE_COINS = [1, 10, 100, 1000, 5000];
@@ -71,20 +76,15 @@ const GROUPS = [
       { key: 'show.giftStrip', kind: 'toggle', label: 'Hediye şeridi', hint: 'En alttaki hediye merdiveni (sayfa sayfa döner).' },
       { key: 'show.hucumBar', kind: 'toggle', label: 'HÜCUM çubuğu', hint: 'Haritanın altındaki "İSTANBUL HÜCUM %80" çubuğu.' },
       { key: 'show.minimap', kind: 'toggle', label: 'Küçük harita', hint: 'Kamera yakınlaşınca köşede çıkan Türkiye haritası.' },
-      { key: 'layout.chatTop', kind: 'num', label: 'Sohbet çizgisi', unit: 'birim (1920 üzerinden)', hint: 'Yayın görünümünde her şey bu çizginin üstünde kalır; altı TikTok sohbetine ayrılır. Telefonda sohbet hediye merdivenini ya da katılım satırını kapatıyorsa küçültün, boşluk kalıyorsa büyütün (1150-1500). Kontrol: oyun adresine ?zones=1 ekleyin.' },
-      { key: 'layout.side', kind: 'num', label: 'Yan boşluk', unit: 'birim', hint: 'Uzun ekranlı telefonlarda yayının sağı ve solu kırpılır; kutular kenardan bu kadar içeride durur (0-120).' },
       { key: 'cta.text', kind: 'text', label: 'Katılım yazısı', hint: 'Haritanın altındaki tek, sakin katılım satırı. Bağırmayan, açıklayıcı tutun.' },
       { key: 'cta.example', kind: 'text', label: 'Katılım örneği', hint: 'Katılım yazısının yanındaki örnek kutu (ör. plaka).' },
       { key: 'title.text', kind: 'text', label: 'Başlık yazısı', hint: 'En üstteki logo. İlk kelime plakanın içinde, gerisi yanında yazar (ör. "PLAKA SAVAŞLARI"). TikTok\'un üst çubuğu çoğunu kapatır; süs içindir.' },
     ],
   },
   {
-    id: 'kamera', title: 'Kamera ve ses',
+    id: 'kamera', title: 'Kamera',
     fields: [
       { key: 'camera.director', kind: 'toggle', label: 'Otomatik kamera', hint: 'Büyük hediyelerde ve önemli anlarda kamera yakınlaşsın.' },
-      { key: 'audio.musicPct', kind: 'range', label: 'Müzik sesi', unit: '%', hint: 'Arka plan müziği.' },
-      { key: 'audio.sfxPct', kind: 'range', label: 'Efekt sesi', unit: '%', hint: 'Savaş, hediye ve uyarı sesleri.' },
-      { key: 'audio.mute', kind: 'toggle', label: 'Tüm sesi kapat', hint: 'Oyun tamamen sessiz olur.' },
     ],
   },
 ];
@@ -115,9 +115,20 @@ const el = (tag, cls, parent, text) => {
   return e;
 };
 
-export function initSettings({ api }) {
-  const root = $('settings-form');
-  const msgEl = $('set-msg');
+export function mount({ api, root: host, game }) {
+  const gid = game?.id || 'plaka';
+  const q = `?game=${encodeURIComponent(gid)}`;
+  // Own DOM inside the host element: pages line, intro, the form, save / reset.
+  host.replaceChildren();
+  const pagesEl = el('div', 'set-pages', host);
+  el('p', 'hint', host, 'Değişiklikler "Kaydet"e basınca bu oyunun açık sayfalarına hemen gönderilir ve köprü kapanıp açılsa da saklanır. Oyun yayında değilken de hazırlanabilir; yayına alınınca uygulanır.');
+  const root = el('div', 'settings-form', host);
+  root.append(el('p', 'muted', null, 'Ayarlar yükleniyor…'));
+  const actions = el('div', 'row wrap set-actions', host);
+  const saveBtn = el('button', 'primary', actions, 'Kaydet'); saveBtn.type = 'button';
+  const resetBtn = el('button', '', actions, 'Varsayılana dön'); resetBtn.type = 'button';
+  const msgEl = el('span', 'set-msg', actions);
+  msgEl.setAttribute('role', 'status'); msgEl.setAttribute('aria-live', 'polite');
   let schema = null; let defaults = null; let paces = null;
   let current = {}; // saved overrides from the bridge
   let dirty = false;
@@ -134,7 +145,7 @@ export function initSettings({ api }) {
   const bothNames = (it) => (it.tr && nameKey(it.tr) !== nameKey(it.name) ? `${it.tr} (${it.name})` : it.name);
   /**
    * Catalogue gift for a ladder row: by its id, otherwise by name (Turkish or English) at the
-   * same price; the game does the same (game/js/gift-names.js), so the row learns its id.
+   * same price; the game does the same (shared/gift-names.js), so the row learns its id.
    */
   function resolveRow(name, coins, id) {
     if (id) {
@@ -276,8 +287,8 @@ export function initSettings({ api }) {
       b.onclick = async () => {
         if (!confirm(COMMAND_CONFIRM[name])) return;
         try {
-          const r = await api('command', { name });
-          const n = r.pages?.game ?? 0;
+          const r = await api('command', { name, game: gid });
+          const n = r.gamePages ?? 0;
           say(n ? `${COMMAND_DONE[name]} (${n} oyun sayfasına gönderildi).` : `${COMMAND_DONE[name]}, ama şu an bağlı oyun sayfası yok.`, n ? 'ok' : 'warn');
         } catch (e) { say(e.message, 'bad'); }
       };
@@ -512,43 +523,41 @@ export function initSettings({ api }) {
   async function save(okText = 'Kaydedildi') {
     say('Kaydediliyor…');
     try {
-      const r = await api('settings', { values: collect() });
+      const r = await api(`settings${q}`, { values: collect() });
       current = r.values; dirty = false; fill();
-      const n = r.pages?.game ?? 0;
+      const n = r.pages?.games?.[gid] ?? 0;
       say(n ? `${okText} ✓ ${n} oyun sayfasına gönderildi.` : `${okText} ✓ Şu an bağlı oyun sayfası yok; oyun açılınca uygulanır.`, 'ok');
       renderPages(r.pages);
     } catch (e) { say(e.message, 'bad'); }
   }
 
   async function reset() {
-    if (!confirm('Bütün oyun ayarları varsayılana dönsün mü?')) return;
+    if (!confirm(`Bütün ${game?.title || 'oyun'} ayarları varsayılana dönsün mü?`)) return;
     try {
-      const r = await api('settings/reset', {});
+      const r = await api(`settings/reset${q}`, {});
       current = r.values; fill();
       say('Varsayılana dönüldü ✓', 'ok');
     } catch (e) { say(e.message, 'bad'); }
   }
 
   function renderPages(p) {
-    const e = $('set-pages');
+    const e = pagesEl;
     if (!p) { e.textContent = ''; return; }
-    const g = p.game || 0;
-    let t = g ? `Bağlı oyun sayfası: ${g}` : 'Bağlı oyun sayfası yok (oyun açık değil ya da köprüye bağlanamıyor)';
-    if (p.other) t += ` · diğer bağlantı: ${p.other}`;
-    e.textContent = t;
+    const g = p.games?.[gid] || 0;
+    e.textContent = g ? `Bu oyunun açık sayfası: ${g}` : 'Bu oyunun açık sayfası yok (yayında değil ya da köprüye bağlanamıyor)';
     e.className = 'set-pages ' + (g ? 'ok' : 'warn');
   }
 
   async function load() {
-    const r = await api('settings');
+    const r = await api(`settings${q}`);
     schema = r.schema; defaults = r.defaults; paces = r.paces; current = r.values || {};
     build(); fill(); renderPages(r.pages);
     renderCatalogNote();
     loadCatalog();
   }
 
-  $('set-save').onclick = () => save();
-  $('set-reset').onclick = () => reset();
+  saveBtn.onclick = () => save();
+  resetBtn.onclick = () => reset();
 
   let loaded = false;
   const tryLoad = () => load().then(() => { loaded = true; }).catch(() => { /* bridge down: banner shows it */ });
@@ -557,6 +566,7 @@ export function initSettings({ api }) {
   return {
     /** A settings message from the bridge (saved here or from another panel). */
     onRemote(msg) {
+      if (msg.scope !== 'game' || msg.game !== gid) return;
       if (!loaded) { tryLoad(); return; }
       current = msg.values || {};
       if (!dirty) fill();
@@ -568,5 +578,6 @@ export function initSettings({ api }) {
       if (!loaded) tryLoad();
       renderPages(s.pages);
     },
+    destroy() { picker?.remove(); host.replaceChildren(); },
   };
 }

@@ -1,0 +1,95 @@
+{
+  "ok": true,
+  "games": [
+    {
+      "id": "plaka",
+      "title": "Plaka Savaşları",
+      "description": "İzleyiciler plakasını ya da il adını yazıp şehrine katılır; hediyeler orduya dönüşür, şehirler Türkiye haritasında birbirini fetheder.",
+      "status": "hazir",
+      "order": 1,
+      "url": "games/plaka/index.html",
+      "panelModule": "games/plaka/panel-settings.js",
+      "hasSettings": true,
+      "commands": [
+        {
+          "name": "restartRound",
+          "label": "Turu yeniden başlat",
+          "confirm": "Tur şimdi baştan başlasın mı? Haritadaki fetihler sıfırlanır (takımlar kalır).",
+          "danger": false
+        },
+        {
+          "name": "endRound",
+          "label": "Turu bitir",
+          "confirm": "Tur şimdi bitsin mi? O anki lider kazanan sayılır.",
+          "danger": false
+        },
+        {
+          "name": "clearMap",
+          "label": "Haritayı temizle",
+          "confirm": "Harita tamamen temizlensin mi? Bütün takımlar ve oyuncular silinir, izleyiciler yeniden plaka yazmalı. Günlük skor kalır.",
+          "danger": true
+        },
+        {
+          "name": "resetSession",
+          "label": "Günlük skoru sıfırla",
+          "confirm": "Günlük skor (kaç tur kazanıldı) sıfırlansın mı?",
+          "danger": true
+        }
+      ],
+      "sim": {
+        "kind": "plates",
+        "joinHint": "Plaka ya da il adı + emoji (ör. 34 🔥)"
+      },
+      "features": [
+        "tiktokZones",
+        "audio",
+        "giftCatalog",
+        "giftLadder",
+        "demo"
+      ]
+    },
+    {
+      "id": "halat",
+      "title": "Halat Çekme",
+      "description": "İki takım halatı kendi tarafına çeker; izleyiciler takımını yazıp katılır, hediyeler takımına güç verir.",
+      "status": "yakinda",
+      "order": 2,
+      "url": "games/halat/index.html",
+      "panelModule": null,
+      "hasSettings": false,
+      "commands": [],
+      "sim": {
+        "kind": "teams",
+        "joinHint": "Takım adı yazılır (ör. kırmızı)",
+        "teams": [
+          {
+            "key": "kirmizi",
+            "label": "Kırmızı",
+            "words": [
+              "kırmızı",
+              "kirmizi",
+              "KIRMIZI",
+              "k"
+            ]
+          },
+          {
+            "key": "mavi",
+            "label": "Mavi",
+            "words": [
+              "mavi",
+              "Mavi",
+              "MAVİ",
+              "m"
+            ]
+          }
+        ],
+        "emoji": false
+      },
+      "features": [
+        "tiktokZones",
+        "audio",
+        "giftCatalog"
+      ]
+    }
+  ]
+}

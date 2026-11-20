@@ -29,12 +29,17 @@ header {
 h1 { font-size: 18px; margin: 0; }
 h1 span { color: var(--muted); font-weight: 400; }
 h2 { font-size: 15px; margin: 0 0 10px; }
-main {
+/* Two areas: "Yayın" (left, always visible) and Oyunlar / Ayarlar (right, tabs). */
+.col-main { gap: 18px; }
+main.layout {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  grid-template-columns: minmax(340px, 5fr) minmax(0, 7fr);
   gap: 12px;
   padding: 12px 16px 24px;
+  align-items: start;
 }
+.col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+@media (max-width: 1000px) { main.layout { grid-template-columns: 1fr; } }
 .card {
   background: var(--card);
   border: 1px solid var(--line);
@@ -42,7 +47,6 @@ main {
   padding: 14px;
   min-width: 0;
 }
-.log-card { grid-column: 1 / -1; }
 .row { display: flex; gap: 8px; align-items: flex-end; margin-bottom: 8px; }
 .row.wrap { flex-wrap: wrap; align-items: center; }
 .row.between { justify-content: space-between; align-items: center; }
@@ -118,7 +122,6 @@ button:disabled { opacity: .5; cursor: default; }
 .log .k.status { color: #c39bff; }
 .log li.big { background: #3a2f12; }
 /* ---------- Oyun ayarları ---------- */
-.settings-card { grid-column: 1 / -1; }
 .settings-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 12px; }
 .set-group { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px 4px; margin: 0; min-width: 0; }
 .set-group legend { font-weight: 700; font-size: 14px; padding: 0 6px; color: var(--text); }
@@ -189,3 +192,35 @@ button.danger { border-color: #6b2228; color: #ffb4b4; }
   .log li { grid-template-columns: 60px 52px 1fr; }
   .log li .d { grid-column: 1 / -1; }
 }
+
+/* ---------- Yayın ---------- */
+.onair-row { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; margin-bottom: 4px; }
+#onair-title { font-size: 18px; color: #ffd166; }
+label.inline { flex-direction: row; align-items: center; gap: 8px; }
+#gift-cat > summary { cursor: pointer; list-style: none; }
+#gift-cat > summary::-webkit-details-marker { display: none; }
+#gift-cat > summary h2 { display: inline; }
+#gift-cat > summary::before { content: '▸ '; color: var(--muted); }
+#gift-cat[open] > summary::before { content: '▾ '; }
+.gift-cat-list { max-height: 260px; overflow: auto; display: flex; flex-direction: column; gap: 2px; }
+.gift-cat-item { display: grid; grid-template-columns: 28px 1fr auto; gap: 8px; align-items: center; padding: 2px 4px; border-bottom: 1px solid #1f232c; }
+.gift-cat-item img { width: 28px; height: 28px; object-fit: contain; }
+[hidden] { display: none !important; }
+
+/* ---------- Oyunlar + Ayarlar ---------- */
+.area { display: flex; flex-direction: column; gap: 10px; scroll-margin-top: 8px; }
+.area-title { font-size: 17px; margin: 4px 0 0; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+.area > .hint { margin: 0; }
+.game-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.game-card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px; cursor: pointer; display: flex; flex-direction: column; gap: 6px; }
+.game-card:hover { border-color: #3b4458; }
+.game-card.selected { outline: 2px solid #3b82f6; outline-offset: -1px; }
+.game-card.active { border-color: var(--ok); box-shadow: 0 0 0 1px var(--ok) inset; }
+.game-card.soon { cursor: default; opacity: .75; }
+.game-card h3 { margin: 0; font-size: 16px; }
+.game-card p { margin: 0; color: var(--muted); font-size: 13px; flex: 1; }
+.gc-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.gc-actions { margin: 6px 0 0; }
+.badge { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 1px 8px; text-transform: uppercase; letter-spacing: .04em; }
+.badge.on { background: var(--ok); color: #06210f; }
+.badge.soon { background: #3a3320; color: #ffd166; border: 1px solid #6b5a22; }

@@ -3,12 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Plaka Savaşları · Kontrol Paneli</title>
+  <title>Yayın Kontrol Paneli</title>
+  <link rel="icon" href="data:,">
   <link rel="stylesheet" href="panel.css">
 </head>
 <body>
   <header>
-    <h1>Plaka Savaşları <span>Kontrol Paneli</span></h1>
+    <h1>Yayın <span>Kontrol Paneli</span></h1>
     <div id="status" class="status">
       <span id="st-dot" class="dot"></span>
       <span id="st-mode">–</span>
@@ -19,104 +20,150 @@
   <div id="bridge-down" class="error bridge-down" hidden>
     <strong>Köprü sunucusuna ulaşılamıyor</strong> (<code id="bridge-down-addr"></code>).
     Bu panel, yayın yapılan bilgisayarda çalışan köprü sunucusuyla konuşur.
-    Proje klasöründe bir terminal açıp <code>npm start</code> komutunu çalıştırın; sunucu açılınca bu sayfa kendiliğinden bağlanır.
+    Proje klasöründe <code>Yayin Koprusu.bat</code> dosyasını açın (ya da bir terminalde <code>npm start</code> çalıştırın); sunucu açılınca bu sayfa kendiliğinden bağlanır.
     <span id="bridge-down-detail"></span>
     <br><small>Farklı port için adresin sonuna <code>?bridge=http://127.0.0.1:3001</code> ekleyin.</small>
   </div>
   <div id="st-error" class="error" hidden></div>
 
-  <main>
-    <section class="card">
-      <h2>Canlı TikTok</h2>
-      <form id="live-form" class="row">
-        <label class="grow">Kullanıcı adı
-          <input id="live-user" type="text" placeholder="@kullaniciadi" autocomplete="off" spellcheck="false">
-        </label>
-        <button type="submit" class="primary">Bağlan</button>
-        <button type="button" id="live-stop">Bağlantıyı kes</button>
-      </form>
-      <p class="hint" id="live-hint">Bağlanınca simülatör durur. Bağlantı kesilince simülatör moduna dönülür.</p>
-    </section>
-
-    <section class="card">
-      <h2>Simülatör</h2>
-      <div class="row">
-        <button id="sim-start" class="primary">Başlat</button>
-        <button id="sim-pause">Duraklat</button>
-        <label>Yoğunluk
-          <select id="sim-preset"></select>
-        </label>
-        <span id="sim-info" class="muted"></span>
-      </div>
-    </section>
-
-    <section class="card">
-      <h2>Manuel test</h2>
-      <div class="row">
-        <label>Test kullanıcısı
-          <input id="t-name" type="text" value="test_kullanici" spellcheck="false">
-        </label>
-        <label>Görünen ad
-          <input id="t-nick" type="text" value="Test Oyuncu">
-        </label>
-        <label class="small">Plaka (ops.)
-          <input id="t-plate" type="text" inputmode="numeric" placeholder="34 / kktc" maxlength="4" spellcheck="false">
-        </label>
-        <label class="small">Emoji
-          <input id="t-emoji" type="text" value="🔥" maxlength="16" spellcheck="false">
-        </label>
-      </div>
-      <p class="hint">Plaka girilirse test kullanıcısı önce <code>plaka emoji</code> yazarak (ör. <code>34 🔥</code>, <code>KKTC 🦅</code>) ile katılır, sonra olay gönderilir. Plaka 1-81 veya <code>kktc</code>; emoji boşsa 🔥.</p>
-      <div class="row">
-        <label class="grow">Sohbet mesajı
-          <input id="t-text" type="text" value="saldır 06">
-        </label>
-        <label>TikTok emote URL (ops.)
-          <input id="t-emote" type="text" placeholder="/emote/test.svg" spellcheck="false">
-        </label>
-        <button data-inject="chat" class="primary">Mesaj gönder</button>
-      </div>
-      <div class="row wrap">
-        <button data-inject="like">Beğeni ×100</button>
-        <button data-inject="follow">Takip</button>
-        <button data-inject="share">Paylaşım</button>
-        <button data-inject="join">Yayına giriş</button>
-      </div>
-      <div class="row wrap">
-        <span class="label">Hediye:</span>
-        <button data-inject="gift" data-coins="1">1 coin · Rose</button>
-        <button data-inject="gift" data-coins="10">10 coin</button>
-        <button data-inject="gift" data-coins="100">100 coin</button>
-        <button data-inject="gift" data-coins="1000">1000 coin</button>
-        <button data-inject="gift" data-coins="5000">5000 coin</button>
-      </div>
-    </section>
-
-    <section class="card settings-card" id="settings">
-      <div class="row between">
-        <h2>Oyun ayarları</h2>
-        <span id="set-pages" class="set-pages"></span>
-      </div>
-      <p class="hint">Burada yapılan değişiklikler "Kaydet"e basınca yayındaki oyuna hemen gönderilir ve köprü kapanıp açılsa da saklanır.
-        Oyun sayfası (LIVE Studio'daki bağlantı) açık olmalı; açık değilse açıldığında uygulanır.</p>
-      <div id="settings-form" class="settings-form"><p class="muted">Ayarlar yükleniyor…</p></div>
-      <div class="row wrap set-actions">
-        <button type="button" id="set-save" class="primary">Kaydet</button>
-        <button type="button" id="set-reset">Varsayılana dön</button>
-        <span id="set-msg" class="set-msg" role="status" aria-live="polite"></span>
-      </div>
-    </section>
-
-    <section class="card log-card">
-      <div class="row between">
-        <h2>Olay akışı <span id="rate" class="muted"></span></h2>
-        <div class="row">
-          <label class="check"><input type="checkbox" id="log-pause"> Akışı dondur</label>
-          <button id="log-clear">Temizle</button>
+  <main class="layout">
+    <!-- ================= Yayın (always visible) ================= -->
+    <div class="col col-yayin">
+      <section class="card onair">
+        <h2>Yayın</h2>
+        <div class="onair-row">
+          <span class="muted">Yayındaki oyun</span>
+          <strong id="onair-title">–</strong>
         </div>
-      </div>
-      <ol id="log" class="log"></ol>
-    </section>
+        <div id="onair-pages" class="set-pages"></div>
+        <p class="hint">Yayın adresi (LIVE Studio / OBS): <code id="stream-url"></code><br>
+          Oyun değiştirince bu adres aynı kalır; LIVE Studio'da bir şey değiştirmeniz gerekmez.</p>
+      </section>
+
+      <section class="card">
+        <h2>Canlı TikTok</h2>
+        <form id="live-form" class="row">
+          <label class="grow">Kullanıcı adı
+            <input id="live-user" type="text" placeholder="@kullaniciadi" autocomplete="off" spellcheck="false">
+          </label>
+          <button type="submit" class="primary">Bağlan</button>
+          <button type="button" id="live-stop">Bağlantıyı kes</button>
+        </form>
+        <p class="hint" id="live-hint">Bağlanınca simülatör durur. Bağlantı kesilince simülatör moduna dönülür.</p>
+      </section>
+
+      <section class="card">
+        <h2>Simülatör</h2>
+        <div class="row wrap">
+          <button id="sim-start" class="primary">Başlat</button>
+          <button id="sim-pause">Duraklat</button>
+          <label>Yoğunluk
+            <select id="sim-preset"></select>
+          </label>
+          <span id="sim-info" class="muted"></span>
+        </div>
+        <p class="hint" id="sim-profile"></p>
+      </section>
+
+      <section class="card">
+        <h2>Test olayları</h2>
+        <div class="row wrap">
+          <label>Test kullanıcısı
+            <input id="t-name" type="text" value="test_kullanici" spellcheck="false">
+          </label>
+          <label>Görünen ad
+            <input id="t-nick" type="text" value="Test Oyuncu">
+          </label>
+        </div>
+        <div class="row wrap" id="t-join-plates">
+          <label class="small">Plaka (ops.)
+            <input id="t-plate" type="text" inputmode="numeric" placeholder="34 / kktc" maxlength="4" spellcheck="false">
+          </label>
+          <label class="small">Emoji
+            <input id="t-emoji" type="text" value="🔥" maxlength="16" spellcheck="false">
+          </label>
+        </div>
+        <div class="row wrap" id="t-join-teams" hidden>
+          <label>Takım (ops.)
+            <select id="t-team"></select>
+          </label>
+          <label class="small" id="t-team-emoji-wrap">Emoji
+            <input id="t-team-emoji" type="text" value="🔥" maxlength="16" spellcheck="false">
+          </label>
+        </div>
+        <p class="hint" id="t-join-hint"></p>
+        <div class="row wrap">
+          <label class="grow">Sohbet mesajı
+            <input id="t-text" type="text" value="saldır 06">
+          </label>
+          <label>TikTok emote URL (ops.)
+            <input id="t-emote" type="text" placeholder="/emote/test.svg" spellcheck="false">
+          </label>
+          <button data-inject="chat" class="primary">Mesaj gönder</button>
+        </div>
+        <div class="row wrap">
+          <button data-inject="like">Beğeni ×100</button>
+          <button data-inject="follow">Takip</button>
+          <button data-inject="share">Paylaşım</button>
+          <button data-inject="join">Yayına giriş</button>
+        </div>
+        <div class="row wrap">
+          <span class="label">Hediye:</span>
+          <button data-inject="gift" data-coins="1">1 coin · Rose</button>
+          <button data-inject="gift" data-coins="10">10 coin</button>
+          <button data-inject="gift" data-coins="100">100 coin</button>
+          <button data-inject="gift" data-coins="1000">1000 coin</button>
+          <button data-inject="gift" data-coins="5000">5000 coin</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <details id="gift-cat">
+          <summary><h2>Hediye listesi <span id="gift-cat-count" class="muted"></span></h2></summary>
+          <p class="hint" id="gift-cat-note"></p>
+          <div id="gift-cat-list" class="gift-cat-list"></div>
+        </details>
+      </section>
+
+      <section class="card log-card">
+        <div class="row between">
+          <h2>Olay akışı <span id="rate" class="muted"></span></h2>
+          <div class="row">
+            <label class="check"><input type="checkbox" id="log-pause"> Akışı dondur</label>
+            <button id="log-clear">Temizle</button>
+          </div>
+        </div>
+        <ol id="log" class="log"></ol>
+      </section>
+    </div>
+
+    <!-- ================= Oyunlar + Ayarlar ================= -->
+    <div class="col col-main">
+      <section id="oyunlar" class="area">
+        <h2 class="area-title">Oyunlar</h2>
+        <p class="hint">Bir oyunu yayına almak için "Bu oyunu yayına al"a basın; yayın sayfası kısa bir geçiş kartıyla yeni oyuna geçer.
+          Bir karta tıklayınca o oyunun ayarları açılır (oyunu yayına almadan önceden hazırlayabilirsiniz).</p>
+        <div id="game-cards" class="game-cards"><p class="muted">Oyunlar yükleniyor…</p></div>
+      </section>
+
+      <section id="ayarlar" class="area">
+        <h2 class="area-title">Ayarlar</h2>
+        <section class="card">
+          <h2>Yayın ayarları</h2>
+          <p class="hint">Bütün oyunlar için geçerlidir: TikTok'un ekran alanları ve sesler. Oyun değişse de aynı kalır.</p>
+          <div id="stream-form"></div>
+        </section>
+        <section class="card">
+          <div class="row between">
+            <h2 id="gs-title">Oyun ayarları</h2>
+            <label class="inline">Oyun
+              <select id="gs-pick"></select>
+            </label>
+          </div>
+          <div id="game-form"></div>
+        </section>
+      </section>
+    </div>
   </main>
 
   <script src="panel.js" type="module"></script>

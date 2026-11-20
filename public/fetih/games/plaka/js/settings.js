@@ -109,6 +109,8 @@ export function applySettings(config, base, values = {}) {
   C.visual.cameraAttention = isBool(v['camera.director']) ? v['camera.director'] : B.visual.cameraAttention !== false;
   C.audio.music = isNum(v['audio.musicPct'], 0, 100) ? v['audio.musicPct'] / 100 : B.audio.music;
   C.audio.sfx = isNum(v['audio.sfxPct'], 0, 100) ? v['audio.sfxPct'] / 100 : B.audio.sfx;
+  // Stream-wide master volume (panel "Yayın ayarları"), on top of this game's own master level.
+  C.audio.master = B.audio.master * (isNum(v['audio.masterPct'], 0, 100) ? v['audio.masterPct'] / 100 : 1);
 
   // ---- Ekran ----
   const show = {};

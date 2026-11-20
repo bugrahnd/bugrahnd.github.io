@@ -1,6 +1,7 @@
 // TikTok gift names: the live feed sends English names ("Rose") while a Turkish TikTok app
 // shows Turkish ones ("Gül"). Small built-in map for the common cheap gifts, shared by the
-// bridge (server/gifts.js imports this file) and the game. No DOM, no imports.
+// bridge (server/gifts.js imports this file), the panel and every game
+// (game/js/gift-names.js re-exports it). No DOM, no imports.
 
 /** English name as TikTok sends it -> name in the Turkish app. */
 export const GIFT_NAMES_TR = {

@@ -5,27 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#0b1d2e">
   <meta name="mobile-web-app-capable" content="yes">
-  <title>Plaka Savaşları</title>
+  <title>Canlı Yayın Oyunları</title>
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="css/hud.css">
-  <script type="importmap">
-    {
-      "imports": {
-        "three": "./vendor/three/build/three.module.js",
-        "three/addons/": "./vendor/three/examples/jsm/"
-      }
-    }
-  </script>
+  <link rel="stylesheet" href="player.css">
 </head>
 <body>
-  <canvas id="view"></canvas>
-  <div id="overlay"></div>
-  <div id="hud"></div>
-  <div id="loading">
-    <div class="loading-title">PLAKA SAVAŞLARI</div>
-    <div class="loading-bar"><div class="loading-fill" id="loading-fill"></div></div>
-    <div class="loading-text" id="loading-text">Yükleniyor…</div>
+  <!-- The game on stream runs full-frame in an iframe (one per game); see player.js. -->
+  <div id="stage"></div>
+  <div id="card" class="card" hidden aria-live="polite">
+    <div class="card-box">
+      <div class="card-kicker" id="card-kicker">Sıradaki oyun</div>
+      <div class="card-title" id="card-title"></div>
+    </div>
   </div>
-  <script type="module" src="js/main.js"></script>
+  <div id="picker" class="picker" hidden></div>
+  <script type="module" src="player.js"></script>
 </body>
 </html>

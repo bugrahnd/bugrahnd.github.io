@@ -1,0 +1,43 @@
+/* Player shell: the game iframe fills the page; a neutral card covers game switches. */
+html, body {
+  margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
+  background: radial-gradient(ellipse at 50% 40%, #16324d 0%, #0b1d2e 55%, #060f19 100%);
+  color: #f6ecd8;
+  font-family: system-ui, "Segoe UI", sans-serif;
+}
+#stage { position: fixed; inset: 0; }
+.game-frame {
+  position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block;
+  background: transparent;
+}
+
+/* "Sıradaki oyun: …" transition card (centred: inside the TikTok safe area). */
+.card {
+  position: fixed; inset: 0; z-index: 10; display: grid; place-items: center;
+  background: radial-gradient(ellipse at 50% 45%, #1b3a57 0%, #0b1d2e 60%, #060f19 100%);
+  opacity: 0; transition: opacity .35s ease;
+}
+.card.on { opacity: 1; }
+.card[hidden] { display: none; }
+.card-box { text-align: center; padding: 0 6vw; }
+.card-kicker {
+  font-size: min(4.2vw, 2.4vh); letter-spacing: .18em; text-transform: uppercase; font-weight: 700;
+  color: #ffd166; opacity: .9;
+}
+.card-title {
+  margin-top: 1.2vh; font-size: min(9.5vw, 5.4vh); font-weight: 900; line-height: 1.1;
+  text-shadow: 0 .4vh 1.4vh rgba(0, 0, 0, .55);
+}
+
+/* Demo mode only (public visitors): a small game picker in the top-left corner. */
+.picker { position: fixed; left: 10px; top: 10px; z-index: 20; font-size: 14px; }
+.picker[hidden] { display: none; }
+.picker button {
+  font: inherit; color: #f6ecd8; background: rgba(6, 15, 25, .72); border: 1px solid rgba(255, 255, 255, .25);
+  border-radius: 999px; padding: 6px 12px; cursor: pointer;
+}
+.picker-list { margin-top: 6px; display: flex; flex-direction: column; gap: 4px; }
+.picker-list[hidden] { display: none; }
+.picker-list button { border-radius: 8px; text-align: left; }
+.picker-list button[aria-current="true"] { border-color: #ffd166; color: #ffd166; }
+.picker-list button:disabled { opacity: .55; cursor: default; }
