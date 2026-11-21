@@ -3,7 +3,7 @@
 // All untrusted text goes through textContent.
 import * as THREE from 'three';
 import { TILE_H, wzOf } from './map.js';
-import { fmtShort as fmt, cleanNick, safeImageUrl, setNameBadge, badgeKey } from './util.js';
+import { fmtShort as fmt, cleanNick, safeImageUrl, setNameBadge, badgeKey, pointInProvince } from './util.js';
 import { hexCss } from './colors.js';
 
 const _v = new THREE.Vector3();
@@ -249,6 +249,201 @@ export class PlateLabels {
       }
     }
   }
+}
+
+/**
+ * Territory names (visual.mapLabels "territory", the default): one big name per team over its
+ * land instead of 82 plate badges. The name is the team's home city, placed at the area-weighted
+ * centre of its largest connected block and sized by that block's area; under it a small line
+ * with the komutan and the member count, and the HÜCUM morale bar. Names are placed biggest
+ * first; one that would overlap a bigger one shrinks to its plate code, and is hidden when even
+ * that does not fit. Landless teams (rebelling) show a small "İSYAN" name at home.
+ * It also takes the PlateLabels calls the game makes (highlight, setMorale, setCommander, ...).
+ */
+export class TerritoryLabels {
+  constructor(container, provinces, config) {
+    this.cfg = config.visual;
+    this.root = document.createElement('div');
+    this.root.className = 'terr-labels';
+    container.append(this.root);
+    this.prov = new Map(provinces.map((p) => [p.plate, p]));
+    const areas = provinces.map((p) => p.area || 0).sort((a, b) => a - b);
+    this.unitArea = areas[Math.floor(areas.length / 2)] || 1; // median province
+    this.items = new Map(); // team plate -> label
+    this.morale = new Map(); // team plate -> { frac, hucum }
+    this.size = 22;
+    this.game = null;
+    this.dataT = 0;
+    this.dirty = true;
+    this.lastVersion = -1;
+    this.pt = { x: 0, y: 0 };
+    this.rect = null;
+  }
+
+  bind(game) { this.game = game; }
+
+  _item(plate) {
+    let it = this.items.get(plate);
+    if (it) return it;
+    const el = document.createElement('div');
+    el.className = 'terr';
+    const name = document.createElement('div'); name.className = 'terr-name';
+    const sub = document.createElement('div'); sub.className = 'terr-sub';
+    const mor = document.createElement('div'); mor.className = 'terr-mor';
+    mor.append(document.createElement('i'));
+    el.append(name, sub, mor);
+    this.root.append(el);
+    it = { el, name, sub, mor, anchor: new THREE.Vector3(), nameK: '', subK: '', morK: '', mode: '', px: 0, w: 0, h: 0, vis: true };
+    this.items.set(plate, it);
+    return it;
+  }
+
+  /** Re-reads ownership from the game (cheap: 82 provinces); called a few times a second. */
+  refresh() {
+    const g = this.game;
+    if (!g) return;
+    const seen = new Set();
+    for (const t of g.teams.values()) {
+      if (!t.awake && !t.provinces) continue;
+      const own = [];
+      for (const pv of g.prov.values()) if (pv.owner === t.plate) own.push(pv);
+      let block = null; let area = 0;
+      if (own.length) {
+        // Largest connected block of the team's land.
+        const left = new Set(own.map((pv) => pv.plate));
+        while (left.size) {
+          const start = left.values().next().value; left.delete(start);
+          const comp = [start]; let a = 0;
+          for (let i = 0; i < comp.length; i++) {
+            a += this.prov.get(comp[i]).area || 0;
+            for (const n of g.prov.get(comp[i]).adj) if (left.has(n)) { left.delete(n); comp.push(n); }
+          }
+          if (a > area) { area = a; block = comp; }
+        }
+      }
+      const it = this._item(t.plate);
+      seen.add(t.plate);
+      let x; let y;
+      if (block) {
+        let sx = 0; let sy = 0; let sa = 0;
+        for (const pl of block) { const p = this.prov.get(pl); const a = p.area || 1; sx += p.labelPoint[0] * a; sy += p.labelPoint[1] * a; sa += a; }
+        x = sx / sa; y = sy / sa;
+        // Concave land: a centre outside it snaps to the nearest own label point.
+        if (!block.some((pl) => pointInProvince(x, y, this.prov.get(pl)))) {
+          let best = null; let bd = Infinity;
+          for (const pl of block) { const p = this.prov.get(pl); const d = (p.labelPoint[0] - x) ** 2 + (p.labelPoint[1] - y) ** 2; if (d < bd) { bd = d; best = p; } }
+          x = best.labelPoint[0]; y = best.labelPoint[1];
+        }
+      } else {
+        const p = this.prov.get(t.plate); x = p.labelPoint[0]; y = p.labelPoint[1];
+      }
+      it.anchor.set(x, TILE_H, wzOf(y));
+      it.weight = block ? area : 0;
+      it.landless = !block;
+      it.color = hexCss(t.colorHex);
+      it.provinces = t.provinces;
+      // Size by land: one median province = 1, grows with the square root of the area.
+      const s = Math.sqrt((block ? area : this.unitArea * 0.5) / this.unitArea);
+      it.k = Math.min(2.6, Math.max(0.62, 0.5 + 0.42 * s));
+      const nameText = t.name.toLocaleUpperCase('tr');
+      if (it.nameK !== nameText) { it.nameK = nameText; it.name.textContent = nameText; }
+      it.code = provCode(this.prov.get(t.plate));
+      const cmd = t.commander?.nick || '';
+      const subText = it.landless ? (t.memberCount ? `İSYAN · ${t.memberCount} kişi` : 'İSYAN')
+        : [cmd ? `👑 ${cmd}` : '', t.memberCount ? `${t.memberCount} kişi` : ''].filter(Boolean).join(' · ');
+      if (it.subK !== subText) { it.subK = subText; it.sub.textContent = subText; }
+      if (it.colorK !== it.color) { it.colorK = it.color; it.el.style.setProperty('--c', it.color); }
+      it.el.classList.toggle('landless', it.landless);
+      const m = this.morale.get(t.plate);
+      const mk = m ? `${m.frac.toFixed(2)}|${m.hucum}` : '';
+      if (it.morK !== mk) {
+        it.morK = mk;
+        const show = m && (m.frac > 0.01 || m.hucum);
+        it.mor.style.display = show ? '' : 'none';
+        if (show) it.mor.firstChild.style.transform = `scaleX(${m.hucum ? 1 : m.frac.toFixed(3)})`;
+        it.mor.classList.toggle('hucum', !!m?.hucum);
+      }
+    }
+    for (const [plate, it] of this.items) {
+      if (seen.has(plate)) continue;
+      it.el.remove();
+      this.items.delete(plate);
+    }
+    this.lastVersion = -1; // re-place on the next frame
+  }
+
+  layout(camera, w, h, sizePx, rect = null) {
+    this.size = sizePx;
+    this.rect = rect;
+    this.lastVersion = -1;
+  }
+
+  update(camera, w, h, version, zoom = 1, dt = 0) {
+    this.dataT -= dt;
+    if (this.dataT <= 0) { this.dataT = 0.5; this.refresh(); }
+    if (version === this.lastVersion) return;
+    this.lastVersion = version;
+    // Zoomed in, names grow a little with the map (not fully: they must not cover it).
+    const zk = Math.pow(Math.max(1, zoom), 0.5);
+    const list = [...this.items.values()].sort((a, b) => b.weight - a.weight);
+    const placed = [];
+    const pt = this.pt;
+    const r = this.rect;
+    for (const [idx, it] of list.entries()) {
+      if (!toScreen(it.anchor.x, it.anchor.y, it.anchor.z, camera, w, h, pt)) { this._hide(it); continue; }
+      const base = this.size * zk;
+      // The komutan / member line only under the big territories (the rest stays clean).
+      const sub = !!it.subK && (idx < 6 || it.k >= 1.05);
+      if (it.subOn !== sub) { it.subOn = sub; it.el.classList.toggle('nosub', !sub); }
+      // Full name, else the plate code, else hidden (overlap with a bigger territory).
+      let mode = '';
+      for (const m of ['full', 'code']) {
+        const px = base * (m === 'full' ? it.k : 0.8);
+        const chars = m === 'full' ? it.nameK.length : it.code.length;
+        const bw = px * (0.62 * chars + 0.4);
+        const bh = px * (m === 'full' && sub ? 1.75 : 1.15);
+        const box = { x0: pt.x - bw / 2, x1: pt.x + bw / 2, y0: pt.y - px * 0.6, y1: pt.y - px * 0.6 + bh };
+        if (r && (box.x0 < r.x || box.x1 > r.x + r.w || box.y0 < r.y || box.y1 > r.y + r.h)) {
+          // Clamp into the band instead of dropping a name at the edge.
+          const dx = Math.max(0, r.x - box.x0) - Math.max(0, box.x1 - (r.x + r.w));
+          box.x0 += dx; box.x1 += dx;
+        }
+        if (placed.some((b) => box.x0 < b.x1 && box.x1 > b.x0 && box.y0 < b.y1 && box.y1 > b.y0)) continue;
+        placed.push(box);
+        mode = m; it.px = px; it.cx = (box.x0 + box.x1) / 2; it.cy = pt.y;
+        break;
+      }
+      if (!mode) { this._hide(it); continue; }
+      if (!it.vis) { it.vis = true; it.el.style.display = ''; }
+      if (it.mode !== mode) {
+        it.mode = mode;
+        it.name.textContent = mode === 'full' ? it.nameK : it.code;
+        it.el.classList.toggle('code', mode === 'code');
+      }
+      it.el.style.setProperty('--tz', `${it.px.toFixed(1)}px`);
+      it.el.style.transform = `translate(${it.cx.toFixed(1)}px, ${it.cy.toFixed(1)}px) translate(-50%, -0.6em)`;
+    }
+  }
+
+  _hide(it) { if (it.vis) { it.vis = false; it.el.style.display = 'none'; } }
+
+  /** A viewer joined / gifted: the team's name pops so they can find it. */
+  highlight(plate) {
+    const g = this.game;
+    const owner = g?.prov.get(plate)?.owner || plate;
+    const it = this.items.get(owner);
+    if (!it) return;
+    it.name.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.25)', filter: 'brightness(1.6)' }, { transform: 'scale(1)' }], { duration: 900, easing: 'ease-out' });
+  }
+
+  pulse(plate) { this.highlight(plate); this.dataT = 0; }
+  setMorale(plate, frac, boosted = false, hucum = false) { this.morale.set(plate, { frac, hucum }); }
+  setOwner() { this.dataT = Math.min(this.dataT, 0.1); }
+  setComeback() {}
+  setCommander() {}
+  setConqueror() {}
+  setGarrison() {}
+  clearExtras() { this.morale.clear(); this.dataT = 0; }
 }
 
 /** Pooled army counters ("1.250" + optional gifter name). */

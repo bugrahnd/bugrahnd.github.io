@@ -47,6 +47,49 @@ function makeAvatar(parent, cls = '') {
   };
 }
 
+/**
+ * Podium characters (constant SVG markup, no viewer data): a body drawn under the viewer's
+ * avatar (the head) and the headwear drawn over it. viewBox 0 0 100 150, head centre (50, 38).
+ * rank 0 = KRAL (crown, ermine cape, sceptre), 1 = DÜK (coronet, blue coat, sword),
+ * 2 = KONT (feathered hat, green coat, banner).
+ */
+const PODIUM_LOOK = [
+  { robe: '#b3202a', robe2: '#7a1018', trim: '#ffd166', cape: true, tool: 'sceptre', hat: 'crown' },
+  { robe: '#2f5fb8', robe2: '#1d3d7a', trim: '#e9eef5', cape: false, tool: 'sword', hat: 'coronet' },
+  { robe: '#2e8a4e', robe2: '#1b5a31', trim: '#e7c27a', cape: false, tool: 'banner', hat: 'feather' },
+];
+function podiumBodySvg(rank) {
+  const L = PODIUM_LOOK[rank];
+  const tool = L.tool === 'sceptre'
+    ? '<rect x="80" y="62" width="4" height="58" rx="2" fill="#c99a2e"/><circle cx="82" cy="60" r="7" fill="#ffd166" stroke="#7a5200" stroke-width="2"/><circle cx="82" cy="60" r="3" fill="#e0364a"/>'
+    : L.tool === 'sword'
+      ? '<rect x="80" y="44" width="5" height="62" rx="1.5" fill="#dfe6ee" stroke="#5b6672" stroke-width="1.5"/><rect x="73" y="102" width="19" height="5" rx="2" fill="#c99a2e"/><rect x="80" y="107" width="5" height="12" rx="2" fill="#6b3d1a"/>'
+      : '<rect x="81" y="40" width="4" height="82" rx="2" fill="#6b3d1a"/><path d="M85 42 L104 48 L85 58 Z" fill="#ffd166" stroke="#7a5200" stroke-width="1.5"/>';
+  const cape = L.cape ? `<path d="M22 66 Q50 56 78 66 L86 136 Q50 144 14 136 Z" fill="${L.robe2}"/>` : '';
+  return `<svg class="pod-body" viewBox="0 0 100 150" aria-hidden="true">
+    <ellipse cx="50" cy="143" rx="34" ry="6" fill="rgba(0,0,0,0.45)"/>
+    ${cape}
+    <rect x="36" y="118" width="11" height="22" rx="3" fill="#3a2414"/><rect x="53" y="118" width="11" height="22" rx="3" fill="#3a2414"/>
+    <path d="M30 64 Q50 56 70 64 L76 124 Q50 130 24 124 Z" fill="${L.robe}" stroke="rgba(0,0,0,0.35)" stroke-width="2"/>
+    <path d="M47 62 L53 62 L55 126 L45 126 Z" fill="${L.trim}" opacity="0.9"/>
+    <rect x="28" y="96" width="44" height="7" rx="2" fill="${L.robe2}"/><rect x="46" y="95" width="8" height="9" rx="1.5" fill="${L.trim}"/>
+    ${L.cape ? '<path d="M28 62 Q50 72 72 62 L70 70 Q50 80 30 70 Z" fill="#f4f1ea"/><circle cx="38" cy="68" r="1.6" fill="#222"/><circle cx="50" cy="73" r="1.6" fill="#222"/><circle cx="62" cy="68" r="1.6" fill="#222"/>' : ''}
+    <path d="M30 66 Q18 82 20 100 L28 101 Q28 86 36 74 Z" fill="${L.robe}" stroke="rgba(0,0,0,0.3)" stroke-width="1.5"/>
+    <path d="M70 66 Q82 76 82 96 L75 98 Q74 84 64 74 Z" fill="${L.robe}" stroke="rgba(0,0,0,0.3)" stroke-width="1.5"/>
+    ${tool}
+    <circle cx="24" cy="102" r="5" fill="#f1c9a0"/><circle cx="79" cy="98" r="5" fill="#f1c9a0"/>
+  </svg>`;
+}
+function podiumHatSvg(rank) {
+  const hat = PODIUM_LOOK[rank].hat;
+  const body = hat === 'crown'
+    ? '<path d="M28 22 L32 4 L41 15 L50 0 L59 15 L68 4 L72 22 Z" fill="#ffd166" stroke="#7a5200" stroke-width="2.5" stroke-linejoin="round"/><rect x="27" y="20" width="46" height="8" rx="2" fill="#f0b429" stroke="#7a5200" stroke-width="2"/><circle cx="50" cy="24" r="3" fill="#e0364a"/><circle cx="37" cy="24" r="2.2" fill="#3fa9f5"/><circle cx="63" cy="24" r="2.2" fill="#3fa9f5"/>'
+    : hat === 'coronet'
+      ? '<path d="M30 24 L33 12 L40 19 L50 9 L60 19 L67 12 L70 24 Z" fill="#dfe6ee" stroke="#5b6672" stroke-width="2" stroke-linejoin="round"/><rect x="29" y="22" width="42" height="6" rx="2" fill="#c3ccd6" stroke="#5b6672" stroke-width="1.6"/><circle cx="50" cy="25" r="2.4" fill="#3fa9f5"/>'
+      : '<path d="M24 26 Q50 6 76 26 Q50 20 24 26 Z" fill="#1d3a2a" stroke="#0d1f15" stroke-width="2"/><path d="M60 16 Q80 0 90 10 Q76 8 64 20 Z" fill="#e7c27a" stroke="#7a5200" stroke-width="1.5"/>';
+  return `<svg class="pod-hat" viewBox="0 0 100 30" aria-hidden="true">${body}</svg>`;
+}
+
 function iconEl(assets, key, parent, cls = 'icon') {
   const i = el('img', cls, parent);
   i.src = assets.uiPath(key);
@@ -130,7 +173,10 @@ export const STREAM = {
   strip: 52,
   boards: 164, // title + three rows
   boardsEmpty: 88, // title + one line (both boards empty)
+  boardsPodium: 240, // fixed boards row (three rows): city board | war log (roam) or podium (row)
+  podiumBottom: 330, // hud.podium "bottom": the podium alone under the chat line
   lead: 86,
+  timerW: 270, // timer box at the left of the lead row (the strip shares that row)
   tab: 40, // ladder heading tab ...
   tabAbove: 24, // ... of which this much sits above the ladder's top edge
   ladder: 136,
@@ -341,6 +387,46 @@ export class Hud {
       this.likerRows.push({ row, nick, n });
     }
     this.likerEmpty = el('div', 'liker-empty', llist, 'Henüz yok');
+
+    // Podium: the round's top three gifters as titled characters (KRAL, DÜK, KONT), their
+    // TikTok picture as the head. hud.podium: "roam" (default: they walk, dance and cheer in the
+    // free strip at the bottom, TikTok's chat zone), "row" (a podium beside the city board
+    // under the map), "bottom" (a standing podium in the chat zone) or "off".
+    // ?podium=roam|row|bottom|off overrides it for a preview.
+    const qp = new URLSearchParams(location.search).get('podium');
+    this.podiumMode = ['roam', 'row', 'bottom', 'off'].includes(qp) ? qp : (this.cfg.hud.podium ?? 'roam');
+    this.root.classList.add(`podium-${this.podiumMode}`);
+    const titles = this.cfg.hud.podiumTitles || ['KRAL', 'DÜK', 'KONT'];
+    const pod = el('div', 'podium panel-dark', r);
+    this.podEl = pod;
+    const ph = el('div', 'panel-title pod-title', pod);
+    iconEl(a, 'icon_crown', ph);
+    el('span', '', ph, 'EN CÖMERTLER');
+    const stage = el('div', 'pod-stage', pod);
+    this.podSlots = [];
+    // Left to right: 2nd, 1st (centre, tallest), 3rd.
+    for (const rank of [1, 0, 2]) {
+      const slot = el('div', `pod-slot rank${rank + 1} empty`, stage);
+      const fig = el('div', 'pod-fig', slot);
+      fig.insertAdjacentHTML('beforeend', podiumBodySvg(rank));
+      const av = makeAvatar(fig, 'pod-av');
+      av.set('', '?', 0x666666);
+      fig.insertAdjacentHTML('beforeend', podiumHatSvg(rank));
+      const plate = el('div', 'pod-plate', slot);
+      el('div', 'pod-rank', plate, titles[rank] || '');
+      const nick = el('div', 'pod-nick', plate, 'Boş taht');
+      const sub = el('div', 'pod-sub', plate, '');
+      this.podSlots[rank] = { slot, fig, av, nick, sub, key: '', rank, x: 300 + rank * 240, busyUntil: 0 };
+    }
+    if (this.podiumMode === 'roam') this._roamTimer = setInterval(() => this._roamStep(), 400);
+
+    // Stream boards row, right board: "EN ÇOK BEĞENENLER" (recognition only: likes give no
+    // troops by default). The likers list moves in here in the stream layout (_place).
+    const log = el('div', 'warlog panel-dark', r);
+    const lh2 = el('div', 'panel-title', log);
+    iconEl(a, 'icon_heart', lh2);
+    el('span', '', lh2, 'EN ÇOK BEĞENENLER');
+    this.logBody = el('div', 'warlog-body', log);
 
     // Status line: situation-driven game narration (middle-upper part of the frame).
     this.impEl = el('div', 'imperative', r);
@@ -894,19 +980,27 @@ export class Hud {
     const rows = {};
     let y = Z.top + S.edge;
     const down = (id, h, on = true) => { rows[id] = { y, h }; if (on) y += h + S.gap; };
-    down('strip', S.strip);
-    // The two boards share one row; it drops out only when both are hidden.
-    down('boards', this._boardsH ?? S.boardsEmpty, this._vis('cityBoard') || this._vis('gifterBoard'));
-    down('lead', S.lead, this._vis('leader') || this._vis('credit'));
+    // Above the map: the timer strip and one full-width row for credits / held gifts / tips.
+    // One row above the map: the timer box at the left, credits / held gifts / tips beside it
+    // (the map is the focus: everything else gives it height).
+    rows.strip = { y, h: S.lead };
+    down('lead', S.lead);
     const bandTop = y;
     let b = Z.chatTop - S.edge;
     const up = (id, h, on = true) => { rows[id] = { y: b - h, h }; if (on) b -= h + S.gap; };
+    // Below the map, bottom up: join line, gift ladder, then the boards row (city board and,
+    // with hud.podium "row", the podium beside it; else the two boards side by side).
     up('cta', S.cta);
     const gifts = this._vis('giftStrip');
     up('ladder', S.ladder, false);
     if (gifts) b -= S.ladder;
     rows.tab = { y: b - S.tabAbove, h: S.tab };
     if (gifts) b -= S.tabAbove + S.gap;
+    // Fixed height beside the podium (row) or the war log (roam); else the boards tween.
+    const fixed = this.podiumMode === 'row' || this.podiumMode === 'roam';
+    up('boards', fixed ? S.boardsPodium : (this._boardsH ?? S.boardsEmpty), this._vis('cityBoard') || this._vis('gifterBoard') || fixed);
+    // hud.podium "bottom": under TikTok's chat line (recordings; LIVE chat covers it).
+    rows.podium = { y: Z.chatTop + S.gap, h: S.podiumBottom };
     return { rows, bandTop, bandBottom: b };
   }
 
@@ -926,6 +1020,7 @@ export class Hud {
     const to = full ? STREAM.boards : STREAM.boardsEmpty;
     const from = this._boardsH ?? STREAM.boardsEmpty;
     cancelAnimationFrame(this._boardsRaf);
+    if (this.podiumMode === 'row' || this.podiumMode === 'roam') { this._boardsH = to; return; } // fixed-height row
     if (this.variant !== 'stream' || !this.onRelayout || from === to) { this._boardsH = to; this.onRelayout?.(); return; }
     const t0 = performance.now();
     const step = (now) => {
@@ -946,7 +1041,7 @@ export class Hud {
     if (variant === 'stream') {
       this.stripL.append(this.sessEl);
       this.stripC.append(this.timerEl);
-      this.stripR.append(this.likerBox);
+      this.logBody.append(this.likerBox);
       this.idleEl.append(this.ctaLine);
     } else {
       this.topEl.insertBefore(this.timerEl, this.connEl);
@@ -1030,7 +1125,7 @@ export class Hud {
       }
       r.prov.textContent = t.landless ? 'İsyanda!' : `${t.provinces} il`;
       r.troops.textContent = this.variant === 'stream'
-        ? `${fmtShort(t.troops)} · ${fmtShort(t.members)} kişi`
+        ? `${fmtShort(t.members)} kişi`
         : `${fmtShort(t.troops)} asker · ${fmt(t.members)} kişi`;
       r.fill.style.transform = `scaleX(${t.morale.toFixed(3)})`;
       r.row.classList.toggle('hucum', t.hucum);
@@ -1112,6 +1207,7 @@ export class Hud {
     this._pumpCallout();
     this._pumpCredit();
     this._updateLeader(sum.gifters[0] || null);
+    this._updatePodium(sum.gifters);
 
     // Expire nudges.
     for (const [name, n] of this.nudges) if (this.timeNow > n.until) this.dismissNudge(name);
@@ -1427,6 +1523,119 @@ export class Hud {
   // ---------- round leader ----------
 
   /** g: top gifter summary ({ nick, badge, avatar, coins, code, team, colorHex }) or null. */
+  /**
+   * hud.podium "roam": every 0.4 s each idle character picks something to do in the bottom
+   * strip: walk somewhere (CSS transition on left), cheer (jump), dance, wave, or stand and
+   * look around. Positions are design units (x 70..1010).
+   */
+  _roamStep() {
+    const now = performance.now() / 1000;
+    for (const S of this.podSlots) {
+      if (!S.key || now < S.busyUntil) continue;
+      const r = S.enter ? 0 : Math.random();
+      if (r < 0.5) {
+        // Entering: walk well inside the strip first (each to its own third, so they spread out).
+        // A spot away from the others (their name plates must not stack).
+        let tx = S.enter ? 160 + S.rank * 300 + Math.random() * 160 : 70 + Math.random() * 940;
+        for (let k = 0; k < 8 && !S.enter; k++) {
+          const others = this.podSlots.filter((o) => o !== S && o.key);
+          if (others.every((o) => Math.abs(o.x - tx) > 230)) break;
+          tx = 70 + Math.random() * 940;
+        }
+        S.enter = false;
+        const d = Math.abs(tx - S.x);
+        if (d < 60) { S.busyUntil = now + 0.8; continue; }
+        const dur = d / (S.rank === 0 ? 105 : 125);
+        this._roamFace(S, tx < S.x);
+        S.slot.style.transition = `left ${dur.toFixed(2)}s linear`;
+        S.x = tx;
+        S.slot.style.left = `calc(var(--u) * ${tx.toFixed(0)})`;
+        this._roamAct(S, 'walking', dur);
+        S.busyUntil = now + dur + 0.4 + Math.random();
+      } else if (r < 0.64) {
+        this._roamAct(S, 'cheer', 1.3); S.busyUntil = now + 1.8;
+      } else if (r < 0.76) {
+        this._roamAct(S, 'dance', 2.4); S.busyUntil = now + 2.8;
+      } else if (r < 0.86) {
+        this._roamAct(S, 'wave', 1.6); S.busyUntil = now + 2;
+      } else {
+        this._roamFace(S, Math.random() < 0.5);
+        S.busyUntil = now + 1.2 + Math.random() * 2;
+      }
+    }
+  }
+
+  _roamFace(S, left) { S.slot.classList.toggle('face-left', left); }
+
+  _roamAct(S, cls, sec) {
+    for (const c of ['walking', 'cheer', 'dance', 'wave']) S.slot.classList.remove(c);
+    void S.slot.offsetWidth; // restart the animation
+    S.slot.classList.add(cls);
+    clearTimeout(S.actT);
+    S.actT = setTimeout(() => S.slot.classList.remove(cls), sec * 1000);
+  }
+
+  /** A gifter on the podium sent another gift: their character jumps for joy. */
+  _podiumCheer(nick) {
+    if (this.podiumMode !== 'roam' || !nick) return;
+    const now = performance.now() / 1000;
+    for (const S of this.podSlots) {
+      if (!S.key || !S.key.startsWith(nick + '|')) continue;
+      // Stop where it is (freeze the walk at its current spot).
+      const cs = getComputedStyle(S.slot);
+      const u = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--u')) || 1;
+      S.x = parseFloat(cs.left) / u;
+      S.slot.style.transition = 'none';
+      S.slot.style.left = `calc(var(--u) * ${S.x.toFixed(0)})`;
+      this._roamAct(S, 'cheer', 1.3);
+      S.busyUntil = now + 1.6;
+    }
+  }
+
+  /** Podium slots from the top gifters (empty thrones show a grey silhouette). */
+  _updatePodium(gifters) {
+    if (this.podiumMode === 'off') return;
+    for (let rank = 0; rank < 3; rank++) {
+      const S = this.podSlots[rank];
+      const g = gifters[rank];
+      const key = g ? `${g.nick}|${g.code}` : '';
+      if (!g) {
+        if (S.key !== '') { S.key = ''; S.slot.classList.add('empty'); S.nick.textContent = 'Boş taht'; S.sub.textContent = ''; S.av.set('', '?', 0x666666); }
+        continue;
+      }
+      S.slot.classList.remove('empty');
+      S.slot.style.setProperty('--c', hexCss(g.colorHex));
+      setName(S.nick, g.nick, g.badge);
+      const sub = this.podiumMode === "row" ? `${fmt(g.coins)} jeton` : `${g.team} · ${fmt(g.coins)} jeton`;
+      if (S.sub.textContent !== sub) S.sub.textContent = sub;
+      if (S.key !== key) {
+        const had = S.key !== '';
+        S.key = key;
+        S.av.set(g.avatar, g.nick, g.colorHex);
+        if (this.podiumMode === 'roam') {
+          if (!had) {
+            // The title's first holder this round walks in from an edge.
+            S.x = Math.random() < 0.5 ? -40 : 1120;
+            S.slot.style.transition = 'none';
+            S.slot.style.left = `calc(var(--u) * ${S.x})`;
+            S.busyUntil = 0; S.enter = true;
+          } else {
+            // A new holder (ranks moved): the character stays where it is and celebrates.
+            this._roamAct(S, 'cheer', 1.3);
+            S.busyUntil = performance.now() / 1000 + 1.4;
+          }
+          continue;
+        }
+        // A new holder of the title: the character jumps onto the step.
+        S.fig.animate([
+          { transform: 'translateY(-40%) scale(0.7)', opacity: 0 },
+          { transform: 'translateY(4%) scale(1.06)', opacity: 1, offset: 0.6 },
+          { transform: 'none', opacity: 1 },
+        ], { duration: had ? 650 : 450, easing: 'ease-out' });
+      }
+    }
+  }
+
   _updateLeader(g) {
     const L = this.lead;
     if (!g) {
@@ -1481,6 +1690,7 @@ export class Hud {
 
   /** o: { key, nick, badge, avatar, colorHex, troops, coins, giftName, count, team, code, tierIndex } */
   credit(o) {
+    if (o.coins > 0) this._podiumCheer(o.nick);
     const mergeSec = this.cfg.hud.creditMergeSec ?? 6;
     const merge = (into) => {
       into.troops += o.troops; into.coins += o.coins;

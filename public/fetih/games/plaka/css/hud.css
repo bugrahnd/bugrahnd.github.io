@@ -545,7 +545,34 @@ html, body {
 #hud.offline .conn-text { animation: pulse 1s infinite; }
 
 /* ---------- map overlays (viewport coordinates; sizes scale with --plate-k) ---------- */
-.plates, .army-labels, .floaters, .world-tags, .cmd-badges, .plate-leaders { position: absolute; left: calc(-1 * var(--bx, 0px)); top: calc(-1 * var(--by, 0px)); width: var(--vw, 100vw); height: var(--vh, 100vh); }
+/* Territory names (visual.mapLabels "territory"): one big name per team over its land; the
+   per-province plates and the komutan badges step aside (the komutan is in the name's sub line). */
+.territory-mode .plates, .territory-mode .plate-leaders, .territory-mode .cmd-badges { display: none; }
+.terr {
+  --tz: 22px;
+  position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: center;
+  font-size: var(--tz); pointer-events: none; will-change: transform; white-space: nowrap;
+}
+.terr-name {
+  font-family: var(--font-display); font-size: 1em; line-height: 1; letter-spacing: 0.02em; color: #fff;
+  -webkit-text-stroke: max(1.5px, 0.09em) #10151c; paint-order: stroke fill;
+  text-shadow: 0 0.06em 0 #10151c, 0 0 0.35em color-mix(in srgb, var(--c) 70%, #000), 0 0.08em 0.25em rgba(0, 0, 0, 0.7);
+}
+.terr.code .terr-name { font-size: 0.8em; padding: 0.06em 0.28em; border-radius: 0.3em; background: color-mix(in srgb, var(--c) 80%, #000); -webkit-text-stroke: 0; border: 0.08em solid rgba(10, 8, 6, 0.8); }
+.terr-sub {
+  margin-top: 0.08em; font-family: var(--font-text); font-weight: 900; font-size: max(9px, 0.36em); color: #fff;
+  background: rgba(10, 12, 16, 0.72); border-radius: 99px; padding: 0.05em 0.6em; max-width: 14em; overflow: hidden; text-overflow: ellipsis;
+  text-shadow: 0 1px 1px #000;
+}
+.terr-sub:empty, .terr.code .terr-sub, .terr.nosub .terr-sub { display: none; }
+.terr.code .terr-mor { display: none !important; }
+.terr-mor { width: 2.2em; max-width: 120px; height: max(3px, 0.12em); margin-top: 0.12em; background: rgba(0, 0, 0, 0.7); border-radius: 99px; overflow: hidden; }
+.terr-mor i { display: block; height: 100%; transform-origin: left; background: linear-gradient(90deg, #ff4f7b, #ffb347); transition: transform 0.25s; }
+.terr-mor.hucum i { background: #ff3a2a; animation: pulse 0.5s infinite; }
+.terr.landless .terr-name { opacity: 0.85; font-size: 0.85em; }
+.terr.landless .terr-sub { color: #ffb0a6; border: 1px dashed #ff4a3a; }
+
+.terr-labels, .plates, .army-labels, .floaters, .world-tags, .cmd-badges, .plate-leaders { position: absolute; left: calc(-1 * var(--bx, 0px)); top: calc(-1 * var(--by, 0px)); width: var(--vw, 100vw); height: var(--vh, 100vh); }
 
 .leader { stroke: rgba(255, 255, 255, 0.9); stroke-width: 2; }
 .leader-dot { fill: #fff; stroke: #000; stroke-width: 1; }
@@ -837,7 +864,7 @@ html:not(.dbg) .wait-pill.on { display: block; }
 .stream .gifter-coins { font-size: calc(var(--u) * 30); line-height: 1.05; }
 /* Empty board: one line, centred in whatever height the row has. */
 .stream .board-empty { font-size: calc(var(--u) * 30); line-height: 1.1; padding: 0 calc(var(--u) * 4); margin: auto 0; white-space: nowrap; overflow: clip visible; text-overflow: ellipsis; }
-.stream .city-row:nth-child(n+4), .stream .gifter-row:nth-child(n+4) { display: none !important; }
+.stream .city-row:nth-child(n+5), .stream .gifter-row:nth-child(n+4) { display: none !important; }
 .stream #hud.hide-gifterBoard .board { width: calc(var(--u) * var(--bw)); }
 .stream #hud.hide-cityBoard .gifters { left: calc(var(--u) * var(--sx)); width: calc(var(--u) * var(--bw)); }
 
@@ -999,6 +1026,7 @@ html:not(.dbg) .wait-pill.on { display: block; }
 
 /* Below the safe bottom: nothing for viewers. */
 .stream .feed { display: none; }
+.stream .warlog .feed { display: flex; }
 .stream .debug { top: calc(var(--u) * (var(--sb) + 10)); }
 html.stream:not(.dbg) .audio-unlock { display: none !important; }
 .stream .audio-unlock { top: calc(var(--u) * (var(--s-band-y, 566) + 12)); }
@@ -1017,3 +1045,150 @@ html.stream:not(.dbg) .audio-unlock { display: none !important; }
 
 /* Chaos-level traffic in the overview (main.js toggles #overlay.busy). */
 #overlay.busy .plate .conq, #overlay.busy .plate .x2, #overlay.busy .plate .cmdn { display: none; }
+
+/* ==========================================================================
+   Podium (hud.podium) and the full-width lead row
+   ========================================================================== */
+.podium { display: none; }
+.stream #hud:not(.podium-off) .podium { display: flex; }
+/* The podium's KRAL is the round leader: the separate leader card steps aside and the lead
+   row above the map is one wide slot (credit > held gift > tips). */
+
+/* Boards row with the podium: the city board (four rows) on the left, the podium on the right. */
+.stream #hud.podium-row .gifters { display: none; }
+.stream #hud.podium-row .board { width: calc(var(--u) * 470); }
+
+.stream .podium {
+  position: absolute; flex-direction: column; padding: 0 calc(var(--u) * 8) calc(var(--u) * 4); overflow: visible;
+  --pk: 1;
+}
+.stream #hud.podium-row .podium {
+  left: calc(var(--u) * (var(--sx) + 470 + var(--s-gap, 12))); width: calc(var(--u) * (var(--bw) - 470 - var(--s-gap, 12)));
+  top: calc(var(--u) * var(--s-boards-y, 880)); height: calc(var(--u) * var(--s-boards-h, 236));
+}
+.stream #hud.podium-bottom .podium {
+  --pk: 1.55;
+  left: calc(var(--u) * var(--sx)); width: calc(var(--u) * 660);
+  top: calc(var(--u) * var(--s-podium-y, 1352)); height: calc(var(--u) * var(--s-podium-h, 330));
+}
+.stream .pod-title { flex: none; font-size: calc(var(--u) * 30); line-height: 1; height: calc(var(--u) * 32); margin: 0 0 calc(var(--u) * 2); }
+.stream .pod-stage { flex: 1; min-height: 0; display: flex; align-items: flex-end; justify-content: space-around; gap: calc(var(--u) * 4); }
+.pod-slot { --c: #888; flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; }
+.pod-fig {
+  --fh: calc(var(--u) * 96 * var(--pk));
+  position: relative; height: var(--fh); width: calc(var(--fh) * 2 / 3); flex: none;
+  filter: drop-shadow(0 calc(var(--u) * 3) calc(var(--u) * 4) rgba(0, 0, 0, 0.6));
+}
+.pod-slot.rank1 .pod-fig { --fh: calc(var(--u) * 124 * var(--pk)); animation: podBob 2.6s ease-in-out infinite; }
+@keyframes podBob { 50% { translate: 0 calc(var(--u) * -3); } }
+.pod-body { position: absolute; inset: 0; width: 100%; height: 100%; }
+.pod-hat { position: absolute; left: 12%; top: 3%; width: 76%; height: auto; z-index: 2; }
+.avatar.pod-av {
+  position: absolute; left: 50%; top: 14%; height: 22.7%; width: auto; aspect-ratio: 1; transform: translateX(-50%); z-index: 1;
+  box-shadow: 0 0 0 calc(var(--u) * 3) var(--c), 0 0 0 calc(var(--u) * 5) #10151c;
+}
+.avatar.pod-av .avatar-fb { font-size: calc(var(--fh) * 0.13); }
+/* Step under the character: gold / silver / bronze. */
+.pod-fig::after {
+  content: ''; position: absolute; left: -12%; right: -12%; bottom: calc(var(--u) * -4); height: calc(var(--u) * 10 * var(--pk)); z-index: -1;
+  border-radius: calc(var(--u) * 4); background: linear-gradient(180deg, #ffe08a, #b07a10); border: calc(var(--u) * 2) solid #3a2600;
+}
+.pod-slot.rank2 .pod-fig::after { background: linear-gradient(180deg, #f2f5f8, #8b95a1); }
+.pod-slot.rank3 .pod-fig::after { background: linear-gradient(180deg, #f1b98a, #8a4f22); }
+.pod-plate {
+  margin-top: calc(var(--u) * 6); max-width: 100%; min-width: 0; text-align: center; line-height: 1.02;
+  background: rgba(12, 8, 4, 0.82); border: calc(var(--u) * 2) solid var(--c); border-radius: calc(var(--u) * 10);
+  padding: calc(var(--u) * 1) calc(var(--u) * 8) calc(var(--u) * 2);
+}
+.pod-rank { font-family: var(--font-display); font-size: calc(var(--u) * 22 * var(--pk)); color: var(--gold); letter-spacing: 0.06em; }
+.pod-slot.rank1 .pod-rank { font-size: calc(var(--u) * 26 * var(--pk)); }
+.pod-nick { font-family: var(--font-display); font-size: calc(var(--u) * 26 * var(--pk)); color: #fff; white-space: nowrap; overflow: clip visible; text-overflow: ellipsis; }
+.pod-sub { font-weight: 900; font-size: calc(var(--u) * 20 * var(--pk)); color: #ffe7b0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pod-sub:empty { display: none; }
+.pod-slot.empty .pod-fig { filter: grayscale(1) brightness(0.45); opacity: 0.7; animation: none; }
+.pod-slot.empty .pod-nick { color: #b9b2a6; font-size: calc(var(--u) * 22 * var(--pk)); }
+.pod-slot.empty .pod-plate { border-color: rgba(255, 255, 255, 0.2); }
+
+/* ---------- war log (stream boards row, right; hud.podium "roam") ---------- */
+.warlog { display: none; }
+.stream #hud.podium-roam .warlog {
+  display: flex; flex-direction: column; position: absolute; overflow: hidden;
+  left: calc(var(--u) * (var(--sx) + 544 + var(--s-gap, 12))); width: calc(var(--u) * (var(--bw) - 544 - var(--s-gap, 12)));
+  top: calc(var(--u) * var(--s-boards-y, 880)); height: calc(var(--u) * var(--s-boards-h, 240));
+  padding: 0 calc(var(--u) * 8) calc(var(--u) * 4);
+}
+.stream .warlog .panel-title { flex: none; font-size: calc(var(--u) * 30); line-height: 1; height: calc(var(--u) * 32); margin: 0 0 calc(var(--u) * 4); }
+.stream .warlog-body { flex: 1; min-height: 0; overflow: hidden; }
+.stream .warlog .feed { position: static; inset: auto; width: auto; height: 100%; gap: calc(var(--u) * 4); }
+.stream .warlog .feed-line {
+  font-size: calc(var(--u) * 24); line-height: 1.1; padding: calc(var(--u) * 5) calc(var(--u) * 8);
+  border-left-width: calc(var(--u) * 6); gap: calc(var(--u) * 6);
+}
+.stream .warlog .feed-line.important { font-size: calc(var(--u) * 24); }
+.stream .warlog .feed-icon { width: calc(var(--u) * 24); height: calc(var(--u) * 24); flex: none; }
+.stream .warlog .feed-line:nth-child(n+4) { display: none; }
+.stream #hud.podium-roam .gifters { display: none; }
+
+/* ---------- roaming characters (hud.podium "roam"): the free strip at the bottom ---------- */
+.stream #hud.podium-roam .podium {
+  left: 0; width: calc(var(--u) * 1080); top: calc(var(--u) * var(--sb));
+  height: calc(var(--u) * (1920 - 130 - var(--sb)));
+  background: none; border: 0; border-image: none; padding: 0; overflow: visible; pointer-events: none; z-index: 2;
+}
+.stream #hud.podium-roam .pod-title { display: none; }
+.stream #hud.podium-roam .pod-stage { position: relative; display: block; height: 100%; }
+.stream #hud.podium-roam .pod-slot {
+  position: absolute; left: 0; bottom: calc(var(--u) * 8); transform: translateX(-50%); width: auto; --pk: 1.3;
+}
+.stream #hud.podium-roam .pod-slot.rank1 { --pk: 1.55; bottom: calc(var(--u) * 4); z-index: 3; }
+.stream #hud.podium-roam .pod-slot.rank2 { bottom: calc(var(--u) * 40); z-index: 2; }
+.stream #hud.podium-roam .pod-slot.rank3 { bottom: calc(var(--u) * 24); z-index: 1; }
+.stream #hud.podium-roam .pod-slot.empty { display: none; }
+.stream #hud.podium-roam .pod-plate { order: -1; margin: 0 0 calc(var(--u) * 4); padding: calc(var(--u) * 1) calc(var(--u) * 10) calc(var(--u) * 2); }
+.stream #hud.podium-roam .pod-fig::after { display: none; }
+.stream #hud.podium-roam .pod-fig { transform-origin: 50% 100%; }
+.pod-slot.face-left .pod-body { transform: scaleX(-1); }
+.stream #hud.podium-roam .pod-slot.walking .pod-fig { animation: podWalk 0.42s ease-in-out infinite; }
+.stream #hud.podium-roam .pod-slot.cheer .pod-fig { animation: podCheer 0.65s ease-out 2; }
+.stream #hud.podium-roam .pod-slot.dance .pod-fig { animation: podDance 0.6s ease-in-out 4; }
+.stream #hud.podium-roam .pod-slot.wave .pod-fig { animation: podWave 0.4s ease-in-out 4; }
+@keyframes podWalk { 0%, 100% { translate: 0 0; rotate: -4deg; } 50% { translate: 0 -5%; rotate: 4deg; } }
+@keyframes podCheer { 0%, 100% { translate: 0 0; scale: 1; } 40% { translate: 0 -30%; scale: 1.08; } 70% { translate: 0 -8%; } }
+@keyframes podDance { 0%, 100% { rotate: -10deg; translate: -6% 0; } 50% { rotate: 10deg; translate: 6% -6%; } }
+@keyframes podWave { 0%, 100% { rotate: -5deg; } 50% { rotate: 5deg; } }
+/* Roaming: bigger characters, compact name plates (fixed sizes, not scaled with --pk). */
+.stream #hud.podium-roam .pod-slot { --pk: 1.75; }
+.stream #hud.podium-roam .pod-slot.rank1 { --pk: 2.1; }
+.stream #hud.podium-roam .pod-rank { font-size: calc(var(--u) * 22); }
+.stream #hud.podium-roam .pod-slot.rank1 .pod-rank { font-size: calc(var(--u) * 26); }
+.stream #hud.podium-roam .pod-nick { font-size: calc(var(--u) * 28); max-width: calc(var(--u) * 260); }
+.stream #hud.podium-roam .pod-sub { font-size: calc(var(--u) * 20); }
+
+/* ---------- map-first stream layout: the timer shares the lead row ---------- */
+.stream { --tw: 270; --lx: calc(var(--sx) + var(--tw) + var(--s-gap, 12)); --lw: calc(var(--bw) - var(--tw) - var(--s-gap, 12)); }
+.stream .strip { width: calc(var(--u) * var(--tw)); grid-template-columns: minmax(0, 1fr); padding: 0; }
+.stream .strip-l, .stream .strip-r { display: none; }
+.stream .timer { flex-direction: column; gap: 0; }
+.stream .timer-icon { display: none; }
+.stream .timer-text { font-size: calc(var(--u) * 58); min-width: 0; }
+.stream .round-text { font-size: calc(var(--u) * 28); line-height: 1; }
+.stream #hud .leader-card { display: none; }
+.stream #hud .credit { left: calc(var(--u) * (var(--lx) + var(--lw) / 2)); width: calc(var(--u) * var(--lw)); }
+.stream #hud .idle-slot { left: calc(var(--u) * var(--lx)); width: calc(var(--u) * var(--lw)); }
+.stream #hud .nudges { left: calc(var(--u) * var(--lx)); width: calc(var(--u) * var(--lw)); }
+.stream #hud.crediting .nudges { visibility: hidden; }
+
+/* ---------- "EN ÇOK BEĞENENLER" board (stream boards row, right) ---------- */
+.stream .warlog .likers { display: block; position: static; margin: 0; padding: 0; background: none; border: 0; counter-reset: lk; }
+.stream .warlog .liker-list { display: flex; flex-direction: column; gap: calc(var(--u) * 2); align-items: stretch; }
+.stream #hud .warlog .liker-row:nth-child(-n+4) { display: flex !important; }
+.stream #hud .warlog .liker-empty { display: block !important; font-size: calc(var(--u) * 30); line-height: 1.1; padding: calc(var(--u) * 6) calc(var(--u) * 4); color: #fff4dc; }
+.stream #hud .warlog .liker-empty[style*="none"] { display: none !important; }
+.stream .warlog .liker-row {
+  counter-increment: lk; align-items: center; gap: calc(var(--u) * 8); height: calc(var(--u) * 36);
+  padding: 0 calc(var(--u) * 8); border-radius: calc(var(--u) * 10); background: rgba(40, 22, 8, 0.55);
+  font-size: calc(var(--u) * 30); line-height: 1.05; text-shadow: 0 calc(var(--u) * 2) 0 #000;
+}
+.stream .warlog .liker-row::before { content: counter(lk); font-family: var(--font-display); color: var(--gold); width: calc(var(--u) * 22); flex: none; }
+.stream .warlog .liker-row .liker-n { order: 2; margin-left: auto; color: #ff7aa2; flex: none; }
+.stream .warlog .liker-nick { flex: 1; min-width: 0; white-space: nowrap; text-overflow: ellipsis; }

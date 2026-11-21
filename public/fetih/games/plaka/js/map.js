@@ -65,7 +65,62 @@ export class MapView {
     this.scene.add(this.sea);
   }
 
+  /**
+   * Relief: the tile tops are shaded as hilly terrain (procedural hillshade, light from the
+   * north-west). How rugged depends on the geographic region, blended smoothly between region
+   * centres: Doğu Anadolu and the Karadeniz mountains the most, the Toros (Akdeniz) and
+   * Güneydoğu in between, the İç Anadolu plateau and Marmara the flattest. Shading only: the
+   * tile tops stay at TILE_H, so armies, castles and labels are untouched. visual.relief
+   * (0 = off, 1 = default) scales it.
+   */
+  _reliefUniforms() {
+    const AMP = { 'Doğu Anadolu': 1.0, 'Karadeniz': 0.85, 'Akdeniz': 0.75, 'Güneydoğu Anadolu': 0.5, 'Ege': 0.55, 'İç Anadolu': 0.32, 'Marmara': 0.3, 'Kıbrıs': 0.5 };
+    const acc = new Map();
+    for (const p of this.provinces) {
+      const r = acc.get(p.region) || { x: 0, y: 0, a: 0 };
+      const a = p.area || 1;
+      r.x += p.centroid[0] * a; r.y += p.centroid[1] * a; r.a += a;
+      acc.set(p.region, r);
+    }
+    const centres = []; const amps = [];
+    for (const [region, r] of acc) {
+      centres.push(new THREE.Vector2(r.x / r.a, wzOf(r.y / r.a)));
+      amps.push(AMP[region] ?? 0.5);
+    }
+    while (centres.length < 8) { centres.push(new THREE.Vector2(1e5, 1e5)); amps.push(0); }
+    return {
+      uRC: { value: centres.slice(0, 8) },
+      uRA: { value: amps.slice(0, 8) },
+      uRelief: { value: Number(this.config.visual.relief ?? 1) },
+    };
+  }
+
   _buildTiles() {
+    const relief = this._reliefUniforms();
+    const RELIEF_GLSL = `
+      uniform vec2 uRC[8]; uniform float uRA[8]; uniform float uRelief;
+      float rh(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float vn(vec2 p) {
+        vec2 i = floor(p); vec2 f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f);
+        return mix(mix(rh(i), rh(i + vec2(1.0, 0.0)), u.x), mix(rh(i + vec2(0.0, 1.0)), rh(i + vec2(1.0, 1.0)), u.x), u.y);
+      }
+      float terr(vec2 p) {
+        // Ridged noise for mountain chains plus rolling hills.
+        float h = 0.0; float a = 0.5; vec2 q = p;
+        for (int k = 0; k < 4; k++) {
+          float n = vn(q);
+          h += a * mix(n, 1.0 - abs(2.0 * n - 1.0), 0.65);
+          q = mat2(1.6, 1.2, -1.2, 1.6) * q; a *= 0.5;
+        }
+        return h;
+      }
+      float ramp(vec2 w) {
+        float s = 0.0; float ws = 0.0;
+        for (int k = 0; k < 8; k++) { float d = distance(w, uRC[k]); float wk = 1.0 / (d * d + 900.0); s += uRA[k] * wk; ws += wk; }
+        return s / ws;
+      }
+      float reliefH(vec2 w, float amp) { return amp * terr(w * 0.017) * 30.0; }
+    `;
     for (const p of this.provinces) {
       const shapes = p.polygons.map((poly) => {
         const shape = new THREE.Shape(poly[0].map(([x, y]) => new THREE.Vector2(x, y)));
@@ -86,20 +141,32 @@ export class MapView {
         uFR: { value: 1e5 },
       };
       top.onBeforeCompile = (sh) => {
-        Object.assign(sh.uniforms, flood);
+        Object.assign(sh.uniforms, flood, relief);
         sh.vertexShader = sh.vertexShader
           .replace('void main() {', 'varying vec2 vWXZ;\nvoid main() {')
           .replace('#include <project_vertex>', '#include <project_vertex>\nvWXZ = (modelMatrix * vec4(transformed, 1.0)).xz;');
         sh.fragmentShader = sh.fragmentShader
-          .replace('void main() {', 'uniform vec3 uPrev; uniform vec2 uFC; uniform float uFR; varying vec2 vWXZ;\nvoid main() {')
+          .replace('void main() {', `uniform vec3 uPrev; uniform vec2 uFC; uniform float uFR; varying vec2 vWXZ;\n${RELIEF_GLSL}\nvoid main() {`)
           .replace('vec4 diffuseColor = vec4( diffuse, opacity );', `
             float fd = distance(vWXZ, uFC);
             float outside = step(uFR, fd);
             float rim = (1.0 - outside) * smoothstep(uFR - 9.0, uFR, fd);
             vec3 dcol = mix(diffuse, uPrev, outside) + vec3(rim * 0.55);
+            if (uRelief > 0.0) {
+              float amp = ramp(vWXZ) * uRelief;
+              float e = 2.2;
+              float hx = reliefH(vWXZ + vec2(e, 0.0), amp) - reliefH(vWXZ - vec2(e, 0.0), amp);
+              float hz = reliefH(vWXZ + vec2(0.0, e), amp) - reliefH(vWXZ - vec2(0.0, e), amp);
+              vec3 n = normalize(vec3(-hx, 2.0 * e, -hz));
+              vec3 L = normalize(vec3(-0.55, 0.75, -0.45));
+              float shade = dot(n, L) / L.y;
+              float hn = reliefH(vWXZ, 1.0) / 30.0;
+              // Sunlit slopes brighter, shadowed ones darker; high ground a touch lighter.
+              dcol *= clamp(0.72 + 0.46 * shade, 0.42, 1.38) * (0.9 + 0.2 * hn * amp);
+            }
             vec4 diffuseColor = vec4( dcol, opacity );`);
       };
-      top.customProgramCacheKey = () => 'tileFlood';
+      top.customProgramCacheKey = () => 'tileFloodRelief';
       const mesh = new THREE.Mesh(geo, [top, side]);
       mesh.userData.plate = p.plate;
       this.scene.add(mesh);

@@ -7,7 +7,7 @@ import { Director } from './director.js';
 import { Effects } from './effects.js';
 import { UnitRenderer } from './units.js';
 import { ArrowRenderer } from './arrows.js';
-import { PlateLabels, ArmyLabels, Floaters, WorldTags, CommanderBadges } from './labels.js';
+import { PlateLabels, TerritoryLabels, ArmyLabels, Floaters, WorldTags, CommanderBadges } from './labels.js';
 import { Hud } from './hud.js';
 import { Minimap } from './minimap.js';
 import { AudioManager } from './audio.js';
@@ -37,14 +37,18 @@ async function main() {
     if (!Array.isArray(p.seaNeighbors)) p.seaNeighbors = [];
     if (!Array.isArray(p.neighbors)) p.neighbors = [];
   }
-  setMapStretch(config.visual.mapStretch ?? 1);
-
   // Demo mode (static hosting: no bridge). ?demo=1|low|medium|high|chaos, ?demo=0 forces the bridge.
   // The bridge itself (or a DNS name for 127.0.0.1): same-origin bridge, stream layout, no demo.
   const isLocal = isLoopbackHost(location.hostname);
   const demoParam = urlOpts.demo;
   // Stream mode (?yayin=1 / ?bridge=…): always the bridge, never the demo, on any host.
   const streamBridge = urlOpts.bridgeUrl;
+  // North-south map stretch. The stream layout keeps Turkey's true proportions
+  // (visual.streamMapStretch, default 1): a stretched map looks squeezed from the sides there.
+  // Fixed at start (the tiles are built once); the stream layout is the one the HUD picks below.
+  const streamStart = urlOpts.layout === 'stream' || (!urlOpts.layout && (isLocal || !!streamBridge));
+  config.visual.mapStretch = streamStart ? (config.visual.streamMapStretch ?? 1) : (config.visual.mapStretch ?? 1);
+  setMapStretch(config.visual.mapStretch);
   let demoWanted = streamBridge ? false : demoParam === '0' ? false : !!demoParam || !isLocal;
   const demoPreset = DEMO_PRESETS[demoParam] ? demoParam : 'medium';
   // Phones / demo: cap the expensive bits instead of letting the frame rate crawl.
@@ -89,6 +93,9 @@ async function main() {
   const hud = new Hud(hudRoot, assets, config, provinces.length, { variant: isLocal || streamBridge ? 'stream' : 'full', zones: urlOpts.zones });
   const minimap = new Minimap(hudRoot, provinces, 300);
   const plates = new PlateLabels(overlay, provinces, config);
+  // visual.mapLabels: "territory" (default) = one big name per team; "plates" = the old badge per province.
+  const territory = (config.visual.mapLabels ?? 'territory') === 'plates' ? null : new TerritoryLabels(overlay, provinces, config);
+  if (territory) overlay.classList.add('territory-mode');
   const armyLabels = new ArmyLabels(overlay);
   const commanders = new CommanderBadges(overlay, assets, 3);
   const tags = new WorldTags(overlay, config.hud.maxTags ?? 8);
@@ -102,7 +109,7 @@ async function main() {
   let busy = false; // event rate above hud.busyEventsPerSec (chaos-level traffic)
   let lastCalm = true;
   const view = {
-    map, effects, plates, hud, audio, camera: rig, director, arrows, tags, commanders,
+    map, effects, plates: territory || plates, hud, audio, camera: rig, director, arrows, tags, commanders,
     roundOverride: urlOpts.roundSec,
     floater(pv, text, colorHex, big = false, size = '') {
       // Heavy traffic in the overview: only the big floaters (gifts, bursts) are shown.
@@ -111,6 +118,7 @@ async function main() {
     },
   };
   const game = new Game({ provinces, aliases, colors, config, view });
+  territory?.bind(game);
   director.fallback = () => game.leaderFront();
   // Gift ladder tiles show "+N asker" from the live gift curve.
   hud.troopsFor = (coins) => game.giftTroops(coins);
@@ -192,6 +200,7 @@ async function main() {
     rig.fit(W, H, band.fit || band);
     tags.band = band;
     plates.layout(rig.camera, W, H, config.visual.labelSizePx * band.u, band);
+    territory?.layout(rig.camera, W, H, (config.visual.territorySizePx ?? 30) * band.u, band);
     // Map overlays (plates, tags, counters) stay inside the map band.
     // (a clipped box with offset layers is much cheaper to composite than clip-path).
     Object.assign(overlay.style, { left: `${band.x}px`, top: `${band.y}px`, width: `${band.w}px`, height: `${band.h}px` });
@@ -251,7 +260,7 @@ async function main() {
     requestAnimationFrame(frame);
     const raw = (now - last) / 1000;
     last = now;
-    const dt = Math.min(0.1, Math.max(0, raw));
+    const dt = Math.min(0.25, Math.max(0, raw)); // low FPS: the sim keeps pace with the wall-clock round timer
     frames++; fpsT += raw; worstMs = Math.max(worstMs, raw * 1000);
     if (fpsT >= 1) {
       fps = frames / fpsT; frames = 0; fpsT = 0;
@@ -280,7 +289,8 @@ async function main() {
     renderer.setScissor(band.x, H - band.y - band.h, band.w, band.h);
     renderer.setClearColor(0x0b1d2e, 1);
     renderer.render(scene, rig.camera);
-    plates.update(rig.camera, W, H, rig.version, rig.zoom);
+    if (territory) territory.update(rig.camera, W, H, rig.version, rig.zoom, dt);
+    else plates.update(rig.camera, W, H, rig.version, rig.zoom);
     armyLabels.update(game.armies, rig.camera, W, H, rig.zoom, unitK, busy ? (config.hud.busyArmyMinTroops ?? 150) : 0);
     commanders.update(rig.camera, W, H, unitK, rig.zoom, config.visual.labelSizePx * band.u * 1.6);
     // Heavy traffic in the overview: secondary plate extras (conqueror names, comeback flags) hide.

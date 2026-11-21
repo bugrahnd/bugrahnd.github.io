@@ -159,7 +159,7 @@ export class Game {
     const n = normalizeText(rest);
     const player = this.touchPlayer(u);
     if (player) {
-      const other = n ? this.exactPlace(n) : 0;
+      const other = n ? this.joinPlace(n) : 0;
       if (other && other !== player.team) { this.otherPlate(u, player, other, badge); return; }
       this.memberChat(player, n, badge);
       return;
@@ -176,7 +176,7 @@ export class Game {
     const tokens = n.split(' ');
     if (ATTACK_WORDS.has(tokens[0])) return; // not joined yet
     if (badge) {
-      const plate = this.resolvePlace(tokens);
+      const plate = this.joinPlace(n);
       if (plate) { this.barePlate.delete(u.name); this.join(u, plate, badge); }
       return;
     }
@@ -197,17 +197,46 @@ export class Game {
   }
 
   /**
-   * A member typed another city's plate. In the first teams.switchWindowSec of a round
-   * (before they sent a gift) they switch; otherwise they get a visible reply.
+   * Place for a join message (the emoji is already split off): the whole text is one place
+   * ("34", "istanbul", "afyon karahisar") or a plate and a name of the same city ("34 istanbul").
+   * Ordinary sentences never join, even when they contain a number or a city-like word
+   * ("tokat atarım", "büyük ordu geliyor", "3 gündür izliyorum").
+   */
+  joinPlace(n) {
+    const whole = this.exactPlace(n);
+    if (whole) return whole;
+    const tokens = n.split(' ');
+    if (tokens.length !== 2) return 0;
+    const a = this.exactPlace(tokens[0]);
+    return a && a === this.exactPlace(tokens[1]) ? a : 0;
+  }
+
+  /**
+   * A member typed another city's plate. They switch when they sent no gift this round (or the
+   * round is over) and teams.switchCooldownSec passed since they joined / last switched
+   * (-1 = never switch). Otherwise a visible reply; a gifter is told the next round frees them.
    */
   otherPlate(u, player, plate, badge) {
     const team = this.team(player.team);
-    const win = this.cfg.teams.switchWindowSec ?? 0;
-    if (this.round.phase === 'play' && win > 0 && this.time - (this.round.startedAt ?? -1e9) <= win && player.coins === 0) {
+    const cd = this.cfg.teams.switchCooldownSec ?? 15;
+    const free = this.round.phase !== 'play' || player.coins === 0;
+    const rested = this.time - (player.joinedAt ?? -1e9) >= cd;
+    if (cd >= 0 && free && rested) {
       team.memberCount = Math.max(0, team.memberCount - 1);
       if (team.commander === player) team.commander = null;
       this.players.delete(u.name);
+      if (player.likeBatch) this.likeBatches.delete(player);
+      this.likePops.delete(u.name);
+      this.freeCapQueue = this.freeCapQueue.filter((p) => p !== player);
       this.join(u, plate, badge || player.badge);
+      // Lifetime numbers and per-round caps travel with the viewer.
+      const np = this.players.get(u.name);
+      if (np) {
+        np.totalCoins = player.totalCoins; np.likes = player.likes; np.lastReplyAt = player.lastReplyAt;
+        np.likeTroopsRound = player.likeTroopsRound; np.chatTroopsRound = player.chatTroopsRound;
+        np.likeCapped = player.likeCapped; np.freeNudged = player.freeNudged;
+      }
+      this.refreshMarker(team.plate);
       const nt = this.team(plate);
       const at = this.prov.get(nt.plate);
       this.view.tags.spawn({ x: at.wx, z: at.wz, nick: player.nick, badge: badge || player.badge, avatar: player.avatar, text: `${team.name} → ${dat(nt.name)} geçti`, colorHex: nt.colorHex, size: 'm', sec: 3 });
@@ -216,7 +245,8 @@ export class Game {
     }
     if (this.time - (player.lastReplyAt ?? -1e9) < (this.cfg.teams.replyCooldownSec ?? 20)) return;
     player.lastReplyAt = this.time;
-    const text = `Zaten ${youAreIn(team.name)}`;
+    // A gifter is bound to the city for this round only; say so, so nobody feels stuck.
+    const text = free ? `Zaten ${youAreIn(team.name)}` : `Zaten ${youAreIn(team.name)} · yeni turda değiştirebilirsin`;
     const pv = this.prov.get(this.prov.get(team.plate).owner === team.plate ? team.plate : (team.rally || team.plate));
     this.view.plates.highlight(pv.plate, team.colorHex);
     this.view.tags.spawn({ x: pv.wx, z: pv.wz, nick: player.nick, badge: player.badge, avatar: player.avatar, text, colorHex: team.colorHex, size: 'm', sec: 3 });
@@ -235,7 +265,7 @@ export class Game {
       if (target) this.vote(player, target);
     }
     // "34 🔥" again or an emoji-only message sets / changes the badge.
-    if (badge && (!n || this.exactPlace(n) === player.team)) {
+    if (badge && (!n || this.joinPlace(n) === player.team)) {
       player.badge = badge;
       const team = this.team(player.team);
       if (team.commander === player) this.updateCommanderBadges();
@@ -328,7 +358,7 @@ export class Game {
     const team = this.team(plate);
     const player = {
       name: u.name, nick: cleanNick(u.nick || u.name), avatar: safeImageUrl(u.avatar), badge,
-      team: plate, coins: 0, likes: 0, totalCoins: 0, lastSeen: this.time,
+      team: plate, coins: 0, likes: 0, totalCoins: 0, lastSeen: this.time, joinedAt: this.time,
     };
     this.players.set(u.name, player);
     team.memberCount++;
@@ -359,6 +389,12 @@ export class Game {
     if (pend) {
       this.pending.delete(u.name);
       this.view.hud.dismissNudge(u.name);
+      if (this.round.phase !== 'play') {
+        // Joined on the end screen / "SÜRE DOLDU" beat: the armies are frozen and the next
+        // round wipes the map, so held gifts wait for the next round (startRound applies them).
+        for (const g of pend.gifts) this.deferred.push({ name: u.name, g });
+        return;
+      }
       if (pend.gifts.length) {
         const coins = pend.gifts.reduce((s, g) => s + g.total, 0);
         this.view.hud.feed(`${player.nick} katıldı: bekleyen ${fmt(coins)} coin'lik hediye ${this.nameOf(plate)} ordusuna!`, team.colorHex, 'gift');
