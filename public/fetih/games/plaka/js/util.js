@@ -10,6 +10,7 @@ export const urlOpts = {
   layout: qs.get('layout'), // 'stream' | 'full' (portrait variants) | 'portrait' | 'landscape' | null (auto)
   zones: qs.get('zones') === '1', // draw TikTok LIVE UI zones over the stage
   roundSec: Number(qs.get('round')) || 0, // override round length (testing)
+  fps: Number(qs.get('fps')) || 0, // stream frame cap override (visual.streamMaxFps)
   demo: qs.get('demo'), // '1' | 'low' | 'medium' | 'high' | 'chaos' | '0' | null (auto)
   // Stream mode on any host (e.g. the game served from a website for TikTok LIVE Studio):
   // ?yayin=1 or ?bridge=local -> the bridge on this PC; ?bridge=ws://host:port/ws -> that one.

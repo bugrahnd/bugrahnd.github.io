@@ -420,8 +420,10 @@ export class TerritoryLabels {
         it.name.textContent = mode === 'full' ? it.nameK : it.code;
         it.el.classList.toggle('code', mode === 'code');
       }
-      it.el.style.setProperty('--tz', `${it.px.toFixed(1)}px`);
-      it.el.style.transform = `translate(${it.cx.toFixed(1)}px, ${it.cy.toFixed(1)}px) translate(-50%, -0.6em)`;
+      const tz = `${it.px.toFixed(1)}px`;
+      if (it.tzK !== tz) { it.tzK = tz; it.el.style.setProperty('--tz', tz); }
+      const tr = `translate(${it.cx.toFixed(1)}px, ${it.cy.toFixed(1)}px) translate(-50%, -0.6em)`;
+      if (it.trK !== tr) { it.trK = tr; it.el.style.transform = tr; }
     }
   }
 

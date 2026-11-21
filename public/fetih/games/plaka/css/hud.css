@@ -556,7 +556,7 @@ html, body {
 .terr-name {
   font-family: var(--font-display); font-size: 1em; line-height: 1; letter-spacing: 0.02em; color: #fff;
   -webkit-text-stroke: max(1.5px, 0.09em) #10151c; paint-order: stroke fill;
-  text-shadow: 0 0.06em 0 #10151c, 0 0 0.35em color-mix(in srgb, var(--c) 70%, #000), 0 0.08em 0.25em rgba(0, 0, 0, 0.7);
+  text-shadow: 0 0.06em 0 #10151c, 0 0 0.12em rgba(0, 0, 0, 0.8);
 }
 .terr.code .terr-name { font-size: 0.8em; padding: 0.06em 0.28em; border-radius: 0.3em; background: color-mix(in srgb, var(--c) 80%, #000); -webkit-text-stroke: 0; border: 0.08em solid rgba(10, 8, 6, 0.8); }
 .terr-sub {
@@ -1077,7 +1077,6 @@ html.stream:not(.dbg) .audio-unlock { display: none !important; }
 .pod-fig {
   --fh: calc(var(--u) * 96 * var(--pk));
   position: relative; height: var(--fh); width: calc(var(--fh) * 2 / 3); flex: none;
-  filter: drop-shadow(0 calc(var(--u) * 3) calc(var(--u) * 4) rgba(0, 0, 0, 0.6));
 }
 .pod-slot.rank1 .pod-fig { --fh: calc(var(--u) * 124 * var(--pk)); animation: podBob 2.6s ease-in-out infinite; }
 @keyframes podBob { 50% { translate: 0 calc(var(--u) * -3); } }

@@ -47,6 +47,7 @@ const GROUPS = [
     fields: [
       { key: 'show.hucumBar', kind: 'toggle', label: 'HÜCUM çubuğu', hint: 'Haritanın altında HÜCUM\'a en yakın şehrin moral çubuğu (ör. "İSTANBUL HÜCUM %80"). Ekran bölümündeki ile aynı ayar.' },
       { key: 'morale.likeSpeed', kind: 'num', label: 'Beğeni moral hızı', unit: 'kat', hint: 'Beğenilerin HÜCUM moralini ne kadar hızlı doldurduğu (1 = normal, 2 = iki kat hızlı).' },
+      { key: 'engage.likeMaxPerSec', kind: 'num', label: 'Beğeni hız sınırı', unit: 'beğeni / sn', hint: 'Hileye karşı: bir izleyicinin saniyede en fazla bu kadar beğenisi sayılır (kısa ataklara pay vardır). Elle hızlı basan sınırın altında kalır; otomatik tıklayıcının fazlası HÜCUM\'a ve beğenenler tablosuna yansımaz. 0 = sınırsız.' },
       { key: 'engage.likeMilestone', kind: 'num', label: 'Beğeni isim aralığı', unit: 'beğeni', hint: 'İzleyicinin adı şehrinde ara ara "hücumu dolduruyor" olarak çıkar (sayı göstermez, sıklığı sınırlıdır); bu, kaç beğenide bir çıkabileceğidir.' },
     ],
   },

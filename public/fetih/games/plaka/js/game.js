@@ -64,6 +64,7 @@ export class Game {
     this.passiveAcc = 0;
     this.likeAcc = 0; this.likeRate = 0; // likes per second (smoothed), scales the morale need
     this.likeBatches = new Set(); // players with a like floater waiting (engage.likeBatchSec)
+    this.likeBuckets = new Map(); // name -> { tokens, t }: like rate limit (likeAllowance)
     this.likePops = new Map(); // name -> pending like name pop
     this.freeCapQueue = []; this.lastFreeCapNudge = -1e9; // "bedava hakkın doldu" notes
     this.lastLikePop = -1e9; this.lastLikeCredit = -1e9; this.lastLikeHint = -1e9;
@@ -439,7 +440,31 @@ export class Game {
     this.applyGift(player, g);
   }
 
-  onLike(u, count) {
+  /**
+   * Like rate limit per viewer (anti auto-clicker): a token bucket refilled at
+   * engage.likeMaxPerSec likes per second, holding at most engage.likeBurst. Likes beyond it
+   * count for nothing (morale, likers board, held likes). A person tapping fast stays under
+   * it; a tapping bot does not. Wall-clock time, so a slow frame rate never eats real likes.
+   * Returns how many of `count` likes count (likeMaxPerSec 0 = no limit).
+   */
+  likeAllowance(name, count) {
+    const e = this.cfg.engage || {};
+    const rate = Number(e.likeMaxPerSec ?? 6) || 0;
+    if (rate <= 0) return count;
+    const burst = Math.max(rate, Number(e.likeBurst ?? 30) || 0);
+    const now = Date.now() / 1000;
+    let b = this.likeBuckets.get(name);
+    if (!b) { b = { tokens: burst, t: now }; this.likeBuckets.set(name, b); }
+    b.tokens = Math.min(burst, b.tokens + (now - b.t) * rate);
+    b.t = now;
+    const ok = Math.max(0, Math.min(count, Math.floor(b.tokens)));
+    b.tokens -= ok;
+    return ok;
+  }
+
+  onLike(u, rawCount) {
+    const count = this.likeAllowance(u.name, rawCount);
+    if (count <= 0) return;
     const player = this.touchPlayer(u);
     if (!player) { this.holdLikes(u, count); return; }
     if (this.round.phase !== 'play') return;
@@ -2036,6 +2061,9 @@ export class Game {
     const maxAge = this.cfg.teams.pendingGiftMaxAgeMin * 60;
     for (const [name, pend] of this.pending) if (this.time - pend.ts > maxAge) this.pending.delete(name);
     this.likeBatches.clear(); this.likePops.clear(); this.freeCapQueue.length = 0;
+    // Full buckets are the default state: dropping idle ones keeps the map small.
+    const nowS = Date.now() / 1000;
+    for (const [name, b] of this.likeBuckets) if (nowS - b.t > 60) this.likeBuckets.delete(name);
 
     this.view.hud.hideEnd();
     if (!first) {

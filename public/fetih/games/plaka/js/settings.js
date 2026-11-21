@@ -106,6 +106,7 @@ export function applySettings(config, base, values = {}) {
   C.troops.shareBonus = isNum(v['troops.shareBonus'], 0, 1000) ? v['troops.shareBonus'] : B.troops.shareBonus;
   C.engage.likesPerTroop = isNum(v['engage.likesPerTroop'], 0, 1000) ? v['engage.likesPerTroop'] : B.engage.likesPerTroop;
   C.engage.likeMilestone = isNum(v['engage.likeMilestone'], 10, 10000) ? v['engage.likeMilestone'] : B.engage.likeMilestone;
+  C.engage.likeMaxPerSec = isNum(v['engage.likeMaxPerSec'], 0, 100) ? v['engage.likeMaxPerSec'] : B.engage.likeMaxPerSec;
   C.engage.pendingLikesMax = isNum(v['engage.pendingLikesMax'], 0, 100000) ? v['engage.pendingLikesMax'] : B.engage.pendingLikesMax;
   C.hud.giftStripTroops = isBool(v['gifts.showTroops']) ? v['gifts.showTroops'] : B.hud.giftStripTroops !== false;
   // "How fast likes fill morale": a multiplier on morale per like.

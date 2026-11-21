@@ -65,7 +65,8 @@ async function main() {
 
   const canvas = document.getElementById('view');
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: !mobile, alpha: true, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, mobile ? 1.6 : 1.5));
+  const basePixelRatio = Math.min(window.devicePixelRatio || 1, mobile ? 1.6 : 1.5);
+  renderer.setPixelRatio(basePixelRatio);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.setClearColor(0x0b1d2e, 1);
   const scene = new THREE.Scene();
@@ -192,6 +193,10 @@ async function main() {
   resize = function resizeNow() {
     W =Math.max(1, Math.round(window.visualViewport?.width || window.innerWidth));
     H = Math.max(1, Math.round(window.visualViewport?.height || window.innerHeight));
+    // Never draw more pixels than the 1080x1920 stream frame (visual.maxRenderPixels): a
+    // high-DPI or oversized window would multiply the fill cost for nothing visible on TikTok.
+    const maxPx = config.visual.maxRenderPixels ?? 1080 * 1920;
+    renderer.setPixelRatio(Math.max(0.5, Math.min(basePixelRatio, Math.sqrt(maxPx / (W * H)))));
     renderer.setSize(W, H, false);
     band = hud.applyLayout(W, H, urlOpts.layout);
     // The stream layout's band is wide and short: a steeper view fits Turkey wider in it.
@@ -256,8 +261,12 @@ async function main() {
   let last = performance.now();
   let hudT = 0; let dbgT = 0; let frames = 0; let fps = 0; let fpsT = 0; let worstMs = 0;
   let lastEvents = 0; let evRate = 0;
+  // Frame cap (visual.streamMaxFps, stream layout only): TikTok LIVE sends 30 frames a second,
+  // so drawing 60 in LIVE Studio only doubles the load on the streaming PC. 0 = no cap.
+  const capFps = Number(urlOpts.fps) || Number(config.visual.streamMaxFps ?? 30) || 0;
   function frame(now) {
     requestAnimationFrame(frame);
+    if (capFps > 0 && document.documentElement.classList.contains('stream') && now - last < 1000 / capFps - 2) return;
     const raw = (now - last) / 1000;
     last = now;
     const dt = Math.min(0.25, Math.max(0, raw)); // low FPS: the sim keeps pace with the wall-clock round timer

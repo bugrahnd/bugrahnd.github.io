@@ -65,7 +65,10 @@
     "likeCreditGapSec": 4,
     "pendingLikesMax": 500,
     "likeHintGapSec": 12,
-    "likeHintPerUserSec": 30
+    "likeHintPerUserSec": 30,
+    "_likeLimit": "Anti auto-clicker: per viewer at most likeMaxPerSec likes per second count (bursts up to likeBurst); the rest count for nothing (HÜCUM morale, likers board). 0 = no limit.",
+    "likeMaxPerSec": 6,
+    "likeBurst": 30
   },
   "gifts": {
     "_note": "Gift ladder by the coin value of ONE gift (highest matching minCoins wins; unlisted gifts fall to the nearest lower step). Troops per gift come from troops.giftCurve; the step sets the spectacle (units, figures, siege, announce, camera). rank 0-4 = spectacle class (sound, credit length, callouts, camera). legend = short effect word for the gift strip; does = one short sentence for the panel's gift table (Turkish).",
@@ -174,6 +177,8 @@
     "mapStretch": 1.42,
     "_streamMapStretch": "Stream layout only: north-south stretch of the map (1 = true proportions; mapStretch is the full layout's).",
     "streamMapStretch": 1,
+    "_streamMaxFps": "Stream layout only: frames drawn per second (TikTok LIVE sends 30; drawing more only loads the streaming PC). 0 = no cap. ?fps=N overrides it. maxRenderPixels caps the canvas size (default the 1080x1920 frame).",
+    "streamMaxFps": 30,
     "fxScale": 1.6,
     "maxArrows": 40,
     "director": {

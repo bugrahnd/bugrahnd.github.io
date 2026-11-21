@@ -66,61 +66,93 @@ export class MapView {
   }
 
   /**
-   * Relief: the tile tops are shaded as hilly terrain (procedural hillshade, light from the
-   * north-west). How rugged depends on the geographic region, blended smoothly between region
-   * centres: Doğu Anadolu and the Karadeniz mountains the most, the Toros (Akdeniz) and
-   * Güneydoğu in between, the İç Anadolu plateau and Marmara the flattest. Shading only: the
-   * tile tops stay at TILE_H, so armies, castles and labels are untouched. visual.relief
-   * (0 = off, 1 = default) scales it.
+   * Relief: the tile tops are shaded as hilly terrain (hillshade, light from the north-west).
+   * How rugged depends on the geographic region, blended smoothly between region centres:
+   * Doğu Anadolu and the Karadeniz mountains the most, the Toros (Akdeniz) and Güneydoğu in
+   * between, the İç Anadolu plateau and Marmara the flattest. Shading only: the tile tops stay
+   * at TILE_H, so armies, castles and labels are untouched. visual.relief (0 = off, 1 = default)
+   * scales it. Baked once at start into a small texture (one lookup per pixel at draw time;
+   * the per-pixel noise it replaces cost about a third of the frame).
    */
   _reliefUniforms() {
+    const strength = Number(this.config.visual.relief ?? 1);
     const AMP = { 'Doğu Anadolu': 1.0, 'Karadeniz': 0.85, 'Akdeniz': 0.75, 'Güneydoğu Anadolu': 0.5, 'Ege': 0.55, 'İç Anadolu': 0.32, 'Marmara': 0.3, 'Kıbrıs': 0.5 };
     const acc = new Map();
+    let minX = Infinity; let maxX = -Infinity; let minZ = Infinity; let maxZ = -Infinity;
     for (const p of this.provinces) {
       const r = acc.get(p.region) || { x: 0, y: 0, a: 0 };
       const a = p.area || 1;
       r.x += p.centroid[0] * a; r.y += p.centroid[1] * a; r.a += a;
       acc.set(p.region, r);
+      for (const poly of p.polygons) for (const [x, y] of poly[0]) {
+        const z = wzOf(y);
+        minX = Math.min(minX, x); maxX = Math.max(maxX, x); minZ = Math.min(minZ, z); maxZ = Math.max(maxZ, z);
+      }
     }
     const centres = []; const amps = [];
-    for (const [region, r] of acc) {
-      centres.push(new THREE.Vector2(r.x / r.a, wzOf(r.y / r.a)));
-      amps.push(AMP[region] ?? 0.5);
+    for (const [region, r] of acc) { centres.push([r.x / r.a, wzOf(r.y / r.a)]); amps.push(AMP[region] ?? 0.5); }
+    minX -= 8; maxX += 8; minZ -= 8; maxZ += 8;
+    const W = 640; const H = Math.max(64, Math.round(W * (maxZ - minZ) / (maxX - minX)));
+    const sx = (maxX - minX) / (W - 1); const sz = (maxZ - minZ) / (H - 1);
+    // Value noise (ridged fbm) + region amplitude, same look as the old per-pixel shader.
+    const rh = (x, y) => { const v = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return v - Math.floor(v); };
+    const vn = (x, y) => {
+      const ix = Math.floor(x); const iy = Math.floor(y); const fx = x - ix; const fy = y - iy;
+      const ux = fx * fx * (3 - 2 * fx); const uy = fy * fy * (3 - 2 * fy);
+      const a = rh(ix, iy); const b = rh(ix + 1, iy); const c = rh(ix, iy + 1); const d = rh(ix + 1, iy + 1);
+      return (a + (b - a) * ux) + ((c + (d - c) * ux) - (a + (b - a) * ux)) * uy;
+    };
+    const terr = (x, y) => {
+      let h = 0; let a = 0.5; let qx = x; let qy = y;
+      for (let k = 0; k < 4; k++) {
+        const n = vn(qx, qy);
+        h += a * (n + ((1 - Math.abs(2 * n - 1)) - n) * 0.65);
+        const nx = 1.6 * qx - 1.2 * qy; qy = 1.2 * qx + 1.6 * qy; qx = nx; a *= 0.5;
+      }
+      return h;
+    };
+    const ramp = (x, z) => {
+      let s = 0; let ws = 0;
+      for (let k = 0; k < centres.length; k++) { const dx = x - centres[k][0]; const dz = z - centres[k][1]; const w = 1 / (dx * dx + dz * dz + 900); s += amps[k] * w; ws += w; }
+      return s / ws;
+    };
+    // Height grid one cell larger on each side (finite differences at the edges).
+    const hgt = new Float32Array((W + 2) * (H + 2));
+    for (let j = 0; j < H + 2; j++) {
+      const z = minZ + (j - 1) * sz;
+      for (let i = 0; i < W + 2; i++) { const x = minX + (i - 1) * sx; hgt[j * (W + 2) + i] = terr(x * 0.017, z * 0.017); }
     }
-    while (centres.length < 8) { centres.push(new THREE.Vector2(1e5, 1e5)); amps.push(0); }
+    const L = [-0.55, 0.75, -0.45]; const ll = Math.hypot(...L); L[0] /= ll; L[1] /= ll; L[2] /= ll;
+    const data = new Uint8Array(W * H * 4);
+    for (let j = 0; j < H; j++) {
+      const z = minZ + j * sz;
+      for (let i = 0; i < W; i++) {
+        const x = minX + i * sx;
+        const amp = ramp(x, z) * strength;
+        const k = (j + 1) * (W + 2) + (i + 1);
+        const hx = (hgt[k + 1] - hgt[k - 1]) * amp * 30; const hz = (hgt[k + W + 2] - hgt[k - W - 2]) * amp * 30;
+        const nx = -hx; const ny = sx + sz; const nz = -hz; const nl = Math.hypot(nx, ny, nz);
+        const shade = (nx * L[0] + ny * L[1] + nz * L[2]) / nl / L[1];
+        const f = Math.min(1.38, Math.max(0.42, 0.72 + 0.46 * shade)) * (0.9 + 0.2 * hgt[k] * amp);
+        const v = Math.round(Math.min(1, f / 1.6) * 255);
+        const o = (j * W + i) * 4;
+        data[o] = v; data[o + 1] = v; data[o + 2] = v; data[o + 3] = 255;
+      }
+    }
+    const tex = new THREE.DataTexture(data, W, H, THREE.RGBAFormat);
+    tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearFilter; tex.generateMipmaps = false;
+    tex.needsUpdate = true;
     return {
-      uRC: { value: centres.slice(0, 8) },
-      uRA: { value: amps.slice(0, 8) },
-      uRelief: { value: Number(this.config.visual.relief ?? 1) },
+      uReliefTex: { value: tex },
+      uRMin: { value: new THREE.Vector2(minX, minZ) },
+      uRSize: { value: new THREE.Vector2(maxX - minX, maxZ - minZ) },
+      uRelief: { value: strength > 0 ? 1 : 0 },
     };
   }
 
   _buildTiles() {
     const relief = this._reliefUniforms();
-    const RELIEF_GLSL = `
-      uniform vec2 uRC[8]; uniform float uRA[8]; uniform float uRelief;
-      float rh(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-      float vn(vec2 p) {
-        vec2 i = floor(p); vec2 f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f);
-        return mix(mix(rh(i), rh(i + vec2(1.0, 0.0)), u.x), mix(rh(i + vec2(0.0, 1.0)), rh(i + vec2(1.0, 1.0)), u.x), u.y);
-      }
-      float terr(vec2 p) {
-        // Ridged noise for mountain chains plus rolling hills.
-        float h = 0.0; float a = 0.5; vec2 q = p;
-        for (int k = 0; k < 4; k++) {
-          float n = vn(q);
-          h += a * mix(n, 1.0 - abs(2.0 * n - 1.0), 0.65);
-          q = mat2(1.6, 1.2, -1.2, 1.6) * q; a *= 0.5;
-        }
-        return h;
-      }
-      float ramp(vec2 w) {
-        float s = 0.0; float ws = 0.0;
-        for (int k = 0; k < 8; k++) { float d = distance(w, uRC[k]); float wk = 1.0 / (d * d + 900.0); s += uRA[k] * wk; ws += wk; }
-        return s / ws;
-      }
-      float reliefH(vec2 w, float amp) { return amp * terr(w * 0.017) * 30.0; }
-    `;
+    const RELIEF_GLSL = 'uniform sampler2D uReliefTex; uniform vec2 uRMin; uniform vec2 uRSize; uniform float uRelief;';
     for (const p of this.provinces) {
       const shapes = p.polygons.map((poly) => {
         const shape = new THREE.Shape(poly[0].map(([x, y]) => new THREE.Vector2(x, y)));
@@ -152,21 +184,10 @@ export class MapView {
             float outside = step(uFR, fd);
             float rim = (1.0 - outside) * smoothstep(uFR - 9.0, uFR, fd);
             vec3 dcol = mix(diffuse, uPrev, outside) + vec3(rim * 0.55);
-            if (uRelief > 0.0) {
-              float amp = ramp(vWXZ) * uRelief;
-              float e = 2.2;
-              float hx = reliefH(vWXZ + vec2(e, 0.0), amp) - reliefH(vWXZ - vec2(e, 0.0), amp);
-              float hz = reliefH(vWXZ + vec2(0.0, e), amp) - reliefH(vWXZ - vec2(0.0, e), amp);
-              vec3 n = normalize(vec3(-hx, 2.0 * e, -hz));
-              vec3 L = normalize(vec3(-0.55, 0.75, -0.45));
-              float shade = dot(n, L) / L.y;
-              float hn = reliefH(vWXZ, 1.0) / 30.0;
-              // Sunlit slopes brighter, shadowed ones darker; high ground a touch lighter.
-              dcol *= clamp(0.72 + 0.46 * shade, 0.42, 1.38) * (0.9 + 0.2 * hn * amp);
-            }
+            if (uRelief > 0.0) dcol *= texture2D(uReliefTex, (vWXZ - uRMin) / uRSize).r * 1.6;
             vec4 diffuseColor = vec4( dcol, opacity );`);
       };
-      top.customProgramCacheKey = () => 'tileFloodRelief';
+      top.customProgramCacheKey = () => 'tileFloodReliefTex';
       const mesh = new THREE.Mesh(geo, [top, side]);
       mesh.userData.plate = p.plate;
       this.scene.add(mesh);
