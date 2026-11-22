@@ -1,0 +1,263 @@
+@font-face { font-family: 'Paytone'; src: url('../assets/fonts/PaytoneOne-Regular.ttf') format('truetype'); font-display: block; }
+@font-face { font-family: 'Nunito'; src: url('../assets/fonts/Nunito-Variable.ttf') format('truetype'); font-weight: 200 1000; font-display: block; }
+
+html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #0b0618; color: #fff; }
+#stage { overflow: hidden; background: #140a2a; font-family: 'Nunito', system-ui, sans-serif; }
+#world, #overlay { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#overlay { pointer-events: none; }
+#hud { position: absolute; inset: 0; pointer-events: none; }
+.hidden { display: none !important; }
+
+/* --- top bar ------------------------------------------------------------ */
+#topbar { position: absolute; left: calc(var(--u) * (var(--sx) + 10)); right: calc(var(--u) * (var(--sx) + 10));
+  top: calc(var(--u) * (var(--st) + 14)); display: flex; justify-content: space-between; align-items: center; }
+.chip { display: flex; align-items: center; gap: calc(var(--u) * 14); padding: calc(var(--u) * 10) calc(var(--u) * 26);
+  border-radius: calc(var(--u) * 40); background: linear-gradient(180deg, rgba(58, 26, 96, .92), rgba(28, 12, 54, .92));
+  border: calc(var(--u) * 3) solid rgba(214, 170, 255, .55); box-shadow: 0 calc(var(--u) * 6) calc(var(--u) * 18) rgba(0, 0, 0, .45), inset 0 calc(var(--u) * 2) 0 rgba(255, 255, 255, .12);
+  font: calc(var(--u) * 38) 'Paytone', sans-serif; letter-spacing: .02em; text-shadow: 0 calc(var(--u) * 3) 0 rgba(0, 0, 0, .45); }
+#session { font: 800 calc(var(--u) * 26) 'Nunito', sans-serif; color: #e7d4ff; opacity: .9; }
+#session:empty { display: none; }
+#timer { min-width: calc(var(--u) * 150); justify-content: center; }
+#timer.warn { border-color: #ff8a5c; background: linear-gradient(180deg, rgba(140, 30, 30, .95), rgba(70, 10, 20, .95)); animation: pulse .5s ease-in-out infinite alternate; }
+@keyframes pulse { to { transform: scale(1.08); } }
+
+/* --- HP bar -------------------------------------------------------------- */
+#hpwrap { position: absolute; left: calc(var(--u) * (var(--sx) + 10)); right: calc(var(--u) * (var(--sx) + 10)); top: calc(var(--u) * (var(--st) + 100)); }
+#hpname { font: calc(var(--u) * 34) 'Paytone', sans-serif; color: #ffcf6e; text-shadow: 0 calc(var(--u) * 3) 0 #5a1208, 0 0 calc(var(--u) * 18) rgba(255, 120, 40, .6);
+  margin: 0 0 calc(var(--u) * 6) calc(var(--u) * 14); letter-spacing: .08em; }
+#hpbar { position: relative; height: calc(var(--u) * 58); border-radius: calc(var(--u) * 30); overflow: hidden;
+  background: linear-gradient(180deg, #1b0b22, #2e1236); border: calc(var(--u) * 4) solid #ffcf6e;
+  box-shadow: 0 0 0 calc(var(--u) * 4) #3b1406, 0 calc(var(--u) * 10) calc(var(--u) * 24) rgba(0, 0, 0, .5), 0 0 calc(var(--u) * 30) rgba(255, 80, 40, .35); }
+#hpfill, #hplag { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; transform-origin: left center; }
+#hplag { background: #fff1c9; opacity: .75; transition: transform .6s ease-out .25s; }
+#hpfill { background: linear-gradient(180deg, #ff6a4a 0%, #e0203a 45%, #8f0b2c 100%); transition: transform .12s ease-out; }
+#hpbar.low #hpfill { background: linear-gradient(180deg, #ffb347, #ff5e1a 50%, #a8240c); animation: flick .25s steps(2) infinite; }
+@keyframes flick { 50% { filter: brightness(1.35); } }
+#hpshine { position: absolute; left: 2%; right: 2%; top: 10%; height: 32%; border-radius: calc(var(--u) * 20); background: linear-gradient(180deg, rgba(255, 255, 255, .45), rgba(255, 255, 255, 0)); }
+#hptxt { position: absolute; right: calc(var(--u) * 22); top: calc(var(--u) * 52); height: calc(var(--u) * 58); display: flex; align-items: center;
+  font: 900 calc(var(--u) * 30) 'Nunito', sans-serif; text-shadow: 0 calc(var(--u) * 2) calc(var(--u) * 4) #000; }
+#hpbar.hit { animation: shake .18s; }
+@keyframes shake { 25% { transform: translateX(calc(var(--u) * -6)); } 75% { transform: translateX(calc(var(--u) * 6)); } }
+
+/* --- status line ---------------------------------------------------------- */
+#status { position: absolute; left: 0; right: 0; top: calc(var(--u) * (var(--st) + 222)); text-align: center;
+  font: 800 calc(var(--u) * 30) 'Nunito', sans-serif; color: #f2e6ff; text-shadow: 0 calc(var(--u) * 2) calc(var(--u) * 6) rgba(0, 0, 0, .8); }
+
+/* --- live board ------------------------------------------------------------ */
+.card { background: linear-gradient(180deg, rgba(40, 18, 70, .82), rgba(20, 8, 40, .82)); border: calc(var(--u) * 3) solid rgba(214, 170, 255, .4);
+  border-radius: calc(var(--u) * 24); box-shadow: 0 calc(var(--u) * 8) calc(var(--u) * 20) rgba(0, 0, 0, .4); }
+#board { position: absolute; left: calc(var(--u) * (var(--sx) + 10)); top: calc(var(--u) * (var(--st) + 280)); width: calc(var(--u) * 360); padding: calc(var(--u) * 12) calc(var(--u) * 18); }
+#board .ttl { font: calc(var(--u) * 22) 'Paytone', sans-serif; color: #ffcf6e; letter-spacing: .05em; margin-bottom: calc(var(--u) * 6); }
+#board ol { list-style: none; margin: 0; padding: 0; }
+#board li { display: flex; align-items: center; gap: calc(var(--u) * 10); font: 800 calc(var(--u) * 26) 'Nunito', sans-serif; padding: calc(var(--u) * 3) 0; }
+#board li .rk { width: calc(var(--u) * 34); font-family: 'Paytone'; color: #e7d4ff; }
+#board li:nth-child(1) .rk { color: #ffd34d; }
+#board li .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#board li .sc { color: #ffcf6e; font-size: calc(var(--u) * 22); }
+#board li .av, #result .av { width: calc(var(--u) * 38); height: calc(var(--u) * 38); border-radius: 50%; object-fit: cover; flex: none; background: #3a2160; }
+#board.empty { display: none; }
+
+/* --- gift ladder ------------------------------------------------------------ */
+#ladder { position: absolute; left: calc(var(--u) * (var(--sx) + 10)); right: calc(var(--u) * (var(--sx) + 10)); top: calc(var(--u) * (var(--sb) - 116));
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: calc(var(--u) * 10); }
+#ladder .step { text-align: center; padding: calc(var(--u) * 10) calc(var(--u) * 4); border-radius: calc(var(--u) * 18);
+  background: linear-gradient(180deg, rgba(48, 22, 82, .86), rgba(22, 10, 42, .86)); border: calc(var(--u) * 2) solid rgba(214, 170, 255, .35); }
+#ladder .ic { font-size: calc(var(--u) * 34); line-height: 1.1; }
+#ladder .nm { font: calc(var(--u) * 20) 'Paytone', sans-serif; color: #ffe7b0; white-space: nowrap; }
+#ladder .co { font: 800 calc(var(--u) * 18) 'Nunito', sans-serif; color: #d6c2f5; }
+#ladder .step.flash { animation: stepflash .7s; }
+@keyframes stepflash { 0% { transform: scale(1.18); border-color: #ffd34d; box-shadow: 0 0 calc(var(--u) * 30) #ffb347; } }
+
+/* --- countdown / banners ------------------------------------------------------ */
+#center { position: absolute; left: 0; right: 0; top: calc(var(--u) * 760); text-align: center; font: calc(var(--u) * 200) 'Paytone', sans-serif;
+  color: #fff; text-shadow: 0 calc(var(--u) * 10) 0 #4a1a7a, 0 0 calc(var(--u) * 60) rgba(190, 120, 255, .9); }
+#center .small { font-size: calc(var(--u) * 80); }
+#center .pop { display: inline-block; animation: popin .5s cubic-bezier(.2, 1.6, .4, 1); }
+@keyframes popin { from { transform: scale(.2); opacity: 0; } }
+
+/* --- result card ------------------------------------------------------------- */
+#result { position: absolute; left: calc(var(--u) * (var(--sx) + 30)); right: calc(var(--u) * (var(--sx) + 30)); top: calc(var(--u) * 600);
+  padding: calc(var(--u) * 34) calc(var(--u) * 30); text-align: center; border-radius: calc(var(--u) * 36);
+  background: linear-gradient(180deg, rgba(56, 24, 98, .95), rgba(22, 8, 44, .95)); border: calc(var(--u) * 5) solid #ffcf6e;
+  box-shadow: 0 0 0 calc(var(--u) * 5) #3b1406, 0 calc(var(--u) * 20) calc(var(--u) * 60) rgba(0, 0, 0, .6), 0 0 calc(var(--u) * 80) rgba(255, 180, 70, .35);
+  animation: popin .6s cubic-bezier(.2, 1.5, .4, 1); }
+#result.lose { border-color: #ff6a4a; box-shadow: 0 0 0 calc(var(--u) * 5) #3b0606, 0 calc(var(--u) * 20) calc(var(--u) * 60) rgba(0, 0, 0, .6), 0 0 calc(var(--u) * 80) rgba(255, 60, 40, .4); }
+#result h1 { margin: 0; font: calc(var(--u) * 74) 'Paytone', sans-serif; color: #ffd34d; text-shadow: 0 calc(var(--u) * 5) 0 #5a1208; line-height: 1.05; }
+#result.lose h1 { color: #ff7b5c; }
+#result .sub { font: 800 calc(var(--u) * 32) 'Nunito', sans-serif; color: #eadcff; margin-top: calc(var(--u) * 10); }
+#result .crown { font: calc(var(--u) * 30) 'Paytone', sans-serif; color: #ffcf6e; margin-top: calc(var(--u) * 26); letter-spacing: .06em; }
+#result .hero { display: flex; align-items: center; justify-content: center; gap: calc(var(--u) * 18); margin-top: calc(var(--u) * 12); }
+#result .hero .av { width: calc(var(--u) * 110); height: calc(var(--u) * 110); border: calc(var(--u) * 5) solid #ffd34d; box-shadow: 0 0 calc(var(--u) * 30) rgba(255, 211, 77, .7); }
+#result .hero .nm { font: calc(var(--u) * 54) 'Paytone', sans-serif; max-width: calc(var(--u) * 620); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#result .hero .sc { font: 800 calc(var(--u) * 30) 'Nunito', sans-serif; color: #ffe7b0; }
+#result ol { list-style: none; padding: 0; margin: calc(var(--u) * 20) 0 0; }
+#result li { display: flex; align-items: center; justify-content: center; gap: calc(var(--u) * 12); font: 800 calc(var(--u) * 30) 'Nunito', sans-serif; color: #e7d4ff; padding: calc(var(--u) * 4) 0; }
+#result li .av { width: calc(var(--u) * 44); height: calc(var(--u) * 44); }
+
+#sound { position: absolute; right: calc(var(--u) * 80); bottom: calc(var(--u) * 140); pointer-events: auto; font: 800 calc(var(--u) * 30) 'Nunito', sans-serif;
+  padding: calc(var(--u) * 14) calc(var(--u) * 24); border-radius: calc(var(--u) * 30); border: 0; background: #ffcf6e; color: #3b1406; cursor: pointer; }
+html.stream #sound { display: none !important; }
+
+/* result on screen: the gift guide steps aside; the "laugh" card sits low so the devil stays visible */
+#hud.res #ladder { opacity: 0; transition: opacity .3s; }
+#result.lose { top: calc(var(--u) * 880); padding-top: calc(var(--u) * 22); padding-bottom: calc(var(--u) * 22); }
+#result.lose h1 { font-size: calc(var(--u) * 64); }
+
+/* keep clear of TikTok's right column (hearts / gifts: x > 900 below y 1000) */
+#ladder { right: calc(var(--u) * 190); }
+#result { left: calc(var(--u) * 130); right: calc(var(--u) * 190); top: calc(var(--u) * 560); }
+#result.lose { top: calc(var(--u) * 860); }
+#result.lose ol, #result.lose .next { display: none; }
+#result .hero .nm { max-width: calc(var(--u) * 480); }
+
+/* ---- Ottoman night theme: deep navy panels, gold trim, eight-pointed star ornaments ---- */
+:root {
+  --gold: #d9b45a; --gold-hi: #f3dc9a; --navy: rgba(10, 18, 38, .9); --navy2: rgba(4, 9, 22, .92);
+  --star8: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-10 -10 20 20'%3E%3Cg fill='%23d9b45a'%3E%3Crect x='-6' y='-6' width='12' height='12'/%3E%3Crect x='-6' y='-6' width='12' height='12' transform='rotate(45)'/%3E%3C/g%3E%3Ccircle r='3' fill='%230a1226'/%3E%3C/svg%3E");
+}
+.chip, .card, #ladder .step, #result {
+  background: linear-gradient(180deg, var(--navy), var(--navy2));
+  border-color: rgba(217, 180, 90, .75);
+  box-shadow: 0 calc(var(--u) * 8) calc(var(--u) * 22) rgba(0, 0, 0, .55), inset 0 0 0 calc(var(--u) * 2) rgba(217, 180, 90, .18);
+}
+.chip { position: relative; color: var(--gold-hi); }
+#round::before, #timer::before { content: ''; width: calc(var(--u) * 26); height: calc(var(--u) * 26); background: var(--star8) center / contain no-repeat; }
+#session { color: #e9dcc0; }
+#hpname { color: var(--gold-hi); text-shadow: 0 calc(var(--u) * 3) 0 #000, 0 0 calc(var(--u) * 16) rgba(217, 180, 90, .35); display: flex; align-items: center; gap: calc(var(--u) * 10); }
+#hpname::before, #hpname::after { content: ''; width: calc(var(--u) * 24); height: calc(var(--u) * 24); background: var(--star8) center / contain no-repeat; }
+#hpbar { border-color: var(--gold); background: linear-gradient(180deg, #0b0a14, #1a1020);
+  box-shadow: 0 0 0 calc(var(--u) * 4) #1b1406, 0 calc(var(--u) * 10) calc(var(--u) * 24) rgba(0, 0, 0, .6); }
+#hpfill { background: linear-gradient(180deg, #e2563a 0%, #a8231a 50%, #5a0c0c 100%); }
+#hpbar.low #hpfill { background: linear-gradient(180deg, #ff9a3c, #d1461a 50%, #6a1a08); }
+#board .ttl, #result .crown { color: var(--gold-hi); }
+#board li .sc { color: var(--gold); }
+#ladder .nm { color: var(--gold-hi); }
+#ladder .co { color: #cfc4ad; }
+#ladder .ic.sm { font-size: calc(var(--u) * 22); line-height: calc(var(--u) * 37); }
+#ladder .step { position: relative; }
+#ladder .step::before { content: ''; position: absolute; left: 50%; top: calc(var(--u) * -9); width: calc(var(--u) * 18); height: calc(var(--u) * 18); transform: translateX(-50%); background: var(--star8) center / contain no-repeat; }
+#result { border-width: calc(var(--u) * 4); }
+#result::before { content: ''; position: absolute; left: 50%; top: calc(var(--u) * -22); width: calc(var(--u) * 44); height: calc(var(--u) * 44); transform: translateX(-50%); background: var(--star8) center / contain no-repeat; }
+#result h1 { color: var(--gold-hi); text-shadow: 0 calc(var(--u) * 4) 0 #000; }
+#result.lose { border-color: #b8402a; }
+#result.lose h1 { color: #ff8a64; }
+#result .hero .av { border-color: var(--gold); box-shadow: 0 0 calc(var(--u) * 24) rgba(217, 180, 90, .55); }
+#center { text-shadow: 0 calc(var(--u) * 8) 0 #000, 0 0 calc(var(--u) * 50) rgba(217, 180, 90, .8); color: var(--gold-hi); }
+#stage { background: #050913; }
+html, body { background: #03060d; }
+
+/* ---- sakura theme (reference/shrine-night.webp, reference/style.json) --------------------------
+   navy panels with a thin warm-gold edge, gold diamonds, a red ribbon for the status line, the board
+   with crowns, and the gift tiles as a numbered column on the right (kept above y 1000, where
+   TikTok's heart and gift buttons start on the right edge). */
+html.tema-sakura {
+  --gold: #e8c37a; --gold-hi: #fbe3a8; --navy: rgba(30, 34, 70, .93); --navy2: rgba(18, 20, 46, .93);
+  --dia: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-10 -10 20 20'%3E%3Cpath d='M0-9 9 0 0 9-9 0z' fill='%23f3c862'/%3E%3Cpath d='M0-4 4 0 0 4-4 0z' fill='%23fff1c4'/%3E%3C/svg%3E");
+}
+html.tema-sakura #stage { background: #1a1d4a; }
+html.tema-sakura .chip, html.tema-sakura .card, html.tema-sakura #ladder .step, html.tema-sakura #result {
+  background: linear-gradient(180deg, var(--navy), var(--navy2));
+  border: calc(var(--u) * 3) solid var(--gold);
+  box-shadow: 0 calc(var(--u) * 8) calc(var(--u) * 20) rgba(6, 6, 30, .55), inset 0 calc(var(--u) * 2) 0 rgba(255, 255, 255, .08);
+}
+html.tema-sakura .chip { color: #fff; border-radius: calc(var(--u) * 26); }
+html.tema-sakura #round::before { content: none; }
+html.tema-sakura #timer::before { content: '⏱'; width: auto; height: auto; background: none; font-size: calc(var(--u) * 34); }
+html.tema-sakura #session { color: #e8e2ff; }
+
+/* ŞEYTAN on the left, the health bar to its right, on one row */
+html.tema-sakura #hpwrap { display: flex; align-items: center; gap: calc(var(--u) * 16); top: calc(var(--u) * (var(--st) + 100)); }
+html.tema-sakura #hpname { margin: 0; flex: none; color: var(--gold-hi); font-size: calc(var(--u) * 34); text-shadow: 0 calc(var(--u) * 3) 0 #1a1440; }
+html.tema-sakura #hpname::before, html.tema-sakura #hpname::after { background: var(--dia) center / contain no-repeat; width: calc(var(--u) * 26); height: calc(var(--u) * 26); }
+html.tema-sakura #hpbar { flex: 1; height: calc(var(--u) * 54); border: calc(var(--u) * 4) solid #f0a98a;
+  background: linear-gradient(180deg, #3a1420, #22101c); box-shadow: 0 0 0 calc(var(--u) * 3) #5a1a1a, 0 calc(var(--u) * 8) calc(var(--u) * 18) rgba(0, 0, 0, .45); }
+html.tema-sakura #hpfill { background: linear-gradient(180deg, #ff5a48 0%, #e02a2a 50%, #a8141e 100%); }
+html.tema-sakura #hptxt { top: 0; height: 100%; right: calc(var(--u) * 24); font-size: calc(var(--u) * 30); }
+
+/* status: a red ribbon above the devil */
+html.tema-sakura #status { left: 50%; right: auto; transform: translateX(-50%); top: calc(var(--u) * (var(--st) + 178));
+  padding: calc(var(--u) * 6) calc(var(--u) * 30); border-radius: calc(var(--u) * 14); white-space: nowrap;
+  background: linear-gradient(180deg, #d8402e, #9c1e1c); border: calc(var(--u) * 3) solid #f6b06a; color: #fff6e6;
+  font: 900 calc(var(--u) * 28) 'Nunito', sans-serif; box-shadow: 0 calc(var(--u) * 6) calc(var(--u) * 14) rgba(40, 0, 10, .5); }
+html.tema-sakura #status:empty { display: none; }
+
+/* board under the ŞEYTAN label, with crowns */
+html.tema-sakura #board { top: calc(var(--u) * (var(--st) + 250)); width: calc(var(--u) * 330); border-radius: calc(var(--u) * 20); }
+html.tema-sakura #board .ttl { color: #fff; font-size: calc(var(--u) * 22); }
+html.tema-sakura #board .ttl::before { content: '📢 '; }
+html.tema-sakura #board li::after { content: '👑'; font-size: calc(var(--u) * 22); margin-left: calc(var(--u) * 4); }
+html.tema-sakura #board li .sc { color: var(--gold-hi); }
+
+/* gift tiles: numbered column on the right */
+html.tema-sakura #ladder { left: auto; right: calc(var(--u) * (var(--sx) + 6)); top: calc(var(--u) * (var(--st) + 238)); width: calc(var(--u) * 168);
+  grid-template-columns: 1fr; gap: calc(var(--u) * 14); counter-reset: step; }
+/* five tiles end above y ~950: TikTok's heart / gift buttons start at y 1000 on the right edge */
+html.tema-sakura #ladder .step { counter-increment: step; height: calc(var(--u) * 82); box-sizing: border-box; padding: calc(var(--u) * 12) calc(var(--u) * 6) calc(var(--u) * 6); border-radius: calc(var(--u) * 20); }
+/* inside a tile: icon on the left, name over cost on the right */
+html.tema-sakura #ladder .step { display: grid; grid-template-columns: calc(var(--u) * 40) 1fr; grid-template-rows: auto auto; align-content: center;
+  column-gap: calc(var(--u) * 8); padding: calc(var(--u) * 10) calc(var(--u) * 10) calc(var(--u) * 6); text-align: left; overflow: visible; }
+html.tema-sakura #ladder .ic { grid-row: 1 / 3; align-self: center; text-align: center; line-height: 1; font-size: calc(var(--u) * 32); }
+html.tema-sakura #ladder .ic.sm { font-size: calc(var(--u) * 22); line-height: 1; }
+html.tema-sakura #ladder .nm { font-size: calc(var(--u) * 18); line-height: 1.15; white-space: nowrap; }
+html.tema-sakura #ladder { width: calc(var(--u) * 204); }
+html.tema-sakura #ladder .co { font-size: calc(var(--u) * 16); line-height: 1.2; }
+html.tema-sakura #ladder .step::before { content: counter(step); width: calc(var(--u) * 30); height: calc(var(--u) * 30); top: calc(var(--u) * -16);
+  border-radius: 50%; background: linear-gradient(180deg, #fbe3a8, #d9a548); border: calc(var(--u) * 2) solid #7a5418;
+  font: calc(var(--u) * 19)/calc(var(--u) * 27) 'Paytone', sans-serif; color: #3a2408; text-align: center; }
+html.tema-sakura #ladder .ic { font-size: calc(var(--u) * 30); }
+html.tema-sakura #ladder .nm { color: #fff; font-size: calc(var(--u) * 20); }
+html.tema-sakura #ladder .co { color: #e9ddb4; font-size: calc(var(--u) * 17); }
+html.tema-sakura #ladder .step[data-tier="meteor"] { border-color: #ffd65a;
+  box-shadow: 0 0 calc(var(--u) * 26) rgba(255, 196, 70, .75), inset 0 0 calc(var(--u) * 18) rgba(255, 196, 70, .25); }
+/* ---- title, and everything one row lower ---- */
+#title { display: none; }
+html.tema-sakura #title { display: block; position: absolute; left: 0; right: 0; top: calc(var(--u) * (var(--st) + 6)); text-align: center;
+  font: calc(var(--u) * 60) / 1 'Paytone', sans-serif; letter-spacing: .03em; color: #fff3d6;
+  text-shadow: 0 calc(var(--u) * 5) 0 #5a1830, 0 calc(var(--u) * 8) calc(var(--u) * 18) rgba(20, 0, 30, .6), 0 0 calc(var(--u) * 34) rgba(255, 140, 190, .55); }
+html.tema-sakura #title span:first-child { color: #ff6a5a; }
+html.tema-sakura #title::before, html.tema-sakura #title::after { content: '🌸'; font-size: calc(var(--u) * 40); vertical-align: middle; margin: 0 calc(var(--u) * 14); }
+html.tema-sakura #topbar { top: calc(var(--u) * (var(--st) + 84)); }
+html.tema-sakura #hpwrap { top: calc(var(--u) * (var(--st) + 168)); }
+html.tema-sakura #status { top: calc(var(--u) * (var(--st) + 244)); }
+
+/* ---- side columns: the same tile on both sides, both ending above y ~985 (TikTok's right buttons start at 1000) ----
+   eight gift tiles: one slim row each (icon | name over cost), from just under the health bar */
+html.tema-sakura #ladder { top: calc(var(--u) * (var(--st) + 252)); gap: calc(var(--u) * 8); }
+html.tema-sakura #ladder .step { height: calc(var(--u) * 56); padding: calc(var(--u) * 4) calc(var(--u) * 10); border-radius: calc(var(--u) * 16);
+  grid-template-columns: calc(var(--u) * 36) 1fr; column-gap: calc(var(--u) * 8); }
+html.tema-sakura #ladder .step::before { content: none; }
+html.tema-sakura #ladder .ic { font-size: calc(var(--u) * 27); }
+html.tema-sakura #ladder .ic.sm { font-size: calc(var(--u) * 20); }
+html.tema-sakura #ladder .nm { font-size: calc(var(--u) * 19); line-height: 1.1; }
+html.tema-sakura #ladder .co { font-size: calc(var(--u) * 15); line-height: 1.15; }
+/* the big three glow: chains gold, star white-gold, dragon red */
+html.tema-sakura #ladder .step[data-tier="chains"] { border-color: #ffe27a; box-shadow: 0 0 calc(var(--u) * 16) rgba(255, 214, 90, .5); }
+html.tema-sakura #ladder .step[data-tier="meteor"] { box-shadow: 0 0 calc(var(--u) * 18) rgba(255, 196, 70, .6), inset 0 0 calc(var(--u) * 12) rgba(255, 196, 70, .2); }
+html.tema-sakura #ladder .step[data-tier="dragon"] { border-color: #ff7a4a; background: linear-gradient(180deg, rgba(120, 20, 30, .95), rgba(60, 10, 22, .95));
+  box-shadow: 0 0 calc(var(--u) * 24) rgba(255, 90, 40, .75), inset 0 0 calc(var(--u) * 14) rgba(255, 120, 60, .3); }
+html.tema-sakura #ladder .step[data-tier="dragon"] .nm { color: #ffd2a8; }
+html.tema-sakura #board { top: calc(var(--u) * (var(--st) + 252)); left: calc(var(--u) * (var(--sx) + 6)); width: calc(var(--u) * 204);
+  background: none; border: 0; box-shadow: none; padding: 0; border-radius: 0; }
+html.tema-sakura #board .ttl { margin: 0 0 calc(var(--u) * 20); padding: calc(var(--u) * 6) calc(var(--u) * 10); text-align: center; border-radius: calc(var(--u) * 16);
+  background: linear-gradient(180deg, var(--navy), var(--navy2)); border: calc(var(--u) * 3) solid var(--gold); color: var(--gold-hi);
+  font: calc(var(--u) * 18) 'Paytone', sans-serif; letter-spacing: .04em; }
+html.tema-sakura #board .ttl::before { content: none; }
+html.tema-sakura #board ol { display: grid; gap: calc(var(--u) * 20); counter-reset: none; }
+html.tema-sakura #board li { position: relative; height: calc(var(--u) * 72); box-sizing: border-box; padding: calc(var(--u) * 8) calc(var(--u) * 12);
+  border-radius: calc(var(--u) * 20); background: linear-gradient(180deg, var(--navy), var(--navy2)); border: calc(var(--u) * 3) solid var(--gold);
+  box-shadow: 0 calc(var(--u) * 8) calc(var(--u) * 20) rgba(6, 6, 30, .55); display: grid; grid-template-columns: calc(var(--u) * 44) 1fr; grid-template-rows: auto auto;
+  column-gap: calc(var(--u) * 10); align-content: center; font: 800 calc(var(--u) * 22) 'Nunito', sans-serif; }
+html.tema-sakura #board li::after { content: none; }
+html.tema-sakura #board li .av { grid-row: 1 / 3; align-self: center; width: calc(var(--u) * 44); height: calc(var(--u) * 44); border: calc(var(--u) * 2) solid var(--gold); }
+html.tema-sakura #board li .nm { color: #fff; font-size: calc(var(--u) * 21); line-height: 1.15; }
+html.tema-sakura #board li .sc { color: var(--gold-hi); font: 800 calc(var(--u) * 17) 'Nunito', sans-serif; line-height: 1.2; }
+html.tema-sakura #board li .sc::after { content: ' hasar'; color: #cfc4ad; }
+/* rank badge on the tile's top-left corner (clear of the name): gold, silver, bronze */
+html.tema-sakura #board li .rk { position: absolute; left: calc(var(--u) * -10); top: calc(var(--u) * -10); width: calc(var(--u) * 30); height: calc(var(--u) * 30);
+  border-radius: 50%; border: calc(var(--u) * 2) solid #7a5418; font: calc(var(--u) * 18)/calc(var(--u) * 27) 'Paytone', sans-serif; color: #3a2408; text-align: center;
+  background: linear-gradient(180deg, #fbe3a8, #d9a548); }
+html.tema-sakura #board li:nth-child(2) .rk { background: linear-gradient(180deg, #f2f4f8, #a9b0bf); border-color: #5a6070; color: #2a2e38; }
+html.tema-sakura #board li:nth-child(3) .rk { background: linear-gradient(180deg, #f3c39a, #b86d3a); border-color: #6a3a18; color: #3a1c08; }
+
+html.tema-sakura #center { color: #fff; text-shadow: 0 calc(var(--u) * 8) 0 #1a1440, 0 0 calc(var(--u) * 50) rgba(255, 150, 200, .8); }
+html.tema-sakura #result::before { background: var(--dia) center / contain no-repeat; }

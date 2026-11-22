@@ -134,6 +134,58 @@
         "giftLadder",
         "demo"
       ]
+    },
+    {
+      "id": "seytan",
+      "title": "Şeytan Kovucular",
+      "description": "Ay ışığındaki eski avluda saklanan şeytanın canını süre bitmeden sıfırlamak gerekir. Beğeniler küçük taş atar; hediyeler jetonuna göre büyük taş, kaya yağmuru, ateş okları, mancınık, tılsım zinciri, kayan yıldız ya da ejderha olur. Şeytan kaçarsa turun en çok taş atanı ekrana çıkar.",
+      "status": "hazir",
+      "order": 3,
+      "url": "games/seytan/index.html",
+      "panelModule": null,
+      "hasSettings": true,
+      "commands": [
+        {
+          "name": "restartRound",
+          "label": "Turu yeniden başlat",
+          "confirm": "Tur baştan başlasın mı? Şeytanın canı dolar, tur sıralaması silinir.",
+          "danger": false
+        },
+        {
+          "name": "endRound",
+          "label": "Turu bitir",
+          "confirm": "Tur şimdi bitsin mi? Can sıfırlanmadıysa şeytan kahkaha atar.",
+          "danger": false
+        },
+        {
+          "name": "resetSession",
+          "label": "Günlük skoru sıfırla",
+          "confirm": "Günlük skor (kaç kez kaçırıldı / kaç kez güldü) ve şeytanın uyarlanan canı sıfırlansın mı?",
+          "danger": true
+        }
+      ],
+      "sim": {
+        "kind": "none",
+        "joinHint": "Katılım gerekmez; beğeniler ve hediyeler doğrudan taş atar",
+        "chatter": [
+          "vur vur",
+          "saklandı!",
+          "sütunun arkasında",
+          "kaçıyor",
+          "az kaldı",
+          "meteor gelsin",
+          "mancınık!",
+          "hahaha",
+          "yakala",
+          "efsane"
+        ]
+      },
+      "features": [
+        "tiktokZones",
+        "audio",
+        "giftCatalog",
+        "demo"
+      ]
     }
   ]
 }

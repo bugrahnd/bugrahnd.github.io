@@ -1,0 +1,48 @@
+{
+  "anchors": [
+    { "id": "shrine-night.webp", "governs": ["appearance", "camera", "ui-look"], "why": "Single concept image the owner sent on 22 Nov 2026: 'make it like this'." },
+    { "id": "owner-brief", "governs": ["ui-layout", "mechanics"], "why": "Gift tiles go to a vertical column on the right; the game rules stay those of Şeytan Avı." }
+  ],
+  "departures": [
+    "Gift tiles: right vertical column instead of the reference's bottom row (owner request).",
+    "Crowd sits higher than in the image (design y ~1050-1300, not 1320-1600): below y 1340 TikTok's chat covers the frame.",
+    "HP bar stays below TikTok's header (y > 230); the image puts it at y ~240.",
+    "Tile texts in the image are garbled (generated); our real tiers and costs are shown.",
+    "No pause button: a TikTok stream has no viewer input for it.",
+    "Avatar medallions only above figures that are playing right now (the image shows the crowd from behind with no faces)."
+  ],
+  "palette": {
+    "sky": { "hex": "#2c40ad", "where": "top band", "role": "deep blue-violet night, fully saturated, brighter than black" },
+    "paving_far": { "hex": "#89638d", "where": "path mid", "role": "lavender stone, warm-lit near lanterns" },
+    "paving_near": { "hex": "#5c65a6", "where": "path near", "role": "periwinkle stone, the largest area; cooler and darker towards the camera" },
+    "lamp_glow": { "hex": "#fef0a4", "role": "lantern cores, near white-yellow, bloom" },
+    "fire": { "hex": "#fa8059", "role": "the devil's fire and ember ring" },
+    "devil": { "hex": "#cb4039", "role": "hero red, the most saturated large mass, centre of frame" },
+    "hp_red": { "hex": "#d02c2a", "role": "health fill" },
+    "robe": { "hex": "#3d498d", "role": "crowd robes, navy-indigo, gold trim" },
+    "sakura": { "hex": "#f0a3c8", "where": "authored from the image's blossoms", "role": "pink canopies framing both sides" },
+    "torii": { "hex": "#c8352b", "where": "authored", "role": "red gate at the far end of the path" },
+    "panel": { "hex": "#1e2244", "role": "HUD surface, navy at ~90% opacity" },
+    "panel_edge": { "hex": "#e8c37a", "role": "HUD gold border and accents" }
+  },
+  "identity": {
+    "devil": "Red muscular horned devil (big curved ivory horns, dark mask band over the eyes, grin), lower body of fire, standing in a ring of stones with embers.",
+    "crowd": "Many identical small hooded figures in navy robes with gold trim, seen from behind, gathered in front of the devil with faint gold rings on the ground.",
+    "setting": "Japanese shrine courtyard at night: long stone path to a red torii on stairs, two-storey wooden buildings with warm windows on both sides, cherry trees, stone lanterns (toro) along the path, black iron street lamps in front, low stone fences."
+  },
+  "materials": "Soft stylised shading, smooth rounded forms, no hard outlines, glowing emissive lanterns with bloom, light grain-free surfaces.",
+  "lighting": "Cool blue-violet ambient, bright enough that every object reads; many warm point sources (lanterns, windows, fire); the devil lit warm from his own fire.",
+  "camera": { "type": "perspective", "angle": "raised, looking down the path (~30 degrees)", "subject": "devil ~1/5 of frame height, upper middle; crowd in the lower third", "horizon": "off the top; the torii and roofs close the top of the frame" },
+  "ui": {
+    "font": "Paytone (titles, numbers) + Nunito (body)",
+    "panels": "rounded navy panels with a thin gold border and soft drop shadow",
+    "layout": "TUR chip top-left with session icons, timer pill top-right, 'ŞEYTAN' with gold diamonds on the left, red HP bar to its right, 'EN ÇOK TAŞ ATANLAR' board under it with crowns, status as a red ribbon above the devil, gift tiles in a right column with numbered gold badges; the top tier glows gold"
+  },
+  "motion": "Calm: the devil holds poses for several seconds; pebbles are small and quick; gifts get big readable moments; cherry petals drift.",
+  "nonnegotiables": [
+    "Red horned devil in a glowing stone ring at the centre of a lavender-blue stone courtyard",
+    "Pink sakura and warm lanterns framing both sides, red torii at the far end",
+    "Navy hooded crowd with gold trim in front of the devil",
+    "Navy + gold HUD panels; gift tiles in a vertical right column"
+  ]
+}
