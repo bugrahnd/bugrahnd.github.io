@@ -288,7 +288,11 @@ export class Game {
     }
   }
 
-  banner(text, color) { this.overlay.banner(text, color, 1090); }
+  // gift banners: under the status ribbon, above the devil's horns (clear of the crowd and of both columns)
+  banner(text, color) {
+    if (this.world.theme === 'sakura') this.overlay.banner(text, color, 494, 500);
+    else this.overlay.banner(text, color, 1090);
+  }
 
   /** A thrower's hand let go (throw), or its summon / command reached its peak. */
   _onRelease(a, hand, th) {

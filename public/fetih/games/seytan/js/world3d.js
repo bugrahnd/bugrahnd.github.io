@@ -65,10 +65,11 @@ export class World {
         open: [{ x: 0, y: 2.2, z: -0.8 }, { x: 0, y: 2.2, z: -0.8 }, { x: -1.5, y: 1.9, z: -0.2 }, { x: 1.5, y: 1.9, z: -0.3 },
           { x: 0.3, y: 2.7, z: -2.2 }, { x: -2.2, y: 1.7, z: 0.9 }, { x: 2.2, y: 1.7, z: 0.8 }],
         enter: { x: 0, y: 2.2, z: -0.8 }, laugh: { x: 0, y: 2.5, z: 0.3 },
-        crowdRows: [5.0, 5.9, 6.8, 7.7],
+        // nearer the devil than before, so the front row stays above TikTok's chat (y 1340)
+        crowdRows: [3.9, 4.7, 5.5, 6.3],
         // machines (the catapult) roll up from the bottom of the screen and stand behind the crowd,
         // facing the devil; two slots side by side
-        catapult: { home: [{ x: 1.6, z: 8.6 }, { x: -1.6, z: 8.6 }], from: { dz: 9 }, rotY: Math.PI / 2, scale: 0.78 },
+        catapult: { home: [{ x: 1.6, z: 7.5 }, { x: -1.6, z: 7.5 }], from: { dz: 9 }, rotY: Math.PI / 2, scale: 0.78 },
       };
     } else {
       this._skyline();

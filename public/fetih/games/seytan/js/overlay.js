@@ -23,8 +23,8 @@ export class Overlay {
     this.popups.push(p);
   }
 
-  banner(text, color, y = 1080) {
-    this.popups.push({ x: 540, y, name: text, dmg: 0, size: 3, color, age: 0, life: SIZES[3][2], banner: true });
+  banner(text, color, y = 1080, maxW = 0) {
+    this.popups.push({ x: 540, y, name: text, dmg: 0, size: 3, color, age: 0, life: SIZES[3][2], banner: true, maxW });
   }
 
   laugh(text, x, y) { this.popups.push({ x, y, name: text, dmg: 0, size: 2, color: '#ff8a64', age: 0, life: 1.4 }); }
@@ -71,11 +71,13 @@ export class Overlay {
       const k = p.age / p.life;
       const pop = Math.min(1, p.age / 0.12);
       const [fs, ds] = SIZES[p.size];
-      const sc = (0.65 + 0.35 * pop) + (pop < 1 ? 0.2 : 0);
+      let sc = (0.65 + 0.35 * pop) + (pop < 1 ? 0.2 : 0);
       const y = p.y - k * (p.banner ? 30 : 60);
       g.globalAlpha = k > 0.75 ? (1 - k) / 0.25 : 1;
-      g.save(); g.translate(p.x, y); g.scale(sc, sc);
       g.font = `${fs}px Paytone, sans-serif`;
+      // a banner with maxW shrinks to fit (it must not run over the side columns)
+      if (p.maxW) { if (p.fit == null) p.fit = Math.min(1, p.maxW / g.measureText(p.name).width); sc *= p.fit; }
+      g.save(); g.translate(p.x, y); g.scale(sc, sc);
       g.lineWidth = Math.max(5, fs * 0.22); g.strokeStyle = 'rgba(8,4,16,0.9)';
       g.strokeText(p.name, 0, 0);
       g.fillStyle = p.color; g.fillText(p.name, 0, 0);

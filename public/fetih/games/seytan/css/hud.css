@@ -165,88 +165,80 @@ html.tema-sakura #round::before { content: none; }
 html.tema-sakura #timer::before { content: '⏱'; width: auto; height: auto; background: none; font-size: calc(var(--u) * 34); }
 html.tema-sakura #session { color: #e8e2ff; }
 
-/* ŞEYTAN on the left, the health bar to its right, on one row */
-html.tema-sakura #hpwrap { display: flex; align-items: center; gap: calc(var(--u) * 16); top: calc(var(--u) * (var(--st) + 100)); }
-html.tema-sakura #hpname { margin: 0; flex: none; color: var(--gold-hi); font-size: calc(var(--u) * 34); text-shadow: 0 calc(var(--u) * 3) 0 #1a1440; }
-html.tema-sakura #hpname::before, html.tema-sakura #hpname::after { background: var(--dia) center / contain no-repeat; width: calc(var(--u) * 26); height: calc(var(--u) * 26); }
-html.tema-sakura #hpbar { flex: 1; height: calc(var(--u) * 54); border: calc(var(--u) * 4) solid #f0a98a;
-  background: linear-gradient(180deg, #3a1420, #22101c); box-shadow: 0 0 0 calc(var(--u) * 3) #5a1a1a, 0 calc(var(--u) * 8) calc(var(--u) * 18) rgba(0, 0, 0, .45); }
-html.tema-sakura #hpfill { background: linear-gradient(180deg, #ff5a48 0%, #e02a2a 50%, #a8141e 100%); }
-html.tema-sakura #hptxt { top: 0; height: 100%; right: calc(var(--u) * 24); font-size: calc(var(--u) * 30); }
+/* ---- sakura layout (1080x1920 stream frame, TikTok zones: header 0-230, right buttons x>900 from y 1000,
+   chat y>=1340). Spacing on an 8 px grid; tiles 18 px radius, chips are pills.
+     y 238  title
+     y 302  HUD row: [TUR + session] [ŞEYTAN health bar] [timer]      (one row, 72 tall)
+     y 390  status ribbon (centre) | board column (left) | gift column (right)
+     y <985 both columns end above TikTok's right-hand buttons
+   The scene below (devil ~750, crowd ~1050-1300) is placed by world3d.js layout. */
+/* defined on #hud, below #stage where --u is set (custom properties resolve where they are declared) */
+html.tema-sakura #hud { --row: calc(var(--u) * 72); --chipw: calc(var(--u) * 172); --edge: calc(var(--u) * (var(--sx) + 4)); --cols: calc(var(--u) * (var(--st) + 160)); }
 
-/* status: a red ribbon above the devil */
-html.tema-sakura #status { left: 50%; right: auto; transform: translateX(-50%); top: calc(var(--u) * (var(--st) + 178));
-  padding: calc(var(--u) * 6) calc(var(--u) * 30); border-radius: calc(var(--u) * 14); white-space: nowrap;
-  background: linear-gradient(180deg, #d8402e, #9c1e1c); border: calc(var(--u) * 3) solid #f6b06a; color: #fff6e6;
-  font: 900 calc(var(--u) * 28) 'Nunito', sans-serif; box-shadow: 0 calc(var(--u) * 6) calc(var(--u) * 14) rgba(40, 0, 10, .5); }
-html.tema-sakura #status:empty { display: none; }
-
-/* board under the ŞEYTAN label, with crowns */
-html.tema-sakura #board { top: calc(var(--u) * (var(--st) + 250)); width: calc(var(--u) * 330); border-radius: calc(var(--u) * 20); }
-html.tema-sakura #board .ttl { color: #fff; font-size: calc(var(--u) * 22); }
-html.tema-sakura #board .ttl::before { content: '📢 '; }
-html.tema-sakura #board li::after { content: '👑'; font-size: calc(var(--u) * 22); margin-left: calc(var(--u) * 4); }
-html.tema-sakura #board li .sc { color: var(--gold-hi); }
-
-/* gift tiles: numbered column on the right */
-html.tema-sakura #ladder { left: auto; right: calc(var(--u) * (var(--sx) + 6)); top: calc(var(--u) * (var(--st) + 238)); width: calc(var(--u) * 168);
-  grid-template-columns: 1fr; gap: calc(var(--u) * 14); counter-reset: step; }
-/* five tiles end above y ~950: TikTok's heart / gift buttons start at y 1000 on the right edge */
-html.tema-sakura #ladder .step { counter-increment: step; height: calc(var(--u) * 82); box-sizing: border-box; padding: calc(var(--u) * 12) calc(var(--u) * 6) calc(var(--u) * 6); border-radius: calc(var(--u) * 20); }
-/* inside a tile: icon on the left, name over cost on the right */
-html.tema-sakura #ladder .step { display: grid; grid-template-columns: calc(var(--u) * 40) 1fr; grid-template-rows: auto auto; align-content: center;
-  column-gap: calc(var(--u) * 8); padding: calc(var(--u) * 10) calc(var(--u) * 10) calc(var(--u) * 6); text-align: left; overflow: visible; }
-html.tema-sakura #ladder .ic { grid-row: 1 / 3; align-self: center; text-align: center; line-height: 1; font-size: calc(var(--u) * 32); }
-html.tema-sakura #ladder .ic.sm { font-size: calc(var(--u) * 22); line-height: 1; }
-html.tema-sakura #ladder .nm { font-size: calc(var(--u) * 18); line-height: 1.15; white-space: nowrap; }
-html.tema-sakura #ladder { width: calc(var(--u) * 204); }
-html.tema-sakura #ladder .co { font-size: calc(var(--u) * 16); line-height: 1.2; }
-html.tema-sakura #ladder .step::before { content: counter(step); width: calc(var(--u) * 30); height: calc(var(--u) * 30); top: calc(var(--u) * -16);
-  border-radius: 50%; background: linear-gradient(180deg, #fbe3a8, #d9a548); border: calc(var(--u) * 2) solid #7a5418;
-  font: calc(var(--u) * 19)/calc(var(--u) * 27) 'Paytone', sans-serif; color: #3a2408; text-align: center; }
-html.tema-sakura #ladder .ic { font-size: calc(var(--u) * 30); }
-html.tema-sakura #ladder .nm { color: #fff; font-size: calc(var(--u) * 20); }
-html.tema-sakura #ladder .co { color: #e9ddb4; font-size: calc(var(--u) * 17); }
-html.tema-sakura #ladder .step[data-tier="meteor"] { border-color: #ffd65a;
-  box-shadow: 0 0 calc(var(--u) * 26) rgba(255, 196, 70, .75), inset 0 0 calc(var(--u) * 18) rgba(255, 196, 70, .25); }
-/* ---- title, and everything one row lower ---- */
+/* title */
 #title { display: none; }
-html.tema-sakura #title { display: block; position: absolute; left: 0; right: 0; top: calc(var(--u) * (var(--st) + 6)); text-align: center;
-  font: calc(var(--u) * 60) / 1 'Paytone', sans-serif; letter-spacing: .03em; color: #fff3d6;
+html.tema-sakura #title { display: block; position: absolute; left: 0; right: 0; top: calc(var(--u) * (var(--st) + 8)); text-align: center;
+  font: calc(var(--u) * 54) / 1 'Paytone', sans-serif; letter-spacing: .03em; color: #fff3d6;
   text-shadow: 0 calc(var(--u) * 5) 0 #5a1830, 0 calc(var(--u) * 8) calc(var(--u) * 18) rgba(20, 0, 30, .6), 0 0 calc(var(--u) * 34) rgba(255, 140, 190, .55); }
 html.tema-sakura #title span:first-child { color: #ff6a5a; }
-html.tema-sakura #title::before, html.tema-sakura #title::after { content: '🌸'; font-size: calc(var(--u) * 40); vertical-align: middle; margin: 0 calc(var(--u) * 14); }
-html.tema-sakura #topbar { top: calc(var(--u) * (var(--st) + 84)); }
-html.tema-sakura #hpwrap { top: calc(var(--u) * (var(--st) + 168)); }
-html.tema-sakura #status { top: calc(var(--u) * (var(--st) + 244)); }
+html.tema-sakura #title::before, html.tema-sakura #title::after { content: '🌸'; font-size: calc(var(--u) * 36); vertical-align: middle; margin: 0 calc(var(--u) * 14); }
 
-/* ---- side columns: the same tile on both sides, both ending above y ~985 (TikTok's right buttons start at 1000) ----
-   eight gift tiles: one slim row each (icon | name over cost), from just under the health bar */
-html.tema-sakura #ladder { top: calc(var(--u) * (var(--st) + 252)); gap: calc(var(--u) * 8); }
-html.tema-sakura #ladder .step { height: calc(var(--u) * 56); padding: calc(var(--u) * 4) calc(var(--u) * 10); border-radius: calc(var(--u) * 16);
-  grid-template-columns: calc(var(--u) * 36) 1fr; column-gap: calc(var(--u) * 8); }
+/* HUD row: round chip, health bar, timer chip */
+html.tema-sakura #topbar { left: var(--edge); right: var(--edge); top: calc(var(--u) * (var(--st) + 72)); height: var(--row); }
+html.tema-sakura #topbar .chip { box-sizing: border-box; width: var(--chipw); height: var(--row); padding: 0 calc(var(--u) * 16); border-radius: calc(var(--u) * 36); justify-content: center; }
+html.tema-sakura #round { flex-direction: column; gap: 0; line-height: 1; }
+html.tema-sakura #roundNo { font-size: calc(var(--u) * 32); }
+html.tema-sakura #session { font-size: calc(var(--u) * 17); margin-top: calc(var(--u) * 4); white-space: nowrap; }
+html.tema-sakura #round::before { content: none; }
+html.tema-sakura #timer { min-width: 0; font-size: calc(var(--u) * 36); gap: calc(var(--u) * 8); }
+html.tema-sakura #timer::before { content: '⏱'; width: auto; height: auto; background: none; font-size: calc(var(--u) * 30); }
+html.tema-sakura #hpwrap { display: block; left: calc(var(--edge) + var(--chipw) + var(--u) * 12); right: calc(var(--edge) + var(--chipw) + var(--u) * 12);
+  top: calc(var(--u) * (var(--st) + 78)); height: calc(var(--u) * 60); }
+html.tema-sakura #hpbar { height: 100%; box-sizing: border-box; border: calc(var(--u) * 4) solid #f0a98a; border-radius: calc(var(--u) * 30);
+  background: linear-gradient(180deg, #3a1420, #22101c); box-shadow: 0 0 0 calc(var(--u) * 3) #5a1a1a, 0 calc(var(--u) * 8) calc(var(--u) * 18) rgba(0, 0, 0, .45); }
+html.tema-sakura #hpfill { background: linear-gradient(180deg, #ff5a48 0%, #e02a2a 50%, #a8141e 100%); }
+/* the ŞEYTAN label and the numbers sit inside the bar */
+html.tema-sakura #hpname { position: absolute; z-index: 2; left: calc(var(--u) * 22); top: 0; height: 100%; margin: 0; display: flex; align-items: center;
+  font-size: calc(var(--u) * 26); letter-spacing: .06em; color: #fff3d6; text-shadow: 0 calc(var(--u) * 2) 0 #3a0a10, 0 0 calc(var(--u) * 10) rgba(0, 0, 0, .6); }
+html.tema-sakura #hpname::before, html.tema-sakura #hpname::after { content: none; }
+html.tema-sakura #hptxt { z-index: 2; top: 0; height: 100%; right: calc(var(--u) * 22); font-size: calc(var(--u) * 26); }
+
+/* status: a red ribbon centred under the HUD row, between the two columns */
+html.tema-sakura #status { left: 50%; right: auto; transform: translateX(-50%); top: var(--cols); max-width: calc(var(--u) * 500); box-sizing: border-box;
+  padding: calc(var(--u) * 6) calc(var(--u) * 28); border-radius: calc(var(--u) * 14); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  background: linear-gradient(180deg, #d8402e, #9c1e1c); border: calc(var(--u) * 3) solid #f6b06a; color: #fff6e6;
+  font: 900 calc(var(--u) * 26) 'Nunito', sans-serif; box-shadow: 0 calc(var(--u) * 6) calc(var(--u) * 14) rgba(40, 0, 10, .5); }
+html.tema-sakura #status:empty { display: none; }
+
+/* shared tile look for both columns */
+html.tema-sakura #board li, html.tema-sakura #ladder .step, html.tema-sakura #board .ttl {
+  box-sizing: border-box; border-radius: calc(var(--u) * 18); background: linear-gradient(180deg, var(--navy), var(--navy2)); border: calc(var(--u) * 3) solid var(--gold);
+  box-shadow: 0 calc(var(--u) * 8) calc(var(--u) * 20) rgba(6, 6, 30, .55), inset 0 calc(var(--u) * 2) 0 rgba(255, 255, 255, .08); }
+
+/* right column: eight gift tiles, icon | name over cost, 66 tall, gap 8: y 390..974 */
+html.tema-sakura #ladder { left: auto; right: var(--edge); top: var(--cols); width: calc(var(--u) * 208); grid-template-columns: 1fr; gap: calc(var(--u) * 8); }
+html.tema-sakura #ladder .step { position: relative; height: calc(var(--u) * 66); padding: 0 calc(var(--u) * 12); display: grid; grid-template-columns: calc(var(--u) * 38) 1fr;
+  grid-template-rows: auto auto; align-content: center; column-gap: calc(var(--u) * 10); text-align: left; overflow: visible; }
 html.tema-sakura #ladder .step::before { content: none; }
-html.tema-sakura #ladder .ic { font-size: calc(var(--u) * 27); }
-html.tema-sakura #ladder .ic.sm { font-size: calc(var(--u) * 20); }
-html.tema-sakura #ladder .nm { font-size: calc(var(--u) * 19); line-height: 1.1; }
-html.tema-sakura #ladder .co { font-size: calc(var(--u) * 15); line-height: 1.15; }
+html.tema-sakura #ladder .ic { grid-row: 1 / 3; align-self: center; text-align: center; line-height: 1; font-size: calc(var(--u) * 30); }
+html.tema-sakura #ladder .ic.sm { font-size: calc(var(--u) * 22); }
+html.tema-sakura #ladder .nm { color: #fff; font-size: calc(var(--u) * 21); line-height: 1.12; white-space: nowrap; }
+html.tema-sakura #ladder .co { color: #e9ddb4; font-size: calc(var(--u) * 16); line-height: 1.2; }
 /* the big three glow: chains gold, star white-gold, dragon red */
 html.tema-sakura #ladder .step[data-tier="chains"] { border-color: #ffe27a; box-shadow: 0 0 calc(var(--u) * 16) rgba(255, 214, 90, .5); }
-html.tema-sakura #ladder .step[data-tier="meteor"] { box-shadow: 0 0 calc(var(--u) * 18) rgba(255, 196, 70, .6), inset 0 0 calc(var(--u) * 12) rgba(255, 196, 70, .2); }
+html.tema-sakura #ladder .step[data-tier="meteor"] { border-color: #ffd65a; box-shadow: 0 0 calc(var(--u) * 18) rgba(255, 196, 70, .6), inset 0 0 calc(var(--u) * 12) rgba(255, 196, 70, .2); }
 html.tema-sakura #ladder .step[data-tier="dragon"] { border-color: #ff7a4a; background: linear-gradient(180deg, rgba(120, 20, 30, .95), rgba(60, 10, 22, .95));
   box-shadow: 0 0 calc(var(--u) * 24) rgba(255, 90, 40, .75), inset 0 0 calc(var(--u) * 14) rgba(255, 120, 60, .3); }
 html.tema-sakura #ladder .step[data-tier="dragon"] .nm { color: #ffd2a8; }
-html.tema-sakura #board { top: calc(var(--u) * (var(--st) + 252)); left: calc(var(--u) * (var(--sx) + 6)); width: calc(var(--u) * 204);
-  background: none; border: 0; box-shadow: none; padding: 0; border-radius: 0; }
-html.tema-sakura #board .ttl { margin: 0 0 calc(var(--u) * 20); padding: calc(var(--u) * 6) calc(var(--u) * 10); text-align: center; border-radius: calc(var(--u) * 16);
-  background: linear-gradient(180deg, var(--navy), var(--navy2)); border: calc(var(--u) * 3) solid var(--gold); color: var(--gold-hi);
-  font: calc(var(--u) * 18) 'Paytone', sans-serif; letter-spacing: .04em; }
+
+/* left column: title pill, then the top three as tiles (same width and look as the gift tiles) */
+html.tema-sakura #board { left: var(--edge); top: var(--cols); width: calc(var(--u) * 208); background: none; border: 0; box-shadow: none; padding: 0; border-radius: 0; }
+html.tema-sakura #board .ttl { margin: 0 0 calc(var(--u) * 16); padding: calc(var(--u) * 8) calc(var(--u) * 10); text-align: center; color: var(--gold-hi);
+  font: calc(var(--u) * 18) / 1.15 'Paytone', sans-serif; letter-spacing: .04em; }
 html.tema-sakura #board .ttl::before { content: none; }
-html.tema-sakura #board ol { display: grid; gap: calc(var(--u) * 20); counter-reset: none; }
-html.tema-sakura #board li { position: relative; height: calc(var(--u) * 72); box-sizing: border-box; padding: calc(var(--u) * 8) calc(var(--u) * 12);
-  border-radius: calc(var(--u) * 20); background: linear-gradient(180deg, var(--navy), var(--navy2)); border: calc(var(--u) * 3) solid var(--gold);
-  box-shadow: 0 calc(var(--u) * 8) calc(var(--u) * 20) rgba(6, 6, 30, .55); display: grid; grid-template-columns: calc(var(--u) * 44) 1fr; grid-template-rows: auto auto;
-  column-gap: calc(var(--u) * 10); align-content: center; font: 800 calc(var(--u) * 22) 'Nunito', sans-serif; }
+html.tema-sakura #board ol { display: grid; gap: calc(var(--u) * 16); }
+html.tema-sakura #board li { position: relative; height: calc(var(--u) * 72); padding: calc(var(--u) * 8) calc(var(--u) * 12); display: grid;
+  grid-template-columns: calc(var(--u) * 44) 1fr; grid-template-rows: auto auto; column-gap: calc(var(--u) * 10); align-content: center; font: 800 calc(var(--u) * 22) 'Nunito', sans-serif; }
 html.tema-sakura #board li::after { content: none; }
 html.tema-sakura #board li .av { grid-row: 1 / 3; align-self: center; width: calc(var(--u) * 44); height: calc(var(--u) * 44); border: calc(var(--u) * 2) solid var(--gold); }
 html.tema-sakura #board li .nm { color: #fff; font-size: calc(var(--u) * 21); line-height: 1.15; }
