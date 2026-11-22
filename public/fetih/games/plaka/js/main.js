@@ -264,9 +264,18 @@ async function main() {
   // Frame cap (visual.streamMaxFps, stream layout only): TikTok LIVE sends 30 frames a second,
   // so drawing 60 in LIVE Studio only doubles the load on the streaming PC. 0 = no cap.
   const capFps = Number(urlOpts.fps) || Number(config.visual.streamMaxFps ?? 30) || 0;
+  // The cap keeps a schedule (nextAt += interval) instead of "time since the last frame":
+  // display ticks rarely divide the interval evenly (82 Hz in LIVE Studio, 165 Hz on this
+  // laptop), and "now - last >= interval" then waits an extra tick every frame, giving an
+  // uneven 27 FPS against TikTok's steady 30 (visible judder). The schedule averages exactly capFps.
+  let nextAt = 0;
   function frame(now) {
     requestAnimationFrame(frame);
-    if (capFps > 0 && document.documentElement.classList.contains('stream') && now - last < 1000 / capFps - 2) return;
+    if (capFps > 0 && document.documentElement.classList.contains('stream')) {
+      const iv = 1000 / capFps;
+      if (now < nextAt - 1) return;
+      nextAt = now - nextAt > iv ? now + iv : nextAt + iv; // resync after a stall, else keep the beat
+    }
     const raw = (now - last) / 1000;
     last = now;
     const dt = Math.min(0.25, Math.max(0, raw)); // low FPS: the sim keeps pace with the wall-clock round timer
