@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>Yönlendiriliyor…</title>
+<meta name="robots" content="noindex">
+<script>
+  // GitHub Pages runs two deployments for this repo; when the branch build wins, the site is served
+  // from the repository root and the games live under /public/fetih/ instead of /fetih/. This page
+  // is only used by that build (Vite does not copy it into dist): it keeps /fetih/... links working
+  // by forwarding them, with the query string, to /public/fetih/...
+  (function () {
+    var p = location.pathname;
+    if (p === '/fetih' || p.indexOf('/fetih/') === 0) {
+      location.replace('/public' + (p === '/fetih' ? '/fetih/' : p) + location.search + location.hash);
+    }
+  })();
+</script>
+</head>
+<body style="margin:0;background:#0b0618;color:#fff;font:16px system-ui,sans-serif;display:grid;place-items:center;height:100vh">
+  <p>Sayfa bulunamadı. <a href="/" style="color:#ffcf6e">Ana sayfa</a></p>
+</body>
+</html>
