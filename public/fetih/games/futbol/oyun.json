@@ -1,0 +1,34 @@
+{
+  "id": "futbol",
+  "title": "Tribün Kupası",
+  "description": "18 Süper Lig takımı kaleye yarışır. İzleyiciler takım adını ya da numarasını yazıp takımına katılır; beğeniler ve hediyeler takımına güç verir (Pas, Şut, Faul, Penaltı, Röveşata). Hedefe ilk ulaşan takım golü atar ve kupayı kaldırır.",
+  "status": "hazir",
+  "order": 4,
+  "entry": "index.html",
+  "siteExclude": ["server.js", "package.json", "package-lock.json"],
+  "commands": [
+    { "name": "newMatch", "label": "Yeni maç başlat", "confirm": "Yeni maç başlasın mı? Takımların bu maçtaki gücü sıfırlanır (taraftarlar ve kupalar kalır)." },
+    { "name": "resetCups", "label": "Kupaları sıfırla", "danger": true, "confirm": "Bütün takımların kupa sayısı sıfırlansın mı?" }
+  ],
+  "sim": {
+    "kind": "teams",
+    "joinHint": "Takım adı ya da numarası yazılır (ör. galatasaray, fener, 3)",
+    "teams": [
+      { "key": "gs", "label": "Galatasaray", "words": ["galatasaray", "gs", "cimbom", "1", "Galatasaray"] },
+      { "key": "bjk", "label": "Beşiktaş", "words": ["beşiktaş", "bjk", "kartal", "2", "Beşiktaş"] },
+      { "key": "fb", "label": "Fenerbahçe", "words": ["fenerbahçe", "fb", "fener", "3", "Fenerbahçe"] },
+      { "key": "ts", "label": "Trabzonspor", "words": ["trabzonspor", "ts", "trabzon", "4"] },
+      { "key": "ibfk", "label": "Başakşehir", "words": ["başakşehir", "ibfk", "5"] },
+      { "key": "goz", "label": "Göztepe", "words": ["göztepe", "6"] },
+      { "key": "sam", "label": "Samsunspor", "words": ["samsunspor", "samsun", "8"] },
+      { "key": "riz", "label": "Çaykur Rizespor", "words": ["rizespor", "rize", "9"] },
+      { "key": "kas", "label": "Kasımpaşa", "words": ["kasımpaşa", "10"] },
+      { "key": "kon", "label": "Konyaspor", "words": ["konyaspor", "konya", "12"] },
+      { "key": "amd", "label": "Amedspor", "words": ["amedspor", "amed", "13"] },
+      { "key": "gfk", "label": "Gaziantep", "words": ["gaziantep", "antep", "14"] }
+    ],
+    "emoji": false,
+    "chatter": ["gol gol gol", "hadi aslanım", "kartal yükseklerde", "fener ağlama", "bu maç bizim", "röveşata gelsin", "penaltı!", "faul var", "kupa bizim", "efsane"]
+  },
+  "features": ["tiktokZones", "audio", "giftLadder", "demo"]
+}
