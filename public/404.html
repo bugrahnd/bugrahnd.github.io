@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>Yönlendiriliyor…</title>
+<meta name="robots" content="noindex">
+<script>
+  // Counterpart of the repository-root 404.html. GitHub Pages runs two deployments for this repo:
+  // the Actions build (Vite copies public/ to the site root, so this file becomes /404.html) serves
+  // the games at /fetih/, the branch build at /public/fetih/. A page opened under one address keeps
+  // working after the other build wins: /public/fetih/... is forwarded here to /fetih/...
+  (function () {
+    var p = location.pathname;
+    if (p.indexOf('/public/') === 0) {
+      location.replace(p.slice('/public'.length) + location.search + location.hash);
+    }
+  })();
+</script>
+</head>
+<body style="margin:0;background:#0b0618;color:#fff;font:16px system-ui,sans-serif;display:grid;place-items:center;height:100vh">
+  <p>Sayfa bulunamadı. <a href="/" style="color:#ffcf6e">Ana sayfa</a></p>
+</body>
+</html>
