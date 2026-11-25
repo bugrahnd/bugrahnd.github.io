@@ -66,6 +66,17 @@ function setCard(on, title = '') {
   }
 }
 
+/** Reloads the page from the other hosted address (/x/ <-> /public/x/) when the game is found there. */
+async function movedSite(url) {
+  const p = location.pathname;
+  const alt = p.startsWith('/public/') ? p.slice('/public'.length) : `/public${p}`;
+  const there = await fetch(new URL(url, location.origin + alt).href, { method: 'HEAD', cache: 'no-cache' }).then((r) => r.ok, () => false);
+  if (!there) return false;
+  console.warn(`site ${alt} adresine taşınmış; sayfa oradan yeniden açılıyor`);
+  location.replace(alt + location.search + location.hash);
+  return true;
+}
+
 /** Show a game. The first one appears directly; later switches go through the card. */
 async function show(game) {
   const url = safeUrl(game.url);
@@ -84,6 +95,10 @@ async function show(game) {
   const exists = await fetch(url, { method: 'HEAD', cache: 'no-cache' }).then((r) => r.ok, () => true);
   if (t !== token) return;
   if (!exists) {
+    // The hosted copy can move between /fetih/ and /public/fetih/ (two GitHub Pages builds race on
+    // every push). If the game is there, reload this page from that address: the bridge then tells
+    // it the game again and it loads normally.
+    if (!mode.local && await movedSite(url)) return;
     console.warn(`"${g.title || g.id}" bu sitede yok (${url}); site kopyası güncellenmeli. Mevcut oyun kalıyor.`);
     return;
   }
