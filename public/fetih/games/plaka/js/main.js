@@ -125,8 +125,9 @@ async function main() {
   // Gift ladder tiles show "+N asker" from the live gift curve.
   hud.troopsFor = (coins) => game.giftTroops(coins);
   hud.setGiftStrip(config.hud.giftStrip, config.hud.giftStripTroops !== false);
-  // hud.noSolicit: the gift price ladder never shows, whatever the panel's "Ekran" settings say.
-  const noSolicit = (show) => (config.hud.noSolicit ? { ...show, giftStrip: false } : show);
+  // hud.noSolicit: no gift price ladder; that row shows the fixed "NASIL OYNANIR" tiles instead
+  // (Hud._howTiles), so it stays visible.
+  const noSolicit = (show) => (config.hud.noSolicit ? { ...show, giftStrip: true } : show);
   hud.setVisibility(noSolicit({}));
   window.__game = game; // handy for debugging from the console
   window.__audio = audio;

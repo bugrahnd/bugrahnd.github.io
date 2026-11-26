@@ -1002,6 +1002,11 @@ html:not(.dbg) .wait-pill.on { display: block; }
 .stream .tier-troops { color: #7dff7d; text-shadow: 0 calc(var(--u) * 2) 0 #000; }
 /* "+N asker" on the tile; the effect word only when the number is hidden. */
 .stream .tier-troops + .tier-label { display: none; }
+/* hud.noSolicit "NASIL OYNANIR" tiles: title / icon + keyword / short line (no prices). */
+.stream .tier.how .tier-coins { color: #ffd166; letter-spacing: .02em; }
+.stream .tier.how .tier-res { font-size: calc(var(--u) * 28); }
+.stream .tier.how .tier-label { color: #fff; }
+.stream .tier.how.r2 .tier-label { color: #ffb347; }
 /* A gift that just arrived: the tile glows inside its own frame (plain highlight, no badge text). */
 .stream .tier.hot { border-color: var(--gold); box-shadow: inset 0 0 0 calc(var(--u) * 3) var(--gold), inset 0 0 calc(var(--u) * 30) rgba(255, 209, 102, 0.75); background: rgba(70, 45, 0, 0.78); }
 .stream .tier-dots i { width: calc(var(--u) * 12); height: calc(var(--u) * 12); }

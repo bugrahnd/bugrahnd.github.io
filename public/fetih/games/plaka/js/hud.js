@@ -211,6 +211,14 @@ function ctaLines(cfg) {
   ];
 }
 
+// hud.noSolicit: the ladder row becomes a fixed "how to play" board (Hud._howTiles).
+const HOW_HEADING = 'NASIL OYNANIR';
+const HOW_TILES = [
+  { icon: 'icon_knight', title: 'Plakanı yaz', key: '34', text: 'şehrine katıl' },
+  { icon: 'icon_fire', title: 'Moral dolar', key: 'HÜCUM', text: 'şehir saldırır' },
+  { icon: 'icon_gem', title: 'Hediyeler', key: 'ORDU', text: 'asker · süvari · top' },
+];
+
 // Longest gift ladder (panel schema gifts.strip.maxCount, game/js/settings.js).
 const GIFT_STRIP_MAX = 16;
 // Announcement tiers (gifts.tiers[].id) shown as the full-screen card.
@@ -564,6 +572,7 @@ export class Hud {
   setGiftStrip(list, troopsOn) {
     if (troopsOn !== undefined) this.stripTroops = troopsOn !== false;
     if (list !== undefined) this._stripRaw = list;
+    if (this.cfg.hud.noSolicit) { this._howTiles(); return; }
     list = this._stripRaw;
     const strip = (Array.isArray(list) && list.length ? list : this.cfg.gifts.tiers.map((t) => ({ name: '', coins: t.minCoins, plus: true, effect: t.legend })))
       .slice(0, GIFT_STRIP_MAX).map((g) => this._resolveStripEntry(g));
@@ -597,6 +606,32 @@ export class Hud {
       const tile = { el: t, g: { ...g, name, coins }, img, fb };
       img.set(this._iconForEntry(tile.g), fb);
       return tile;
+    });
+    this._paginate();
+  }
+
+  /**
+   * hud.noSolicit: the ladder row explains the game instead of listing gifts. Three fixed
+   * tiles, one page, never rotating, no prices and no "send" wording (TikTok suspended gifting
+   * on 2026-11-26 for soliciting gifts through repeated triggers and promises). A gift that
+   * arrives only lights up the gift tile for a moment.
+   */
+  _howTiles() {
+    if (this._stripKey === 'how') return;
+    this._stripKey = 'how';
+    this.tierTabText.textContent = HOW_HEADING;
+    const a = this.assets;
+    this.tiles = HOW_TILES.map((h, i) => {
+      const t = el('div', `tier how r${i === 2 ? 2 : 1}`);
+      const head = el('div', 'tier-head', t);
+      const fb = a.uiPath(h.icon);
+      const img = giftImg(head, 'tier-img', fb);
+      img.set('', fb);
+      el('span', 'tier-name', head, h.title);
+      el('span', 'tier-coins', head, h.key);
+      const res = el('div', 'tier-res', t);
+      el('span', 'tier-label', res, h.text);
+      return { el: t, g: { name: h.title, coins: 0, how: true }, img, fb };
     });
     this._paginate();
   }
@@ -771,6 +806,14 @@ export class Hud {
   /** A gift arrived: jump to its ladder step and highlight it for a moment. */
   giftPulse(coins, id = 0, name = '') {
     if (!this.tiles.length || !this._vis('giftStrip')) return;
+    if (this.tiles[0].g.how) {
+      // info tiles: a gift lights up the "Hediyeler" tile (a thank-you, not a call)
+      const tile = this.tiles[2].el;
+      this.pulseUntil = this.timeNow + (this.cfg.hud.giftPulseSec ?? 3.5);
+      tile.classList.add('hot');
+      tile.animate([{ transform: 'scale(1.05)' }, { transform: 'scale(1)' }], { duration: 420, easing: 'ease-out' });
+      return;
+    }
     // Chaos-level traffic: a smaller gift does not steal a fresh pulse.
     if (this.timeNow - this.pulseAt < 1.2 && coins < this.pulseCoins) return;
     const T = this.tiles;
@@ -859,7 +902,7 @@ export class Hud {
 
   /** Ladder heading tab text (streamer setting gifts.heading). */
   setGiftHeading(text) {
-    this.tierTabText.textContent = String(text || '').trim() || GIFT_HEADING;
+    this.tierTabText.textContent = this.cfg.hud.noSolicit ? HOW_HEADING : (String(text || '').trim() || GIFT_HEADING);
   }
 
   setCta(text, example) {
