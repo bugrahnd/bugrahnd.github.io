@@ -215,7 +215,8 @@ function ctaLines(cfg) {
 const HOW_HEADING = 'NASIL OYNANIR';
 const HOW_TILES = [
   { icon: 'icon_knight', title: 'Plakanı yaz', key: '34', text: 'şehrine katıl' },
-  { icon: 'icon_fire', title: 'Moral dolar', key: 'HÜCUM', text: 'şehir saldırır' },
+  // describes what likes do (a statement, never "beğen" / "ekrana bas")
+  { icon: 'icon_fire', title: 'Beğeniler', key: 'MORAL', text: 'dolunca HÜCUM' },
   { icon: 'icon_gem', title: 'Hediyeler', key: 'ORDU', text: 'asker · süvari · top' },
 ];
 
