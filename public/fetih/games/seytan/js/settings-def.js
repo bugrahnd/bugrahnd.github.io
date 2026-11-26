@@ -31,7 +31,7 @@ export const schema = {
   'chains.sec': { label: 'Zincirde kalma süresi', type: 'num', min: 1, max: 15, step: 0.5, unit: 'saniye', group: G_HITS, hint: 'Tılsım zincirinin şeytanı yerinde tuttuğu süre.' },
 
   'view.names': { label: 'İsabetlerde isim', type: 'bool', group: G_VIEW, hint: 'Her isabette taşı atanın adı çıkar (beğeni isimleri sık olmasın diye seyreltilir).' },
-  'view.ladder': { label: 'Hediye rehberi', type: 'bool', group: G_VIEW, hint: 'Alt şeritte hangi hediyenin ne yaptığını yazan rehber.' },
+  'view.ladder': { label: 'Hediye rehberi (fiyatlı liste)', type: 'bool', group: G_VIEW, hint: 'Hangi hediyenin kaç jetonla ne yaptığını gösteren sütun. Varsayılan kapalı: TikTok, ekranda sürekli duran fiyatlı hediye listesini hediye istemek sayabiliyor (2026-11-26 hediye askıya alma cezası).' },
   'view.board': { label: 'Canlı sıralama', type: 'bool', group: G_VIEW, hint: 'Tur boyunca en çok taş atan 3 kişi yan tarafta görünür.' },
 };
 
@@ -56,6 +56,6 @@ export const defaults = {
   'tier.dragon': 1500,
   'chains.sec': 5,
   'view.names': true,
-  'view.ladder': true,
+  'view.ladder': false,
   'view.board': true,
 };

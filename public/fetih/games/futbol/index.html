@@ -191,7 +191,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:var(--txt);color:#f
   <div id="pTeams" class="panel"><div class="ph"><div class="h">PUAN DURUMU</div><div class="cols"><span>KUPA</span><span>GÜÇ</span></div></div><div id="teamlist"></div></div>
   <div id="pStars" class="panel"><div class="ph"><div class="h"><svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24"><path d="M12 2 L14.9 8.6 L22 9.3 L16.6 14 L18.2 21 L12 17.3 L5.8 21 L7.4 14 L2 9.3 L9.1 8.6 Z" fill="#ffc53d"/></svg>MAÇIN YILDIZLARI</div></div><div id="mvplist"></div></div>
 
-  <div id="rules"><div class="h"><span>HEDİYE KURALLARI · <b id="r_coin">1 JETON = 20 GÜÇ</b></span><span class="lk"><svg aria-hidden="true" width="22" height="20" viewBox="0 0 40 36"><path d="M20 34 C8 24 1 18 1 10 C1 5 5 1 10 1 C14 1 18 3 20 7 C22 3 26 1 30 1 C35 1 39 5 39 10 C39 18 32 24 20 34 Z" fill="#ff4d7d"/></svg><b id="r_like">1 BEĞENİ = 1 GÜÇ</b></span></div><div class="g" id="tiers"></div></div>
+  <div id="rules"><div class="h"><span>NASIL OYNANIR</span></div><div class="g" id="tiers"></div></div>
 
   <div id="join"><div class="in"><div class="q">TAKIM ADI YA DA NUMARASI YAZ:</div><div id="joinlist"></div></div></div>
 
@@ -211,7 +211,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:var(--txt);color:#f
   <label>Hedef güç (💎) <input id="s_target" type="number" min="10"></label>
   <label>Maç süresi (sn) <input id="s_roundSec" type="number" min="30"></label>
   <label>Kaç beğeni = 1 güç <input id="s_likesPerPower" type="number" min="1"></label>
-  <label>Güç çarpanı (beğeni + hediye) <input id="s_boost" type="number" min="0.1" step="0.5"></label>
+  <label>Beğeni çarpanı <input id="s_boost" type="number" min="0.1" step="0.5"></label>
   <label>Marş sesi (%) <input id="s_anthemVol" type="number" min="0" max="100"></label>
   <label>Faul geri itme (% hedef) <input id="s_faulPct" type="number" min="0" max="50"></label>
   <label>Turbo süresi (sn) <input id="s_turboSec" type="number" min="1"></label>
@@ -253,7 +253,8 @@ const TEAMS = [
 ];
 
 // ===================== AYARLAR =====================
-// boost: beğeni ve hediye gücünü aynı oranda çarpar (az izleyicili yayında maçlar bitebilsin diye)
+// boost: beğeni gücünü çarpar (az izleyicili yayında maçlar bitebilsin diye). Hediyelere uygulanmaz:
+// tek hediyenin maçı bitirmesi "para at, kazan" vaadi gibi duruyordu.
 const DEFAULTS = {target:1000, roundSec:180, likesPerPower:20, boost:20, faulPct:8, turboSec:20, finalPct:75, breakSec:8, anthemVol:60, username:''};
 // TikTok hediye kademeleri: tek hediyenin jeton değerine göre (Gül 1, Donat 30, Şapka ve Bıyık 99, Elle Kalp 100,
 // Corgi 299, Para Tabancası 500, Galaxy 1000, Aslan 29999). Pahalı hediye her jeton için daha çok güç verir.
@@ -542,9 +543,11 @@ function drawConfetti(){
 
 // ===================== LED REKLAM PANOSU =====================
 function setBoard(L){
+  // TikTok kuralları: pano oyunu anlatır, hediye istemez, fiyat ve "×2" gibi baskı yazısı göstermez
+  // (hediyeyi tekrarlayan çağrı / vaat / aciliyetle istemek hediye askıya alma cezası getirdi).
   const parts = L
-    ? [`SON DAKİKA`, `${L.name.toLocaleUpperCase('tr')} DIŞINDAKİLERE ×2 GÜÇ`, `KALEYİ KORU`]
-    : ['TRİBÜN KUPASI', 'YORUMA TAKIMINI YAZ', 'BÜYÜK HEDİYE = BÜYÜK ADIM', 'PENALTI 500+ JETON', 'RÖVEŞATA 1000+ JETON', 'KALEYE İLK GİDEN KAZANIR'];
+    ? [`SON DAKİKA`, `${L.name.toLocaleUpperCase('tr')} KALEYE ÇOK YAKIN`]
+    : ['TRİBÜN KUPASI', 'YORUMA TAKIMINI YAZ', 'TAKIM ADI YA DA NUMARASI', 'KALEYE İLK GİDEN KUPAYI ALIR'];
   const one = parts.map(p=>`<span>${esc(p)}</span><i>●</i>`).join('');
   $('tk').innerHTML = one + one + one + one;
   $('board').classList.toggle('final', !!L);
@@ -560,7 +563,7 @@ function newRound(){
   $('win').className=''; setBoard(null); stopAnthem(); stopCelebrate();
   $('sub').textContent = `${n}. MAÇ · HEDEF ${S.target}`;
   renderMvp(); sfx.whistle();
-  if(n>1) banner('YENİ MAÇ!', 'Düdük çaldı, hediyeler sahaya!');
+  if(n>1) banner('YENİ MAÇ!', 'Düdük çaldı! Takımını yoruma yaz');
   checkState();
 }
 
@@ -573,7 +576,7 @@ function addPower(t, amt, u){
   if(round.state!=='play'){ t.pending += amt; return; } // maç arası gelenler sonraki maça devreder
   let m = 1;
   if(t.turboUntil > Date.now()) m *= 2;
-  if(round.final && round.leader && round.leader!==t) m *= 2;
+  // (son dakikada geride kalanlara ×2 kaldırıldı: "şimdi gönder" baskısı yaratıyordu)
   const v = amt*m;
   t.power += v;
   if(u) addContrib(u, t, v);
@@ -592,7 +595,7 @@ function checkState(){
   }
   if(L && !round.final && L.power >= S.target*S.finalPct/100){
     round.final = true; sfx.whistle();
-    banner('SON DAKİKA!', `${L.name} kaleye çok yakın! Geride kalanlara ×2 güç!`, 'final');
+    banner('SON DAKİKA!', `${L.name} kaleye çok yakın!`, 'final');
     setBoard(L);
   }
   if(L && L.power >= S.target) startGoal(L);
@@ -772,6 +775,8 @@ function getUser(e){
   return u;
 }
 
+// takım seçmeden gelen hediye ve beğeniler (kullanıcı -> olaylar / beğeni sayısı)
+const heldGifts = new Map(), heldLikes = new Map();
 function handle(e){
   if(!e || !e.type) return;
   if(e.type==='status') return showStatus(e);
@@ -783,15 +788,22 @@ function handle(e){
     if(u.team){ const old=byId(u.team); old.fans--; updateMeta(old); }
     u.team = t.id; t.fans++; updateMeta(t);
     feed(u, `<b>${esc(t.name)}</b> takımına katıldı`, t);
+    // takım seçmeden gönderdikleri boşa gitmez: şimdi takımına sayılır
+    const hg = heldGifts.get(u.uid); if(hg){ heldGifts.delete(u.uid); hg.forEach(handle); }
+    const hl = heldLikes.get(u.uid); if(hl){ heldLikes.delete(u.uid); handle({type:'like', user:u.uid, count:hl}); }
   }
   else if(e.type==='gift'){
     const u = users.get(e.user);
-    if(!u || !u.team) return;                      // takım seçmeyenin hediyesi boşa gider
+    if(!u || !u.team){                               // takımı yok: hediye saklanır, takım seçince sayılır
+      getUser(e);
+      const l = heldGifts.get(e.user) || []; if(l.length < 30) l.push(e); heldGifts.set(e.user, l);
+      return;
+    }
     getUser(e);
     const t = byId(u.team);
     const coins = Math.max(1, e.diamonds||1), cnt = Math.max(1, e.count||1);
     const tier = tierOf(coins);                         // kademe tek hediyenin değerine göre (50 gül = yine PAS)
-    const base = Math.round(coins*cnt*tier.mult*S.boost);
+    const base = Math.round(coins*cnt*tier.mult);
     const wasPlay = round.state==='play';
     const m = addPower(t, base, u) || 1;
     const big = !!tier.fx;
@@ -815,7 +827,7 @@ function handle(e){
   }
   else if(e.type==='like'){
     const u = users.get(e.user);
-    if(!u || !u.team) return;                      // takım seçmeyenin beğenisi boşa gider
+    if(!u || !u.team){ heldLikes.set(e.user, Math.min(5000, (heldLikes.get(e.user)||0) + (e.count||1))); return; } // takım seçince sayılır
     addPower(byId(u.team), (e.count||1)/S.likesPerPower*S.boost, u);
   }
 }
@@ -841,7 +853,7 @@ function frame(now){
     t.y = t.startY - p*(t.startY - FINISH_Y);
     t.flash = Math.max(0, t.flash - dt*3);
     t.turbo = t.turboUntil > nowMs;
-    t.x2 = !!(round && round.final && round.state==='play' && round.leader && round.leader!==t);
+    t.x2 = false; // son dakika ×2 kaldırıldı
     if(t.act>0.3 && Math.random()<0.45) t.dust.push({x:t.x+(Math.random()-.5)*20, y:t.y+24, s:4+Math.random()*5, a:.8});
     for(const d of t.dust){ d.a -= dt*1.6; d.y += dt*45; }
     for(const q of t.pops){ q.a -= dt*1.1; q.y += dt*45; }
@@ -876,7 +888,7 @@ function renderMvp(){
   const list = round ? [...round.contrib.values()].sort((a,b)=>b.pts-a.pts).slice(0,4) : [];
   $('mvplist').innerHTML = list.length ? list.map((c,i)=>{ const t=byId(c.team);
       return `<div class="row"><span class="k">${i+1}</span>${avatar(c)}<span class="nm">${esc(c.nick)}</span><img class="lg" src="${t.logo}" alt=""><span class="pts">${Math.floor(c.pts)}</span></div>`; }).join('')
-    : `<div class="row empty">Henüz hediye yok. İlk sen ol!</div>`;
+    : `<div class="row empty">Maç yeni başladı</div>`;
   const tops = [...teams].sort((a,b)=>b.power-a.power || b.cups-a.cups || a.id-b.id).slice(0,4);
   $('teamlist').innerHTML = tops.map((t,i)=>`<div class="row${i===0&&t.power>0?' first':''}"><span class="k">${i+1}</span><img class="lg" src="${t.logo}" alt=""><span class="nm">${esc(t.name)}</span><span class="cup">${t.cups}</span><span class="pw">${Math.floor(t.power)}</span></div>`).join('');
 }
@@ -887,14 +899,16 @@ function cycleJoin(){
   $('joinlist').innerHTML = pick.map(t=>`<div class="c"><span class="no">${t.id}</span>${logoImg(t)}${esc(t.name)}</div>`).join('');
 }
 cycleJoin(); setInterval(cycleJoin, 3000);
+// Oyunun nasıl oynandığı: hediye fiyatı, jeton/güç oranı ya da hediye çağrısı yok (TikTok kuralları).
+// Hediyeler geldiğinde son hediye kutusunda ve banner'da teşekkür olarak görünür.
+const HOW = [
+  {n:'TAKIMINI SEÇ', v:'1', m:'Yoruma takım adı ya da no'},
+  {n:'KALEYE KOŞ',   v:'2', m:'Takımın güçlendikçe ilerler'},
+  {n:'GOL = KUPA',   v:'3', m:'Kaleye ilk ulaşan kazanır'},
+];
 function renderRules(){
-  // güç çarpanıyla: kaç beğeni 1 güç, 1 jeton kaç güç (PAS kademesi; üst kademeler ×1.5…×4)
-  const n = x => String(Math.round(x*10)/10).replace('.', ',');
-  const lp = S.likesPerPower/Math.max(0.1, S.boost);
-  $('r_like').textContent = lp >= 1 ? `${n(lp)} BEĞENİ = 1 GÜÇ` : `1 BEĞENİ = ${n(1/lp)} GÜÇ`;
-  $('r_coin').textContent = `1 JETON = ${n(S.boost)} GÜÇ`;
-  $('tiers').innerHTML = TIERS.map((t,i)=>`<div class="rc${t.fx?' hot':''}" style="--lc:${t.lc}">${t.card?`<div class="ycard${t.card==='red'?' red':''}"></div>`:''}
-    <div class="n">${t.name}</div><div class="v">${t.min}${i<TIERS.length-1?'+':'+'}</div><div class="m">${t.note}</div></div>`).join('');
+  $('tiers').style.gridTemplateColumns = `repeat(${HOW.length},minmax(0,1fr))`;
+  $('tiers').innerHTML = HOW.map(h=>`<div class="rc"><div class="n">${h.n}</div><div class="v">${h.v}</div><div class="m">${h.m}</div></div>`).join('');
 }
 renderRules();
 setInterval(renderMvp, 500);

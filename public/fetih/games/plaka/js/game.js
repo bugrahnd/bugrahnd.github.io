@@ -780,14 +780,17 @@ export class Game {
       return;
     }
 
-    if (tier.announce) {
+    // hud.noSolicit (no standing gift prices on screen): gifts from 100 coins get the
+    // full-screen card too, so a gift is shown when it arrives instead of being asked for.
+    const announceSec = tier.announce ? (tier.announceSec || 5) : (this.cfg.hud.noSolicit && tierIndex >= 2 ? 3.5 : 0);
+    if (announceSec) {
       this.view.hud.announce({
         tier: tier.label, tierId: tier.id, nick: player.nick, badge: player.badge, avatar: player.avatar, effect: tier.legend || '',
         giftName: g.giftName, giftIcon: g.icon, count: g.count, troops, team: team.name, colorHex: team.colorHex,
-        sec: tier.announceSec || 5,
+        sec: announceSec,
       });
       // Music steps back under the announcement; the horn is capped (one at a time, faded).
-      this.view.audio.duck((tier.announceSec || 5) + 0.5);
+      this.view.audio.duck(announceSec + 0.5);
       if (tier.horn) this.view.audio.play(tier.horn, { vol: 0.9, minGap: 1 });
     }
     if (tierIndex >= 2) this.view.hud.feed(`${player.nick} → ${tier.label}! ${fmtShort(troops)} asker (${team.name})`, team.colorHex, 'gift');
@@ -2068,6 +2071,11 @@ export class Game {
     this.view.hud.hideEnd();
     if (!first) {
       this.view.hud.banner(`${r.n}. TUR BAŞLADI!`, woke ? `${woke} şehir savaşa hazır` : 'Şehirler uyanmayı bekliyor');
+      // hud.noSolicit: a short neutral "how to play" card after the round banner (no prices).
+      if (this.cfg.hud.noSolicit) {
+        // every round: so no line about gifts here (a repeated gift mention counts as soliciting)
+        setTimeout(() => this.view.hud.banner('NASIL OYNANIR?', 'Plakanı yaz, şehrinin ordusuna katıl • Morali dolan şehir HÜCUM’a geçer'), 3800);
+      }
       this.view.hud.feed(`${r.n}. tur başladı! ${woke ? `${woke} şehir sahada.` : 'Harita boş.'}`, 0xffd166, 'hourglass', true);
       this.view.audio.play('sfx_round_start', { vol: 0.8, minGap: 0.5 });
       this.view.audio.play('sfx_horn', { vol: 0.6, minGap: 1 });

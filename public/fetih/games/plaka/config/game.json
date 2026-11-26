@@ -213,6 +213,8 @@
     "maxVoices": 24
   },
   "hud": {
+    "_noSolicit": "TikTok suspended gifting for 3 days (2026-11-26) for 'non-organic gift requests through repeated triggers, misleading promises, emotional pressure'. noSolicit true = no standing gift price ladder and no gift lines in the tips or round cards; gifts are celebrated only when they arrive (from 100 coins with a short announcement). ?sade=1 also sets it.",
+    "noSolicit": true,
     "_note": "Rate limits: feedMinGapSec between feed lines (queued, feedQueueMax kept), calloutMinGapSec between big centre callouts; credit*Sec = how long a gift credit stays.",
     "feedLines": 5,
     "feedMinGapSec": 1.4,

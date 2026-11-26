@@ -29,6 +29,7 @@ async function main() {
   const [config, provData, aliases] = await Promise.all([
     fetchJson('config/game.json'), fetchJson('data/provinces.json'), fetchJson('data/aliases.json'),
   ]);
+  if (urlOpts.sade) config.hud.noSolicit = true;
   // Pristine copy: streamer settings from the bridge are applied on top of this.
   const baseConfig = JSON.parse(JSON.stringify(config));
   const provinces = provData.provinces;
@@ -124,6 +125,9 @@ async function main() {
   // Gift ladder tiles show "+N asker" from the live gift curve.
   hud.troopsFor = (coins) => game.giftTroops(coins);
   hud.setGiftStrip(config.hud.giftStrip, config.hud.giftStripTroops !== false);
+  // hud.noSolicit: the gift price ladder never shows, whatever the panel's "Ekran" settings say.
+  const noSolicit = (show) => (config.hud.noSolicit ? { ...show, giftStrip: false } : show);
+  hud.setVisibility(noSolicit({}));
   window.__game = game; // handy for debugging from the console
   window.__audio = audio;
   // ?audiolog=1: record which sounds fire or are skipped (window.__audio.trace).
@@ -142,7 +146,7 @@ async function main() {
     hud.setTitle(s.title);
     hud.setGiftHeading?.(s.giftHeading);
     const zonesChanged = hud.setZones?.(s.zones);
-    if (hud.setVisibility(s.show) || zonesChanged) resize();
+    if (hud.setVisibility(noSolicit(s.show)) || zonesChanged) resize();
     audio.applyVolumes(urlOpts.mute || s.mute);
     director.enabled = s.director;
   };

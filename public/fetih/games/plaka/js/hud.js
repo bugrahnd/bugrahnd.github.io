@@ -202,7 +202,8 @@ function ctaLines(cfg) {
   return [
     ['🏰', 'Şehirler komşu illeri fethederek büyür'],
     ['🔥', 'Morali dolan şehir HÜCUM’a geçer'],
-    ['🎁', 'Hediyeler gönderenin şehrine asker olur'],
+    // hud.noSolicit: no standing line about gifts (they are shown when they arrive).
+    ...(cfg.hud?.noSolicit ? [] : [['🎁', 'Hediyeler gönderenin şehrine asker olur']]),
     ['⏳', `Tur ${min} dakika, en çok il alan kazanır`],
     ...(per > 0 ? [['❤️ beğeni', `${fmt(per)} beğeni = 1 asker`]] : []),
     ...(rose > 0 ? [['🌹 1 Gül', `= ${fmt(rose)} beğeni`]] : []),
